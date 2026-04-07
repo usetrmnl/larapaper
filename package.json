@@ -27,7 +27,7 @@
         "laravel-vite-plugin": "^2.0",
         "puppeteer": "24.37.0",
         "tailwindcss": "^4.0.7",
-        "vite": "^7.0.4"
+        "vite": "^7.3.2"
     },
     "optionalDependencies": {
         "@rollup/rollup-linux-x64-gnu": "4.9.5",
