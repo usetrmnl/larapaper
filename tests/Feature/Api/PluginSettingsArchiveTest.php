@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 it('accepts a plugin settings archive and updates the plugin', function (): void {
     $user = User::factory()->create();
@@ -18,12 +19,8 @@ it('accepts a plugin settings archive and updates the plugin', function (): void
     // Authenticate via Sanctum (endpoint requires auth:sanctum)
     Sanctum::actingAs($user);
 
-    // Build a temporary ZIP with required structure: src/settings.yml and src/full.liquid
-    $tempDir = sys_get_temp_dir().'/trmnl_zip_'.uniqid();
-    $srcDir = $tempDir.'/src';
-    if (! is_dir($srcDir)) {
-        mkdir($srcDir, 0777, true);
-    }
+    $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+    $srcDir = $temporaryDirectory->path('src');
 
     $settingsYaml = <<<'YAML'
 name: Sample Imported
@@ -43,7 +40,7 @@ LIQUID;
     file_put_contents($srcDir.'/settings.yml', $settingsYaml);
     file_put_contents($srcDir.'/full.liquid', $fullLiquid);
 
-    $zipPath = sys_get_temp_dir().'/plugin_'.uniqid().'.zip';
+    $zipPath = $temporaryDirectory->path('plugin.zip');
     $zip = new ZipArchive();
     $zip->open($zipPath, ZipArchive::CREATE);
     $zip->addFile($srcDir.'/settings.yml', 'src/settings.yml');

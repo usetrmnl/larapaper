@@ -8,6 +8,7 @@ use App\Services\PluginImportService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 beforeEach(function (): void {
     Storage::fake('local');
@@ -549,9 +550,8 @@ it('imports plugin with only shared.blade.php file', function (): void {
 function createMockZipFile(array $files): string
 {
     $zip = new ZipArchive();
-
-    $tempFileName = 'test_zip_'.uniqid().'.zip';
-    $tempFile = Storage::path($tempFileName);
+    $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+    $tempFile = $temporaryDirectory->path('mock.zip');
 
     $zip->open($tempFile, ZipArchive::CREATE);
 
@@ -561,11 +561,7 @@ function createMockZipFile(array $files): string
 
     $zip->close();
 
-    $content = file_get_contents($tempFile);
-
-    Storage::delete($tempFileName);
-
-    return $content;
+    return file_get_contents($tempFile);
 }
 
 function getValidSettingsYaml(): string

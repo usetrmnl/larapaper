@@ -8,6 +8,7 @@ use App\Services\PluginExportService;
 use App\Services\PluginImportService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 
 beforeEach(function (): void {
     Storage::fake('local');
@@ -264,9 +265,10 @@ it('maintains correct yaml field order', function (): void {
     $zip = new ZipArchive();
     $zip->open($zipPath);
 
-    // Extract and read the settings.yml file
-    $zip->extractTo(sys_get_temp_dir(), 'settings.yml');
-    $yamlContent = file_get_contents(sys_get_temp_dir().'/settings.yml');
+    $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+    $tempDir = $temporaryDirectory->path();
+    $zip->extractTo($tempDir, 'settings.yml');
+    $yamlContent = file_get_contents($tempDir.'/settings.yml');
     $zip->close();
 
     // Check that the YAML content has the expected field order
@@ -302,7 +304,4 @@ it('maintains correct yaml field order', function (): void {
             $currentIndex = $foundIndex;
         }
     }
-
-    // Clean up
-    unlink(sys_get_temp_dir().'/settings.yml');
 });

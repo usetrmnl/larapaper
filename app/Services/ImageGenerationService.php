@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Ramsey\Uuid\Uuid;
 use RuntimeException;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 use Wnx\SidecarBrowsershot\BrowsershotLambda;
 
 use function config;
 use function file_exists;
-use function filesize;
 
 class ImageGenerationService
 {
@@ -60,33 +60,29 @@ class ImageGenerationService
         $uuid = Uuid::uuid4()->toString();
 
         try {
-            // Get image generation settings from DeviceModel or Device (for legacy devices)
             $imageSettings = $deviceModel instanceof DeviceModel
                 ? self::getImageSettingsFromModel($deviceModel)
                 : ($device instanceof Device ? self::getImageSettings($device) : self::getImageSettingsFromModel(null));
 
             $fileExtension = $imageSettings['mime_type'] === 'image/bmp' ? 'bmp' : 'png';
-            $outputPath = Storage::disk('public')->path('/images/generated/'.$uuid.'.'.$fileExtension);
 
-            // Create custom Browsershot instance if using AWS Lambda
-            $browsershotInstance = null;
-            if (config('app.puppeteer_mode') === 'sidecar-aws') {
-                $browsershotInstance = new BrowsershotLambda();
-            }
+            $temporaryDirectory = (new TemporaryDirectory)->create();
+            $localOutputPath = $temporaryDirectory->path($uuid.'.'.$fileExtension);
+
+            $browsershotInstance = config('app.puppeteer_mode') === 'sidecar-aws'
+                ? new BrowsershotLambda
+                : null;
 
             $browserStage = new BrowserStage($browsershotInstance);
             $browserStage->html($markup);
 
-            // Set timezone from user or fall back to app timezone
-            $timezone = $user->timezone ?? config('app.timezone');
-            $browserStage->timezone($timezone);
+            $browserStage->timezone($user->timezone ?? config('app.timezone'));
 
             if (config('app.puppeteer_window_size_strategy') === 'v2') {
                 $browserStage
                     ->width($imageSettings['width'])
                     ->height($imageSettings['height']);
             } else {
-                // default behaviour for Framework v1
                 $browserStage->useDefaultDimensions();
             }
 
@@ -98,13 +94,11 @@ class ImageGenerationService
                 $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
             }
 
-            // Get palette from parameter or fallback to device model's default palette
-            $colorPalette = null;
-            if ($palette && $palette->colors) {
-                $colorPalette = $palette->colors;
-            } elseif ($deviceModel?->palette && $deviceModel->palette->colors) {
-                $colorPalette = $deviceModel->palette->colors;
-            }
+            $colorPalette = match (true) {
+                $palette && $palette->colors => $palette->colors,
+                $deviceModel?->palette && $deviceModel->palette->colors => $deviceModel->palette->colors,
+                default => null,
+            };
 
             $imageStage = new ImageStage();
             $imageStage->format($fileExtension)
@@ -115,29 +109,24 @@ class ImageGenerationService
                 ->rotation($imageSettings['rotation'])
                 ->offsetX($imageSettings['offset_x'])
                 ->offsetY($imageSettings['offset_y'])
-                ->outputPath($outputPath);
+                ->outputPath($localOutputPath);
 
-            // Apply color palette if available
-            if ($colorPalette) {
+            if ($colorPalette !== null) {
                 $imageStage->colormap($colorPalette);
             }
 
-            // Apply dithering if requested by markup
-            $shouldDither = self::markupContainsDitherImage($markup);
-            if ($shouldDither) {
+            if (self::markupContainsDitherImage($markup)) {
                 $imageStage->dither();
             }
 
-            (new TrmnlPipeline())->pipe($browserStage)
-                ->pipe($imageStage)
-                ->process();
+            try {
+                (new TrmnlPipeline())->pipe($browserStage)
+                    ->pipe($imageStage)
+                    ->process();
 
-            if (! file_exists($outputPath)) {
-                throw new RuntimeException('Image file was not created: '.$outputPath);
-            }
-
-            if (filesize($outputPath) === 0) {
-                throw new RuntimeException('Image file is empty: '.$outputPath);
+                self::storeGeneratedImageOnPublicDisk($localOutputPath, $uuid, $fileExtension);
+            } finally {
+                $temporaryDirectory->delete();
             }
 
             Log::info("Generated image: $uuid");
@@ -284,6 +273,27 @@ class ImageGenerationService
             ImageFormat::AUTO->value => 1, // Default for AUTO
             default => 1,
         };
+    }
+
+    /**
+     * Copy a pipeline output file from local disk into the public storage disk.
+     *
+     * @throws RuntimeException
+     */
+    private static function storeGeneratedImageOnPublicDisk(string $localOutputPath, string $uuid, string $fileExtension): void
+    {
+        if (! file_exists($localOutputPath)) {
+            throw new RuntimeException('Image file was not created: '.$localOutputPath);
+        }
+
+        $storedPath = 'images/generated/'.$uuid.'.'.$fileExtension;
+        $bytes = file_get_contents($localOutputPath);
+        if ($bytes === false || $bytes === '') {
+            throw new RuntimeException('Image file was empty or could not be read: '.$localOutputPath);
+        }
+        if (! Storage::disk('public')->put($storedPath, $bytes)) {
+            throw new RuntimeException('Failed to store generated image at: '.$storedPath);
+        }
     }
 
     /**
@@ -465,30 +475,25 @@ class ImageGenerationService
         $uuid = Uuid::uuid4()->toString();
 
         try {
-            // Load device with relationships
             $device->load(['palette', 'deviceModel.palette', 'user']);
 
-            // Get image generation settings from DeviceModel if available, otherwise use device settings
             $imageSettings = self::getImageSettings($device);
 
             $fileExtension = $imageSettings['mime_type'] === 'image/bmp' ? 'bmp' : 'png';
-            $outputPath = Storage::disk('public')->path('/images/generated/'.$uuid.'.'.$fileExtension);
 
-            // Generate HTML from Blade template
+            $temporaryDirectory = (new TemporaryDirectory)->create();
+            $localOutputPath = $temporaryDirectory->path($uuid.'.'.$fileExtension);
+
             $html = self::generateDefaultScreenHtml($device, $imageType, $pluginName);
 
-            // Create custom Browsershot instance if using AWS Lambda
-            $browsershotInstance = null;
-            if (config('app.puppeteer_mode') === 'sidecar-aws') {
-                $browsershotInstance = new BrowsershotLambda();
-            }
+            $browsershotInstance = config('app.puppeteer_mode') === 'sidecar-aws'
+                ? new BrowsershotLambda
+                : null;
 
             $browserStage = new BrowserStage($browsershotInstance);
             $browserStage->html($html);
 
-            // Set timezone from user or fall back to app timezone
-            $timezone = $device->user->timezone ?? config('app.timezone');
-            $browserStage->timezone($timezone);
+            $browserStage->timezone($device->user->timezone ?? config('app.timezone'));
 
             if (config('app.puppeteer_window_size_strategy') === 'v2') {
                 $browserStage
@@ -506,13 +511,8 @@ class ImageGenerationService
                 $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
             }
 
-            // Get palette from device or fallback to device model's default palette
             $palette = $device->palette ?? $device->deviceModel?->palette;
-            $colorPalette = null;
-
-            if ($palette && $palette->colors) {
-                $colorPalette = $palette->colors;
-            }
+            $colorPalette = ($palette && $palette->colors) ? $palette->colors : null;
 
             $imageStage = new ImageStage();
             $imageStage->format($fileExtension)
@@ -523,23 +523,20 @@ class ImageGenerationService
                 ->rotation($imageSettings['rotation'])
                 ->offsetX($imageSettings['offset_x'])
                 ->offsetY($imageSettings['offset_y'])
-                ->outputPath($outputPath);
+                ->outputPath($localOutputPath);
 
-            // Apply color palette if available
-            if ($colorPalette) {
+            if ($colorPalette !== null) {
                 $imageStage->colormap($colorPalette);
             }
 
-            (new TrmnlPipeline())->pipe($browserStage)
-                ->pipe($imageStage)
-                ->process();
+            try {
+                (new TrmnlPipeline())->pipe($browserStage)
+                    ->pipe($imageStage)
+                    ->process();
 
-            if (! file_exists($outputPath)) {
-                throw new RuntimeException('Image file was not created: '.$outputPath);
-            }
-
-            if (filesize($outputPath) === 0) {
-                throw new RuntimeException('Image file is empty: '.$outputPath);
+                self::storeGeneratedImageOnPublicDisk($localOutputPath, $uuid, $fileExtension);
+            } finally {
+                $temporaryDirectory->delete();
             }
 
             Log::info("Device $device->id: generated default screen image: $uuid for type: $imageType");

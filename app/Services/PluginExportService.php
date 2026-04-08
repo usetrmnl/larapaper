@@ -5,11 +5,10 @@ namespace App\Services;
 use App\Models\Plugin;
 use App\Models\User;
 use Exception;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\Yaml\Yaml;
 use ZipArchive;
@@ -43,11 +42,12 @@ class PluginExportService
      */
     public function exportToZip(Plugin $plugin, User $user): BinaryFileResponse
     {
-        // Create a temporary directory
-        $tempDirName = 'temp/'.uniqid('plugin_export_', true);
-        Storage::makeDirectory($tempDirName);
-        $tempDir = Storage::path($tempDirName);
-        // Generate settings.yml content
+        $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+        $tempDir = $temporaryDirectory->path();
+
+        app()->terminating(function () use ($temporaryDirectory): void {
+            $temporaryDirectory->delete();
+        });
         $settings = $this->generateSettingsYaml($plugin);
         $settingsYaml = Yaml::dump($settings, 10, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
         File::put($tempDir.'/settings.yml', $settingsYaml);
@@ -81,17 +81,14 @@ class PluginExportService
             $sharedTemplate = $this->generateLayoutTemplate($plugin->render_markup_shared);
             File::put($tempDir.'/shared.'.$extension, $sharedTemplate);
         }
-        // Create ZIP file
         $zipPath = $tempDir.'/plugin_'.$plugin->trmnlp_id.'.zip';
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
             throw new Exception('Could not create ZIP file.');
         }
-        // Add files directly to ZIP root
         $this->addDirectoryToZip($zip, $tempDir, '');
         $zip->close();
 
-        // Return the ZIP file as a download response
         return response()->download($zipPath, 'plugin_'.$plugin->trmnlp_id.'.zip');
     }
 

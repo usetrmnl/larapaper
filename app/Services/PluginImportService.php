@@ -8,9 +8,9 @@ use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Spatie\TemporaryDirectory\TemporaryDirectory;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Yaml\Yaml;
 use ZipArchive;
@@ -57,160 +57,150 @@ class PluginImportService
      */
     public function importFromZip(UploadedFile $zipFile, User $user, ?string $zipEntryPath = null): Plugin
     {
-        // Create a temporary directory using Laravel's temporary directory helper
-        $tempDirName = 'temp/'.uniqid('plugin_import_', true);
-        Storage::makeDirectory($tempDirName);
-        $tempDir = Storage::path($tempDirName);
+        $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+        $tempDir = $temporaryDirectory->path();
 
-        try {
-            // Get the real path of the temporary file
-            $zipFullPath = $zipFile->getRealPath();
+        $zipFullPath = $zipFile->getRealPath();
 
-            // Extract the ZIP file using ZipArchive
-            $zip = new ZipArchive();
-            if ($zip->open($zipFullPath) !== true) {
-                throw new Exception('Could not open the ZIP file.');
-            }
-
-            $zip->extractTo($tempDir);
-            $zip->close();
-
-            // Find the required files (settings.yml and full.liquid/full.blade.php/shared.liquid/shared.blade.php)
-            $filePaths = $this->findRequiredFiles($tempDir, $zipEntryPath);
-
-            // Validate that we found the required files
-            if (! $filePaths['settingsYamlPath']) {
-                throw new Exception('Invalid ZIP structure. Required file settings.yml is missing.');
-            }
-
-            // Validate that we have at least one template file
-            if (! $filePaths['fullLiquidPath'] && ! $filePaths['sharedLiquidPath'] && ! $filePaths['sharedBladePath']) {
-                throw new Exception('Invalid ZIP structure. At least one of the following files is required: full.liquid, full.blade.php, shared.liquid, or shared.blade.php.');
-            }
-
-            // Parse settings.yml
-            $settingsYaml = File::get($filePaths['settingsYamlPath']);
-            $settings = Yaml::parse($settingsYaml);
-            $this->validateYAML($settings);
-
-            // Determine markup language from the first available file
-            $markupLanguage = 'blade';
-            $firstTemplatePath = $filePaths['fullLiquidPath']
-                ?? ($filePaths['halfHorizontalLiquidPath'] ?? null)
-                ?? ($filePaths['halfVerticalLiquidPath'] ?? null)
-                ?? ($filePaths['quadrantLiquidPath'] ?? null)
-                ?? ($filePaths['sharedLiquidPath'] ?? null)
-                ?? ($filePaths['sharedBladePath'] ?? null);
-
-            if ($firstTemplatePath && pathinfo((string) $firstTemplatePath, PATHINFO_EXTENSION) === 'liquid') {
-                $markupLanguage = 'liquid';
-            }
-
-            // Read full markup (don't prepend shared - it will be prepended at render time)
-            $fullLiquid = null;
-            if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
-                $fullLiquid = File::get($filePaths['fullLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $fullLiquid = '<div class="view view--{{ size }}">'."\n".$fullLiquid."\n".'</div>';
-                }
-            }
-
-            // Read shared markup separately
-            $sharedMarkup = null;
-            if (isset($filePaths['sharedLiquidPath']) && $filePaths['sharedLiquidPath'] && File::exists($filePaths['sharedLiquidPath'])) {
-                $sharedMarkup = File::get($filePaths['sharedLiquidPath']);
-            } elseif (isset($filePaths['sharedBladePath']) && $filePaths['sharedBladePath'] && File::exists($filePaths['sharedBladePath'])) {
-                $sharedMarkup = File::get($filePaths['sharedBladePath']);
-            }
-
-            // Read layout-specific markups
-            $halfHorizontalMarkup = null;
-            if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
-                $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $halfHorizontalMarkup = '<div class="view view--{{ size }}">'."\n".$halfHorizontalMarkup."\n".'</div>';
-                }
-            }
-
-            $halfVerticalMarkup = null;
-            if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
-                $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $halfVerticalMarkup = '<div class="view view--{{ size }}">'."\n".$halfVerticalMarkup."\n".'</div>';
-                }
-            }
-
-            $quadrantMarkup = null;
-            if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
-                $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $quadrantMarkup = '<div class="view view--{{ size }}">'."\n".$quadrantMarkup."\n".'</div>';
-                }
-            }
-
-            // Ensure custom_fields is properly formatted
-            if (! isset($settings['custom_fields']) || ! is_array($settings['custom_fields'])) {
-                $settings['custom_fields'] = [];
-            }
-
-            // Normalize options in custom_fields (convert non-named values to named values)
-            $settings['custom_fields'] = $this->normalizeCustomFieldsOptions($settings['custom_fields']);
-
-            // Create configuration template with the custom fields
-            $configurationTemplate = [
-                'custom_fields' => $settings['custom_fields'],
-            ];
-
-            $plugin_updated = isset($settings['id'])
-                            && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists();
-            // Create a new plugin
-            $plugin = Plugin::updateOrCreate(
-                [
-                    'user_id' => $user->id, 'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
-                ],
-                [
-                    'user_id' => $user->id,
-                    'name' => $settings['name'] ?? 'Imported Plugin',
-                    'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
-                    'data_stale_minutes' => $settings['refresh_interval'] ?? 15,
-                    'data_strategy' => $settings['strategy'] ?? 'static',
-                    'polling_url' => $settings['polling_url'] ?? null,
-                    'polling_verb' => $settings['polling_verb'] ?? 'get',
-                    'polling_header' => isset($settings['polling_headers'])
-                        ? str_replace('=', ':', $settings['polling_headers'])
-                        : null,
-                    'polling_body' => $settings['polling_body'] ?? null,
-                    'markup_language' => $markupLanguage,
-                    'render_markup' => $fullLiquid ?? null,
-                    'render_markup_half_horizontal' => $halfHorizontalMarkup,
-                    'render_markup_half_vertical' => $halfVerticalMarkup,
-                    'render_markup_quadrant' => $quadrantMarkup,
-                    'render_markup_shared' => $sharedMarkup,
-                    'configuration_template' => $configurationTemplate,
-                    'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
-                ]);
-
-            if (! $plugin_updated) {
-                // Extract default values from custom_fields and populate configuration
-                $configuration = [];
-                foreach ($settings['custom_fields'] as $field) {
-                    if (isset($field['keyname']) && isset($field['default'])) {
-                        $configuration[$field['keyname']] = $field['default'];
-                    }
-                }
-                // set only if plugin is new
-                $plugin->update([
-                    'configuration' => $configuration,
-                ]);
-            }
-            $plugin['trmnlp_yaml'] = $settingsYaml;
-
-            return $plugin;
-
-        } finally {
-            // Clean up temporary directory
-            Storage::deleteDirectory($tempDirName);
+        $zip = new ZipArchive();
+        if ($zip->open($zipFullPath) !== true) {
+            throw new Exception('Could not open the ZIP file.');
         }
+
+        $zip->extractTo($tempDir);
+        $zip->close();
+
+        // Find the required files (settings.yml and full.liquid/full.blade.php/shared.liquid/shared.blade.php)
+        $filePaths = $this->findRequiredFiles($tempDir, $zipEntryPath);
+
+        // Validate that we found the required files
+        if (! $filePaths['settingsYamlPath']) {
+            throw new Exception('Invalid ZIP structure. Required file settings.yml is missing.');
+        }
+
+        // Validate that we have at least one template file
+        if (! $filePaths['fullLiquidPath'] && ! $filePaths['sharedLiquidPath'] && ! $filePaths['sharedBladePath']) {
+            throw new Exception('Invalid ZIP structure. At least one of the following files is required: full.liquid, full.blade.php, shared.liquid, or shared.blade.php.');
+        }
+
+        // Parse settings.yml
+        $settingsYaml = File::get($filePaths['settingsYamlPath']);
+        $settings = Yaml::parse($settingsYaml);
+        $this->validateYAML($settings);
+
+        // Determine markup language from the first available file
+        $markupLanguage = 'blade';
+        $firstTemplatePath = $filePaths['fullLiquidPath']
+            ?? ($filePaths['halfHorizontalLiquidPath'] ?? null)
+            ?? ($filePaths['halfVerticalLiquidPath'] ?? null)
+            ?? ($filePaths['quadrantLiquidPath'] ?? null)
+            ?? ($filePaths['sharedLiquidPath'] ?? null)
+            ?? ($filePaths['sharedBladePath'] ?? null);
+
+        if ($firstTemplatePath && pathinfo((string) $firstTemplatePath, PATHINFO_EXTENSION) === 'liquid') {
+            $markupLanguage = 'liquid';
+        }
+
+        // Read full markup (don't prepend shared - it will be prepended at render time)
+        $fullLiquid = null;
+        if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
+            $fullLiquid = File::get($filePaths['fullLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $fullLiquid = '<div class="view view--{{ size }}">'."\n".$fullLiquid."\n".'</div>';
+            }
+        }
+
+        // Read shared markup separately
+        $sharedMarkup = null;
+        if (isset($filePaths['sharedLiquidPath']) && $filePaths['sharedLiquidPath'] && File::exists($filePaths['sharedLiquidPath'])) {
+            $sharedMarkup = File::get($filePaths['sharedLiquidPath']);
+        } elseif (isset($filePaths['sharedBladePath']) && $filePaths['sharedBladePath'] && File::exists($filePaths['sharedBladePath'])) {
+            $sharedMarkup = File::get($filePaths['sharedBladePath']);
+        }
+
+        // Read layout-specific markups
+        $halfHorizontalMarkup = null;
+        if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
+            $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $halfHorizontalMarkup = '<div class="view view--{{ size }}">'."\n".$halfHorizontalMarkup."\n".'</div>';
+            }
+        }
+
+        $halfVerticalMarkup = null;
+        if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
+            $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $halfVerticalMarkup = '<div class="view view--{{ size }}">'."\n".$halfVerticalMarkup."\n".'</div>';
+            }
+        }
+
+        $quadrantMarkup = null;
+        if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
+            $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $quadrantMarkup = '<div class="view view--{{ size }}">'."\n".$quadrantMarkup."\n".'</div>';
+            }
+        }
+
+        // Ensure custom_fields is properly formatted
+        if (! isset($settings['custom_fields']) || ! is_array($settings['custom_fields'])) {
+            $settings['custom_fields'] = [];
+        }
+
+        // Normalize options in custom_fields (convert non-named values to named values)
+        $settings['custom_fields'] = $this->normalizeCustomFieldsOptions($settings['custom_fields']);
+
+        // Create configuration template with the custom fields
+        $configurationTemplate = [
+            'custom_fields' => $settings['custom_fields'],
+        ];
+
+        $plugin_updated = isset($settings['id'])
+                        && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists();
+        // Create a new plugin
+        $plugin = Plugin::updateOrCreate(
+            [
+                'user_id' => $user->id, 'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
+            ],
+            [
+                'user_id' => $user->id,
+                'name' => $settings['name'] ?? 'Imported Plugin',
+                'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
+                'data_stale_minutes' => $settings['refresh_interval'] ?? 15,
+                'data_strategy' => $settings['strategy'] ?? 'static',
+                'polling_url' => $settings['polling_url'] ?? null,
+                'polling_verb' => $settings['polling_verb'] ?? 'get',
+                'polling_header' => isset($settings['polling_headers'])
+                    ? str_replace('=', ':', $settings['polling_headers'])
+                    : null,
+                'polling_body' => $settings['polling_body'] ?? null,
+                'markup_language' => $markupLanguage,
+                'render_markup' => $fullLiquid ?? null,
+                'render_markup_half_horizontal' => $halfHorizontalMarkup,
+                'render_markup_half_vertical' => $halfVerticalMarkup,
+                'render_markup_quadrant' => $quadrantMarkup,
+                'render_markup_shared' => $sharedMarkup,
+                'configuration_template' => $configurationTemplate,
+                'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
+            ]);
+
+        if (! $plugin_updated) {
+            // Extract default values from custom_fields and populate configuration
+            $configuration = [];
+            foreach ($settings['custom_fields'] as $field) {
+                if (isset($field['keyname']) && isset($field['default'])) {
+                    $configuration[$field['keyname']] = $field['default'];
+                }
+            }
+            // set only if plugin is new
+            $plugin->update([
+                'configuration' => $configuration,
+            ]);
+        }
+        $plugin['trmnlp_yaml'] = $settingsYaml;
+
+        return $plugin;
     }
 
     /**
@@ -228,179 +218,168 @@ class PluginImportService
      */
     public function importFromUrl(string $zipUrl, User $user, ?string $zipEntryPath = null, $preferredRenderer = null, ?string $iconUrl = null, bool $allowDuplicate = false): Plugin
     {
-        // Download the ZIP file
         $response = Http::timeout(60)->get($zipUrl);
 
         if (! $response->successful()) {
             throw new Exception('Could not download the ZIP file from the provided URL.');
         }
 
-        // Create a temporary file
-        $tempDirName = 'temp/'.uniqid('plugin_import_', true);
-        Storage::makeDirectory($tempDirName);
-        $tempDir = Storage::path($tempDirName);
+        $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+        $tempDir = $temporaryDirectory->path();
         $zipPath = $tempDir.'/plugin.zip';
 
-        // Save the downloaded content to a temporary file
         File::put($zipPath, $response->body());
 
-        try {
-            // Extract the ZIP file using ZipArchive
-            $zip = new ZipArchive();
-            if ($zip->open($zipPath) !== true) {
-                throw new Exception('Could not open the downloaded ZIP file.');
-            }
-
-            $zip->extractTo($tempDir);
-            $zip->close();
-
-            // Find the required files (settings.yml and full.liquid/full.blade.php/shared.liquid/shared.blade.php)
-            $filePaths = $this->findRequiredFiles($tempDir, $zipEntryPath);
-
-            // Validate that we found the required files
-            if (! $filePaths['settingsYamlPath']) {
-                throw new Exception('Invalid ZIP structure. Required file settings.yml is missing.');
-            }
-
-            // Validate that we have at least one template file
-            if (! $filePaths['fullLiquidPath'] && ! $filePaths['sharedLiquidPath'] && ! $filePaths['sharedBladePath']) {
-                throw new Exception('Invalid ZIP structure. At least one of the following files is required: full.liquid, full.blade.php, shared.liquid, or shared.blade.php.');
-            }
-
-            // Parse settings.yml
-            $settingsYaml = File::get($filePaths['settingsYamlPath']);
-            $settings = Yaml::parse($settingsYaml);
-            $this->validateYAML($settings);
-
-            // Determine markup language from the first available file
-            $markupLanguage = 'blade';
-            $firstTemplatePath = $filePaths['fullLiquidPath']
-                ?? ($filePaths['halfHorizontalLiquidPath'] ?? null)
-                ?? ($filePaths['halfVerticalLiquidPath'] ?? null)
-                ?? ($filePaths['quadrantLiquidPath'] ?? null)
-                ?? ($filePaths['sharedLiquidPath'] ?? null)
-                ?? ($filePaths['sharedBladePath'] ?? null);
-
-            if ($firstTemplatePath && pathinfo((string) $firstTemplatePath, PATHINFO_EXTENSION) === 'liquid') {
-                $markupLanguage = 'liquid';
-            }
-
-            // Read full markup (don't prepend shared - it will be prepended at render time)
-            $fullLiquid = null;
-            if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
-                $fullLiquid = File::get($filePaths['fullLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $fullLiquid = '<div class="view view--{{ size }}">'."\n".$fullLiquid."\n".'</div>';
-                }
-            }
-
-            // Read shared markup separately
-            $sharedMarkup = null;
-            if (isset($filePaths['sharedLiquidPath']) && $filePaths['sharedLiquidPath'] && File::exists($filePaths['sharedLiquidPath'])) {
-                $sharedMarkup = File::get($filePaths['sharedLiquidPath']);
-            } elseif (isset($filePaths['sharedBladePath']) && $filePaths['sharedBladePath'] && File::exists($filePaths['sharedBladePath'])) {
-                $sharedMarkup = File::get($filePaths['sharedBladePath']);
-            }
-
-            // Read layout-specific markups
-            $halfHorizontalMarkup = null;
-            if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
-                $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $halfHorizontalMarkup = '<div class="view view--{{ size }}">'."\n".$halfHorizontalMarkup."\n".'</div>';
-                }
-            }
-
-            $halfVerticalMarkup = null;
-            if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
-                $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $halfVerticalMarkup = '<div class="view view--{{ size }}">'."\n".$halfVerticalMarkup."\n".'</div>';
-                }
-            }
-
-            $quadrantMarkup = null;
-            if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
-                $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
-                if ($markupLanguage === 'liquid') {
-                    $quadrantMarkup = '<div class="view view--{{ size }}">'."\n".$quadrantMarkup."\n".'</div>';
-                }
-            }
-
-            // Ensure custom_fields is properly formatted
-            if (! isset($settings['custom_fields']) || ! is_array($settings['custom_fields'])) {
-                $settings['custom_fields'] = [];
-            }
-
-            // Normalize options in custom_fields (convert non-named values to named values)
-            $settings['custom_fields'] = $this->normalizeCustomFieldsOptions($settings['custom_fields']);
-
-            // Create configuration template with the custom fields
-            $configurationTemplate = [
-                'custom_fields' => $settings['custom_fields'],
-            ];
-
-            // Determine the trmnlp_id to use
-            $trmnlpId = $settings['id'] ?? Uuid::v7();
-
-            // If allowDuplicate is true and a plugin with this trmnlp_id already exists, generate a new UUID
-            if ($allowDuplicate && isset($settings['id']) && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists()) {
-                $trmnlpId = Uuid::v7();
-            }
-
-            $plugin_updated = ! $allowDuplicate && isset($settings['id'])
-                            && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists();
-
-            // Create a new plugin
-            $plugin = Plugin::updateOrCreate(
-                [
-                    'user_id' => $user->id, 'trmnlp_id' => $trmnlpId,
-                ],
-                [
-                    'user_id' => $user->id,
-                    'name' => $settings['name'] ?? 'Imported Plugin',
-                    'trmnlp_id' => $trmnlpId,
-                    'data_stale_minutes' => $settings['refresh_interval'] ?? 15,
-                    'data_strategy' => $settings['strategy'] ?? 'static',
-                    'polling_url' => $settings['polling_url'] ?? null,
-                    'polling_verb' => $settings['polling_verb'] ?? 'get',
-                    'polling_header' => isset($settings['polling_headers'])
-                        ? str_replace('=', ':', $settings['polling_headers'])
-                        : null,
-                    'polling_body' => $settings['polling_body'] ?? null,
-                    'markup_language' => $markupLanguage,
-                    'render_markup' => $fullLiquid ?? null,
-                    'render_markup_half_horizontal' => $halfHorizontalMarkup,
-                    'render_markup_half_vertical' => $halfVerticalMarkup,
-                    'render_markup_quadrant' => $quadrantMarkup,
-                    'render_markup_shared' => $sharedMarkup,
-                    'configuration_template' => $configurationTemplate,
-                    'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
-                    'preferred_renderer' => $preferredRenderer,
-                    'icon_url' => $iconUrl,
-                ]);
-
-            if (! $plugin_updated) {
-                // Extract default values from custom_fields and populate configuration
-                $configuration = [];
-                foreach ($settings['custom_fields'] as $field) {
-                    if (isset($field['keyname']) && isset($field['default'])) {
-                        $configuration[$field['keyname']] = $field['default'];
-                    }
-                }
-                // set only if plugin is new
-                $plugin->update([
-                    'configuration' => $configuration,
-                ]);
-            }
-            $plugin['trmnlp_yaml'] = $settingsYaml;
-
-            return $plugin;
-
-        } finally {
-            // Clean up temporary directory
-            Storage::deleteDirectory($tempDirName);
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            throw new Exception('Could not open the downloaded ZIP file.');
         }
+
+        $zip->extractTo($tempDir);
+        $zip->close();
+
+        // Find the required files (settings.yml and full.liquid/full.blade.php/shared.liquid/shared.blade.php)
+        $filePaths = $this->findRequiredFiles($tempDir, $zipEntryPath);
+
+        // Validate that we found the required files
+        if (! $filePaths['settingsYamlPath']) {
+            throw new Exception('Invalid ZIP structure. Required file settings.yml is missing.');
+        }
+
+        // Validate that we have at least one template file
+        if (! $filePaths['fullLiquidPath'] && ! $filePaths['sharedLiquidPath'] && ! $filePaths['sharedBladePath']) {
+            throw new Exception('Invalid ZIP structure. At least one of the following files is required: full.liquid, full.blade.php, shared.liquid, or shared.blade.php.');
+        }
+
+        // Parse settings.yml
+        $settingsYaml = File::get($filePaths['settingsYamlPath']);
+        $settings = Yaml::parse($settingsYaml);
+        $this->validateYAML($settings);
+
+        // Determine markup language from the first available file
+        $markupLanguage = 'blade';
+        $firstTemplatePath = $filePaths['fullLiquidPath']
+            ?? ($filePaths['halfHorizontalLiquidPath'] ?? null)
+            ?? ($filePaths['halfVerticalLiquidPath'] ?? null)
+            ?? ($filePaths['quadrantLiquidPath'] ?? null)
+            ?? ($filePaths['sharedLiquidPath'] ?? null)
+            ?? ($filePaths['sharedBladePath'] ?? null);
+
+        if ($firstTemplatePath && pathinfo((string) $firstTemplatePath, PATHINFO_EXTENSION) === 'liquid') {
+            $markupLanguage = 'liquid';
+        }
+
+        // Read full markup (don't prepend shared - it will be prepended at render time)
+        $fullLiquid = null;
+        if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
+            $fullLiquid = File::get($filePaths['fullLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $fullLiquid = '<div class="view view--{{ size }}">'."\n".$fullLiquid."\n".'</div>';
+            }
+        }
+
+        // Read shared markup separately
+        $sharedMarkup = null;
+        if (isset($filePaths['sharedLiquidPath']) && $filePaths['sharedLiquidPath'] && File::exists($filePaths['sharedLiquidPath'])) {
+            $sharedMarkup = File::get($filePaths['sharedLiquidPath']);
+        } elseif (isset($filePaths['sharedBladePath']) && $filePaths['sharedBladePath'] && File::exists($filePaths['sharedBladePath'])) {
+            $sharedMarkup = File::get($filePaths['sharedBladePath']);
+        }
+
+        // Read layout-specific markups
+        $halfHorizontalMarkup = null;
+        if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
+            $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $halfHorizontalMarkup = '<div class="view view--{{ size }}">'."\n".$halfHorizontalMarkup."\n".'</div>';
+            }
+        }
+
+        $halfVerticalMarkup = null;
+        if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
+            $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $halfVerticalMarkup = '<div class="view view--{{ size }}">'."\n".$halfVerticalMarkup."\n".'</div>';
+            }
+        }
+
+        $quadrantMarkup = null;
+        if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
+            $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
+            if ($markupLanguage === 'liquid') {
+                $quadrantMarkup = '<div class="view view--{{ size }}">'."\n".$quadrantMarkup."\n".'</div>';
+            }
+        }
+
+        // Ensure custom_fields is properly formatted
+        if (! isset($settings['custom_fields']) || ! is_array($settings['custom_fields'])) {
+            $settings['custom_fields'] = [];
+        }
+
+        // Normalize options in custom_fields (convert non-named values to named values)
+        $settings['custom_fields'] = $this->normalizeCustomFieldsOptions($settings['custom_fields']);
+
+        // Create configuration template with the custom fields
+        $configurationTemplate = [
+            'custom_fields' => $settings['custom_fields'],
+        ];
+
+        // Determine the trmnlp_id to use
+        $trmnlpId = $settings['id'] ?? Uuid::v7();
+
+        // If allowDuplicate is true and a plugin with this trmnlp_id already exists, generate a new UUID
+        if ($allowDuplicate && isset($settings['id']) && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists()) {
+            $trmnlpId = Uuid::v7();
+        }
+
+        $plugin_updated = ! $allowDuplicate && isset($settings['id'])
+                        && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists();
+
+        // Create a new plugin
+        $plugin = Plugin::updateOrCreate(
+            [
+                'user_id' => $user->id, 'trmnlp_id' => $trmnlpId,
+            ],
+            [
+                'user_id' => $user->id,
+                'name' => $settings['name'] ?? 'Imported Plugin',
+                'trmnlp_id' => $trmnlpId,
+                'data_stale_minutes' => $settings['refresh_interval'] ?? 15,
+                'data_strategy' => $settings['strategy'] ?? 'static',
+                'polling_url' => $settings['polling_url'] ?? null,
+                'polling_verb' => $settings['polling_verb'] ?? 'get',
+                'polling_header' => isset($settings['polling_headers'])
+                    ? str_replace('=', ':', $settings['polling_headers'])
+                    : null,
+                'polling_body' => $settings['polling_body'] ?? null,
+                'markup_language' => $markupLanguage,
+                'render_markup' => $fullLiquid ?? null,
+                'render_markup_half_horizontal' => $halfHorizontalMarkup,
+                'render_markup_half_vertical' => $halfVerticalMarkup,
+                'render_markup_quadrant' => $quadrantMarkup,
+                'render_markup_shared' => $sharedMarkup,
+                'configuration_template' => $configurationTemplate,
+                'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
+                'preferred_renderer' => $preferredRenderer,
+                'icon_url' => $iconUrl,
+            ]);
+
+        if (! $plugin_updated) {
+            // Extract default values from custom_fields and populate configuration
+            $configuration = [];
+            foreach ($settings['custom_fields'] as $field) {
+                if (isset($field['keyname']) && isset($field['default'])) {
+                    $configuration[$field['keyname']] = $field['default'];
+                }
+            }
+            // set only if plugin is new
+            $plugin->update([
+                'configuration' => $configuration,
+            ]);
+        }
+        $plugin['trmnlp_yaml'] = $settingsYaml;
+
+        return $plugin;
     }
 
     private function findRequiredFiles(string $tempDir, ?string $zipEntryPath = null): array
