@@ -15,7 +15,7 @@
         "ext-imagick": "*",
         "ext-simplexml": "*",
         "ext-zip": "*",
-        "bnussbau/laravel-trmnl-blade": "^2.3",
+        "bnussbau/laravel-trmnl-blade": "^3.0",
         "bnussbau/trmnl-pipeline-php": "^0.8",
         "keepsuit/laravel-liquid": "^0.5.2",
         "laravel/fortify": "^1.30",
