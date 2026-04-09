@@ -519,10 +519,15 @@ HTML;
         }
 
         try {
-            // Create a device object with og_plus model and the selected bitdepth
             $device = $this->createPreviewDevice();
             $previewMarkup = $this->plugin->render($size, true, $device);
-            $this->dispatch('preview-updated', preview: $previewMarkup);
+            $dimensions = $this->previewScreenDimensionsForDevice($device);
+            $this->dispatch(
+                'preview-updated',
+                preview: $previewMarkup,
+                screenWidth: $dimensions['width'],
+                screenHeight: $dimensions['height'],
+            );
         } catch (LiquidException $e) {
             $this->dispatch('preview-error', message: $e->toLiquidErrorMessage());
         } catch (Exception $e) {
@@ -539,6 +544,28 @@ HTML;
         $device->setRelation('deviceModel', $deviceModel);
 
         return $device;
+    }
+
+    /**
+     * Native pixel dimensions for the preview iframe (matches TRMNL screen CSS variables).
+     *
+     * @return array{width: int, height: int}
+     */
+    private function previewScreenDimensionsForDevice(Device $device): array
+    {
+        return [
+            'width' => $this->positiveIntOrFallback($device->deviceModel?->width, 800),
+            'height' => $this->positiveIntOrFallback($device->deviceModel?->height, 480),
+        ];
+    }
+
+    private function positiveIntOrFallback(?int $value, int $fallback): int
+    {
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        return $fallback;
     }
 
     public function getDeviceModels()
@@ -791,8 +818,8 @@ HTML;
             </div>
         </flux:modal>
 
-        <flux:modal name="preview-plugin" class="min-w-[850px] min-h-[480px] space-y-6">
-            <div class="flex items-center gap-4">
+        <flux:modal name="preview-plugin" class="flex min-h-0 min-w-[850px] max-h-[90vh] flex-col gap-4">
+            <div class="flex shrink-0 items-center gap-4">
                 <flux:heading size="lg">Preview {{ $plugin->name }}</flux:heading>
                 <flux:field class="w-48">
                     <flux:select wire:model.live="preview_device_model_id">
@@ -807,8 +834,15 @@ HTML;
                 </flux:field>
             </div>
 
-            <div class="bg-white dark:bg-zinc-900 rounded-lg overflow-hidden">
-                <iframe id="preview-frame" class="w-full h-[480px] border-0"></iframe>
+            <div
+                id="preview-stage"
+                class="flex w-full flex-1 min-h-[50vh] items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-zinc-900"
+            >
+                <div id="preview-layout" class="overflow-hidden">
+                    <div id="preview-scaler" class="origin-top-left">
+                        <iframe id="preview-frame" class="block border-0"></iframe>
+                    </div>
+                </div>
             </div>
         </flux:modal>
 
@@ -1240,12 +1274,82 @@ HTML;
 
 @script
 <script>
-    $wire.on('preview-updated', ({preview}) => {
+    let previewNativeWidth = 800;
+    let previewNativeHeight = 480;
+    let previewResizeObserver = null;
+
+    function positiveNumberOrFallback(value, fallback) {
+        const n = Number(value);
+
+        return n > 0 ? n : fallback;
+    }
+
+    function fitPreviewToStage() {
+        const stage = document.getElementById('preview-stage');
+        const layout = document.getElementById('preview-layout');
+        const scaler = document.getElementById('preview-scaler');
         const frame = document.getElementById('preview-frame');
+
+        if (!stage || !layout || !scaler || !frame) {
+            return;
+        }
+
+        const w = previewNativeWidth;
+        const h = previewNativeHeight;
+
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+
+        if (stageW <= 0 || stageH <= 0) {
+            return;
+        }
+
+        const scale = Math.min(1, stageW / w, stageH / h);
+
+        layout.style.width = `${w * scale}px`;
+        layout.style.height = `${h * scale}px`;
+        scaler.style.width = `${w}px`;
+        scaler.style.height = `${h}px`;
+        scaler.style.transform = `scale(${scale})`;
+    }
+
+    function ensurePreviewResizeObserver() {
+        const stage = document.getElementById('preview-stage');
+
+        if (!stage || previewResizeObserver) {
+            return;
+        }
+
+        previewResizeObserver = new ResizeObserver(() => fitPreviewToStage());
+        previewResizeObserver.observe(stage);
+    }
+
+    $wire.on('preview-updated', ({preview, screenWidth, screenHeight}) => {
+        previewNativeWidth = positiveNumberOrFallback(screenWidth, 800);
+        previewNativeHeight = positiveNumberOrFallback(screenHeight, 480);
+
+        const frame = document.getElementById('preview-frame');
+
+        if (!frame) {
+            return;
+        }
+
+        frame.setAttribute('width', String(previewNativeWidth));
+        frame.setAttribute('height', String(previewNativeHeight));
+
         const frameDoc = frame.contentDocument || frame.contentWindow.document;
         frameDoc.open();
         frameDoc.write(preview);
         frameDoc.close();
+
+        requestAnimationFrame(() => {
+            fitPreviewToStage();
+            ensurePreviewResizeObserver();
+        });
     });
 
     $wire.on('preview-error', ({message}) => {
