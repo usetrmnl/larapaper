@@ -185,74 +185,76 @@ new class extends Component
     }
 } ?>
 
-<section class="w-full">
-    @include('partials.settings-heading')
+<section class="w-full py-12">
+    <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+        @include('partials.settings-heading')
 
-    <x-pages::settings.layout heading="Updates">
-        <div class="my-6 w-full space-y-6">
-            @if(config('app.version'))
-                <div class="flex items-center justify-between">
-                    <div>
-                        <flux:heading size="sm">Current Version</flux:heading>
-                        <flux:text class="text-sm">
-                            <a href="https://github.com/{{ config('app.github_repo') }}/releases/" target="_blank" class="text-primary-600 dark:text-primary-400 hover:underline">
-                                {{ config('app.version') }}
-                            </a>
-                        </flux:text>
+        <x-pages::settings.layout heading="Updates">
+            <div class="my-6 w-full space-y-6">
+                @if(config('app.version'))
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <flux:heading size="sm">Current Version</flux:heading>
+                            <flux:text class="text-sm">
+                                <a href="https://github.com/{{ config('app.github_repo') }}/releases/" target="_blank" class="text-primary-600 dark:text-primary-400 hover:underline">
+                                    {{ config('app.version') }}
+                                </a>
+                            </flux:text>
+                        </div>
+                        <flux:button wire:click="checkForUpdates">
+                            Check for Updates
+                        </flux:button>
                     </div>
-                    <flux:button wire:click="checkForUpdates">
-                        Check for Updates
-                    </flux:button>
-                </div>
-            @endif
-
-            <div class="space-y-4">
-                <flux:switch wire:model.live="prereleases" label="Include Pre-Releases"/>
-            </div>
-
-            <div class="space-y-4">
-                @if($errorMessage)
-                    <flux:callout icon="exclamation-triangle" variant="danger">
-                        <flux:callout.heading>Error</flux:callout.heading>
-                        <flux:callout.text>
-                            {{ $errorMessage }}
-                            @if($backoffUntil)
-                                <br><small class="text-xs opacity-75">You can try again after {{ \Carbon\Carbon::createFromTimestamp($backoffUntil)->format('H:i') }}.</small>
-                            @endif
-                        </flux:callout.text>
-                    </flux:callout>
-                @elseif($isUpdateAvailable && $latestVersion)
-                    <flux:callout icon="arrow-down-circle" variant="info">
-                        <flux:callout.heading>Update Available</flux:callout.heading>
-                        <flux:callout.text>
-                            A newer version {{ $latestVersion }} is available. Update to the latest version for the best experience.
-                        </flux:callout.text>
-                        @if($releaseNotes)
-                            <div class="mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-zinc-900 [&_h2]:dark:text-white [&_h2]:mb-2 [&_h2]:mt-4 [&_h2:first-child]:mt-0 [&_p]:text-sm [&_p]:text-zinc-500 [&_p]:dark:text-white/70 [&_p]:mb-2 [&_ul]:text-sm [&_ul]:text-zinc-500 [&_ul]:dark:text-white/70 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-2 [&_ul>li]:mb-1 [&_li]:text-sm [&_li]:text-zinc-500 [&_li]:dark:text-white/70 [&_a]:text-primary-600 [&_a]:dark:text-primary-400 [&_a]:hover:underline">
-                                {!! $releaseNotes !!}
-                            </div>
-                        @endif
-                        @if($releaseUrl)
-                            <div class="mt-4">
-                                <flux:button
-                                    href="{{ $releaseUrl }}"
-                                    target="_blank"
-                                    icon:trailing="arrow-up-right"
-                                    class="w-full">
-                                    View on GitHub
-                                </flux:button>
-                            </div>
-                        @endif
-                    </flux:callout>
-                @elseif($latestVersion && !$isUpdateAvailable)
-                    <flux:callout icon="check-circle" variant="success">
-                        <flux:callout.heading>Up to Date</flux:callout.heading>
-                        <flux:callout.text>
-                            You are running the latest version.
-                        </flux:callout.text>
-                    </flux:callout>
                 @endif
+
+                <div class="space-y-4">
+                    <flux:switch wire:model.live="prereleases" label="Include Pre-Releases"/>
+                </div>
+
+                <div class="space-y-4">
+                    @if($errorMessage)
+                        <flux:callout icon="exclamation-triangle" variant="danger">
+                            <flux:callout.heading>Error</flux:callout.heading>
+                            <flux:callout.text>
+                                {{ $errorMessage }}
+                                @if($backoffUntil)
+                                    <br><small class="text-xs opacity-75">You can try again after {{ \Carbon\Carbon::createFromTimestamp($backoffUntil)->format('H:i') }}.</small>
+                                @endif
+                            </flux:callout.text>
+                        </flux:callout>
+                    @elseif($isUpdateAvailable && $latestVersion)
+                        <flux:callout icon="arrow-down-circle" variant="info">
+                            <flux:callout.heading>Update Available</flux:callout.heading>
+                            <flux:callout.text>
+                                A newer version {{ $latestVersion }} is available. Update to the latest version for the best experience.
+                            </flux:callout.text>
+                            @if($releaseNotes)
+                                <div class="mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-zinc-900 [&_h2]:dark:text-white [&_h2]:mb-2 [&_h2]:mt-4 [&_h2:first-child]:mt-0 [&_p]:text-sm [&_p]:text-zinc-500 [&_p]:dark:text-white/70 [&_p]:mb-2 [&_ul]:text-sm [&_ul]:text-zinc-500 [&_ul]:dark:text-white/70 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-2 [&_ul>li]:mb-1 [&_li]:text-sm [&_li]:text-zinc-500 [&_li]:dark:text-white/70 [&_a]:text-primary-600 [&_a]:dark:text-primary-400 [&_a]:hover:underline">
+                                    {!! $releaseNotes !!}
+                                </div>
+                            @endif
+                            @if($releaseUrl)
+                                <div class="mt-4">
+                                    <flux:button
+                                        href="{{ $releaseUrl }}"
+                                        target="_blank"
+                                        icon:trailing="arrow-up-right"
+                                        class="w-full">
+                                        View on GitHub
+                                    </flux:button>
+                                </div>
+                            @endif
+                        </flux:callout>
+                    @elseif($latestVersion && !$isUpdateAvailable)
+                        <flux:callout icon="check-circle" variant="success">
+                            <flux:callout.heading>Up to Date</flux:callout.heading>
+                            <flux:callout.text>
+                                You are running the latest version.
+                            </flux:callout.text>
+                        </flux:callout>
+                    @endif
+                </div>
             </div>
-        </div>
-    </x-pages::settings.layout>
+        </x-pages::settings.layout>
+    </div>
 </section>
