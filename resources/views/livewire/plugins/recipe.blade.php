@@ -5,8 +5,6 @@ use App\Models\DeviceModel;
 use App\Models\Plugin;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Blade;
 use Keepsuit\Liquid\Exceptions\LiquidException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -63,6 +61,8 @@ new class extends Component
     public array $configuration_template = [];
 
     public ?int $preview_device_model_id = null;
+
+    public ?string $preview_image_url = null;
 
     public string $preview_size = 'full';
 
@@ -568,9 +568,42 @@ HTML;
         return $fallback;
     }
 
+    public function renderImage(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        if ($this->plugin->data_strategy === 'polling' && $this->plugin->data_payload === null) {
+            $this->updateData();
+        }
+
+        try {
+            $device = $this->createPreviewDevice();
+            $markup = $this->plugin->render($this->preview_size, true, $device);
+
+            $imageUuid = App\Services\ImageGenerationService::generateImageFromModel(
+                markup: $markup,
+                deviceModel: $device->deviceModel,
+                user: auth()->user()
+            );
+
+            $fileExtension = $device->deviceModel?->mime_type === 'image/bmp' ? 'bmp' : 'png';
+            $this->preview_image_url = asset('storage/images/generated/'.$imageUuid.'.'.$fileExtension);
+
+            $dimensions = $this->previewScreenDimensionsForDevice($device);
+            $this->dispatch(
+                'preview-image-updated',
+                imageUrl: $this->preview_image_url,
+                screenWidth: $dimensions['width'],
+                screenHeight: $dimensions['height'],
+            );
+        } catch (Exception $e) {
+            $this->dispatch('preview-error', message: $e->getMessage());
+        }
+    }
+
     public function getDeviceModels()
     {
-        
+
         return [
             'trmnl' => [
                 'label' => 'TRMNL',
@@ -832,6 +865,7 @@ HTML;
                         @endforeach
                     </flux:select>
                 </flux:field>
+                <flux:button icon="camera" wire:click="renderImage">Render Image</flux:button>
             </div>
 
             <div
@@ -840,7 +874,8 @@ HTML;
             >
                 <div id="preview-layout" class="overflow-hidden">
                     <div id="preview-scaler" class="origin-top-left">
-                        <iframe id="preview-frame" class="block border-0"></iframe>
+                        <iframe id="preview-frame" class="block border-0" x-show="!$wire.preview_image_url"></iframe>
+                        <img id="preview-image" class="block" x-show="$wire.preview_image_url" :src="$wire.preview_image_url">
                     </div>
                 </div>
             </div>
@@ -1329,6 +1364,7 @@ HTML;
     }
 
     $wire.on('preview-updated', ({preview, screenWidth, screenHeight}) => {
+        $wire.preview_image_url = null;
         previewNativeWidth = positiveNumberOrFallback(screenWidth, 800);
         previewNativeHeight = positiveNumberOrFallback(screenHeight, 480);
 
@@ -1345,6 +1381,25 @@ HTML;
         frameDoc.open();
         frameDoc.write(preview);
         frameDoc.close();
+
+        requestAnimationFrame(() => {
+            fitPreviewToStage();
+            ensurePreviewResizeObserver();
+        });
+    });
+
+    $wire.on('preview-image-updated', ({imageUrl, screenWidth, screenHeight}) => {
+        previewNativeWidth = positiveNumberOrFallback(screenWidth, 800);
+        previewNativeHeight = positiveNumberOrFallback(screenHeight, 480);
+
+        const img = document.getElementById('preview-image');
+
+        if (!img) {
+            return;
+        }
+
+        img.setAttribute('width', String(previewNativeWidth));
+        img.setAttribute('height', String(previewNativeHeight));
 
         requestAnimationFrame(() => {
             fitPreviewToStage();
