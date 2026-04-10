@@ -587,7 +587,7 @@ HTML;
             );
 
             $fileExtension = $device->deviceModel?->mime_type === 'image/bmp' ? 'bmp' : 'png';
-            $this->preview_image_url = asset('storage/images/generated/'.$imageUuid.'.'.$fileExtension);
+            $this->preview_image_url = Storage::disk('public')->url('images/generated/'.$imageUuid.'.'.$fileExtension);
 
             $dimensions = $this->previewScreenDimensionsForDevice($device);
             $this->dispatch(

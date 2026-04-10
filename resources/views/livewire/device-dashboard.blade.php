@@ -36,10 +36,10 @@ new class extends Component
                             @php
                                 $current_image_uuid =$device->current_screen_image;
                                 if($current_image_uuid) {
-                                    $file_extension = file_exists(storage_path('app/public/images/generated/' . $current_image_uuid . '.png')) ? 'png' : 'bmp';
-                                    $current_image_path = 'storage/images/generated/' . $current_image_uuid . '.' . $file_extension;
+                                    $file_extension = Storage::disk('public')->exists('images/generated/' . $current_image_uuid . '.png') ? 'png' : 'bmp';
+                                    $current_image_url = Storage::disk('public')->url('images/generated/' . $current_image_uuid . '.' . $file_extension);
                                 } else {
-                                    $current_image_path = 'storage/images/setup-logo.bmp';
+                                    $current_image_url = asset('storage/images/setup-logo.bmp');
                                 }
                             @endphp
 
@@ -94,11 +94,11 @@ new class extends Component
                                         </flux:text>
                                     </div>
                                 </flux:callout>
-                            @elseif($current_image_path)
+                            @elseif($current_image_url)
                                 <flux:separator class="mt-2 mb-4"/>
                                 <div class="flex justify-center">
                                     <div class="relative origin-center -rotate-[{{ $device->rotate ?? 0 }}deg]">
-                                        <img src="{{ asset($current_image_path) }}" class="max-h-[480px]" alt="Current Image"/>
+                                        <img src="{{ $current_image_url }}" class="max-h-[480px]" alt="Current Image"/>
                                     </div>
                                 </div>
                             @endif

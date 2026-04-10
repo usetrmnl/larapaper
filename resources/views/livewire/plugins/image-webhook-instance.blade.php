@@ -294,7 +294,7 @@ new class extends Component
                 <div class="mb-4">
                     <flux:label>Current Image</flux:label>
                     @if($this->getImagePath())
-                        <img src="{{ url('storage/'.$this->getImagePath()) }}" alt="{{ $plugin->name }}" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-700 mt-2" />
+                        <img src="{{ Storage::disk('public')->url($this->getImagePath()) }}" alt="{{ $plugin->name }}" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-700 mt-2" />
                     @else
                         <flux:callout variant="warning" class="mt-2">
                             <flux:text>No image uploaded yet. POST an image to the webhook URL to get started.</flux:text>

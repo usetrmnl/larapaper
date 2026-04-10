@@ -201,7 +201,7 @@ Route::get('/display', function (Request $request, DeviceSensorService $sensorSe
 
     $response = [
         'status' => 0,
-        'image_url' => url('storage/'.$image_path),
+        'image_url' => $image_path ? Storage::disk('public')->url($image_path) : null,
         'filename' => $filename,
         'refresh_rate' => $refreshTimeOverride ?? $device->default_refresh_interval,
         'reset_firmware' => false,
@@ -265,11 +265,13 @@ Route::get('/setup', function (Request $request) {
         }
     }
 
+    $image_path = ImageGenerationService::getDeviceSpecificDefaultImage($device, 'setup-logo');
+
     return response()->json([
         'status' => 200,
         'api_key' => $device->api_key,
         'friendly_id' => $device->friendly_id,
-        'image_url' => url('storage/'.ImageGenerationService::getDeviceSpecificDefaultImage($device, 'setup-logo')),
+        'image_url' => $image_path ? Storage::disk('public')->url($image_path) : null,
         'message' => 'Welcome to TRMNL BYOS',
     ]);
 });
@@ -525,7 +527,7 @@ Route::get('/current_screen', function (Request $request) {
 
     $response = [
         'status' => 200,
-        'image_url' => url('storage/'.$image_path),
+        'image_url' => $image_path ? Storage::disk('public')->url($image_path) : null,
         'filename' => $filename,
         'refresh_rate' => $refreshTimeOverride ?? $device->default_refresh_interval,
         'reset_firmware' => false,
@@ -643,7 +645,7 @@ Route::post('plugin_settings/{uuid}/image', function (Request $request, string $
 
     return response()->json([
         'message' => 'Image uploaded successfully',
-        'image_url' => url('storage/'.$path),
+        'image_url' => $path ? Storage::disk('public')->url($path) : null,
     ]);
 })->name('api.plugin_settings.image');
 
