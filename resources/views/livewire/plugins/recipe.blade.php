@@ -1155,6 +1155,9 @@ HTML;
                         <!-- Editor container -->
                         <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
                     </div>
+                    <flux:description class="mt-2">
+                        In the markup, the data payload can be accessed using the <code>data</code> variable.
+                    </flux:description>
                 </flux:field>
 
 
