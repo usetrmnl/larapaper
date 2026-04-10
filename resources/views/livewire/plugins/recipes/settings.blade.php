@@ -124,6 +124,18 @@ new class extends Component
                     <flux:description>Enable an Alias URL for this recipe. Your server does not need to be exposed to the internet, but your device must be able to reach the URL. <a href="https://help.usetrmnl.com/en/articles/10701448-alias-plugin">Docs</a></flux:description>
                 </flux:field>
 
+                @if($alias)
+                    <flux:field>
+                        <flux:label>Alias URL</flux:label>
+                        <flux:input
+                            value="{{ $this->aliasUrl }}"
+                            readonly
+                            copyable
+                        />
+                        <flux:description>Copy this URL to your TRMNL Dashboard. By default, image is created for TRMNL OG; use parameter <code>?device-model=</code> to specify a device model.</flux:description>
+                    </flux:field>
+                @endif
+
                 @if(config('services.trmnl.liquid_enabled') && $plugin->markup_language === 'liquid')
                     <flux:field>
                         <flux:checkbox
@@ -170,18 +182,6 @@ new class extends Component
                     </div>
                     <flux:error name="configurationTemplateYaml" />
                 </flux:field>
-
-                @if($alias)
-                    <flux:field>
-                        <flux:label>Alias URL</flux:label>
-                        <flux:input
-                            value="{{ $this->aliasUrl }}"
-                            readonly
-                            copyable
-                        />
-                        <flux:description>Copy this URL to your TRMNL Dashboard. By default, image is created for TRMNL OG; use parameter <code>?device-model=</code> to specify a device model.</flux:description>
-                    </flux:field>
-                @endif
             </div>
 
             <div class="flex gap-2 mt-4">
