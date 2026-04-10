@@ -1378,14 +1378,33 @@ HTML;
         frame.setAttribute('height', String(previewNativeHeight));
 
         const frameDoc = frame.contentDocument || frame.contentWindow.document;
-        frameDoc.open();
-        frameDoc.write(preview);
-        frameDoc.close();
 
-        requestAnimationFrame(() => {
-            fitPreviewToStage();
-            ensurePreviewResizeObserver();
-        });
+        // Reset the iframe state before writing new content
+        frame.src = 'about:blank';
+
+        // Re-populating the iframe
+        const writeToFrame = () => {
+            const newFrameDoc = frame.contentDocument || frame.contentWindow.document;
+            newFrameDoc.open();
+            newFrameDoc.write(preview);
+            newFrameDoc.close();
+
+            requestAnimationFrame(() => {
+                fitPreviewToStage();
+                ensurePreviewResizeObserver();
+            });
+        };
+
+        // If iframe is already on about:blank, we can write immediately,
+        // otherwise wait for the load event once.
+        if (frame.contentWindow.location.href === 'about:blank') {
+            writeToFrame();
+        } else {
+            frame.onload = () => {
+                frame.onload = null; // Remove listener
+                writeToFrame();
+            };
+        }
     });
 
     $wire.on('preview-image-updated', ({imageUrl, screenWidth, screenHeight}) => {
