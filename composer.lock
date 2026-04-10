@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a709e40121e0e72d58088f6f1adf6752",
+    "content-hash": "ac989714e2ba09b67483b2ca4ec1ce41",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -62,16 +62,16 @@
         },
         {
             "name": "aws/aws-sdk-php",
-            "version": "3.378.1",
+            "version": "3.378.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/aws/aws-sdk-php.git",
-                "reference": "c7a07701703e95c888a24959d5ea426c3d374240"
+                "reference": "7a95e0665ad13c2cb8999d64439cf969c86724dd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/c7a07701703e95c888a24959d5ea426c3d374240",
-                "reference": "c7a07701703e95c888a24959d5ea426c3d374240",
+                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/7a95e0665ad13c2cb8999d64439cf969c86724dd",
+                "reference": "7a95e0665ad13c2cb8999d64439cf969c86724dd",
                 "shasum": ""
             },
             "require": {
@@ -153,9 +153,9 @@
             "support": {
                 "forum": "https://github.com/aws/aws-sdk-php/discussions",
                 "issues": "https://github.com/aws/aws-sdk-php/issues",
-                "source": "https://github.com/aws/aws-sdk-php/tree/3.378.1"
+                "source": "https://github.com/aws/aws-sdk-php/tree/3.378.0"
             },
-            "time": "2026-04-09T18:16:50+00:00"
+            "time": "2026-04-08T18:13:19+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -214,16 +214,16 @@
         },
         {
             "name": "bnussbau/laravel-trmnl-blade",
-            "version": "3.0.3",
+            "version": "2.3.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/bnussbau/trmnl-blade.git",
-                "reference": "c29b5aa642dacf43a5bcc7dff40f0d0fed71c745"
+                "reference": "464015613cc9491bce51a7fa235d87ecf5299ead"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bnussbau/trmnl-blade/zipball/c29b5aa642dacf43a5bcc7dff40f0d0fed71c745",
-                "reference": "c29b5aa642dacf43a5bcc7dff40f0d0fed71c745",
+                "url": "https://api.github.com/repos/bnussbau/trmnl-blade/zipball/464015613cc9491bce51a7fa235d87ecf5299ead",
+                "reference": "464015613cc9491bce51a7fa235d87ecf5299ead",
                 "shasum": ""
             },
             "require": {
@@ -278,7 +278,7 @@
             ],
             "support": {
                 "issues": "https://github.com/bnussbau/trmnl-blade/issues",
-                "source": "https://github.com/bnussbau/trmnl-blade/tree/3.0.3"
+                "source": "https://github.com/bnussbau/trmnl-blade/tree/2.3.7"
             },
             "funding": [
                 {
@@ -294,7 +294,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-04-08T18:46:19+00:00"
+            "time": "2026-04-03T06:32:21+00:00"
         },
         {
             "name": "bnussbau/trmnl-pipeline-php",
@@ -9776,21 +9776,21 @@
         },
         {
             "name": "pestphp/pest",
-            "version": "v4.4.6",
+            "version": "v4.4.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/pestphp/pest.git",
-                "reference": "d9d46c73f8d1f4edb449d889632e3d8c3cd2172d"
+                "reference": "9797a71dbc776f46d6fcacb708b002755da6f37a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/pestphp/pest/zipball/d9d46c73f8d1f4edb449d889632e3d8c3cd2172d",
-                "reference": "d9d46c73f8d1f4edb449d889632e3d8c3cd2172d",
+                "url": "https://api.github.com/repos/pestphp/pest/zipball/9797a71dbc776f46d6fcacb708b002755da6f37a",
+                "reference": "9797a71dbc776f46d6fcacb708b002755da6f37a",
                 "shasum": ""
             },
             "require": {
                 "brianium/paratest": "^7.20.0",
-                "nunomaduro/collision": "^8.9.3",
+                "nunomaduro/collision": "^8.9.2",
                 "nunomaduro/termwind": "^2.4.0",
                 "pestphp/pest-plugin": "^4.0.0",
                 "pestphp/pest-plugin-arch": "^4.0.0",
@@ -9809,7 +9809,7 @@
             "require-dev": {
                 "pestphp/pest-dev-tools": "^4.1.0",
                 "pestphp/pest-plugin-browser": "^4.3.0",
-                "pestphp/pest-plugin-type-coverage": "^4.0.4",
+                "pestphp/pest-plugin-type-coverage": "^4.0.3",
                 "psy/psysh": "^0.12.22"
             },
             "bin": [
@@ -9876,7 +9876,7 @@
             ],
             "support": {
                 "issues": "https://github.com/pestphp/pest/issues",
-                "source": "https://github.com/pestphp/pest/tree/v4.4.6"
+                "source": "https://github.com/pestphp/pest/tree/v4.4.5"
             },
             "funding": [
                 {
@@ -9888,7 +9888,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-04-09T20:36:49+00:00"
+            "time": "2026-04-03T13:43:28+00:00"
         },
         {
             "name": "pestphp/pest-plugin",
@@ -12097,16 +12097,16 @@
         },
         {
             "name": "webmozart/assert",
-            "version": "2.2.0",
+            "version": "2.1.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/webmozarts/assert.git",
-                "reference": "1b99650e7ffcad232624a260bc7fbdec2ffc407c"
+                "reference": "ff31ad6efc62e66e518fbab1cde3453d389bcdc8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/webmozarts/assert/zipball/1b99650e7ffcad232624a260bc7fbdec2ffc407c",
-                "reference": "1b99650e7ffcad232624a260bc7fbdec2ffc407c",
+                "url": "https://api.github.com/repos/webmozarts/assert/zipball/ff31ad6efc62e66e518fbab1cde3453d389bcdc8",
+                "reference": "ff31ad6efc62e66e518fbab1cde3453d389bcdc8",
                 "shasum": ""
             },
             "require": {
@@ -12153,9 +12153,9 @@
             ],
             "support": {
                 "issues": "https://github.com/webmozarts/assert/issues",
-                "source": "https://github.com/webmozarts/assert/tree/2.2.0"
+                "source": "https://github.com/webmozarts/assert/tree/2.1.6"
             },
-            "time": "2026-04-09T16:54:47+00:00"
+            "time": "2026-02-27T10:28:38+00:00"
         }
     ],
     "aliases": [],
