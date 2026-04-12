@@ -272,16 +272,7 @@ new class extends Component
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center space-x-2">
-                    <h2 class="text-2xl font-semibold dark:text-gray-100">Device Models</h2>
-                    <flux:dropdown>
-                        <flux:button icon="chevron-down" variant="ghost"></flux:button>
-                        <flux:menu>
-                            <flux:menu.item href="{{ route('devices') }}">Devices</flux:menu.item>
-                            <flux:menu.item href="{{ route('device-palettes.index') }}">Device Palettes</flux:menu.item>
-                        </flux:menu>
-                    </flux:dropdown>
-                </div>
+                <livewire:device-resource-nav />
                 <flux:button.group>
                     <flux:modal.trigger name="device-model-modal">
                         <flux:button wire:click="openDeviceModelModal()" icon="plus" variant="primary">Add Device Model</flux:button>

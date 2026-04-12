@@ -125,16 +125,7 @@ new class extends Component
         {{--@dump($devices)--}}
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center space-x-2">
-                    <h2 class="text-2xl font-semibold dark:text-gray-100">Devices</h2>
-                    <flux:dropdown>
-                        <flux:button icon="chevron-down" variant="ghost"></flux:button>
-                        <flux:menu>
-                            <flux:menu.item href="{{ route('device-models.index') }}">Device Models</flux:menu.item>
-                            <flux:menu.item href="{{ route('device-palettes.index') }}">Device Palettes</flux:menu.item>
-                        </flux:menu>
-                    </flux:dropdown>
-                </div>
+                <livewire:device-resource-nav />
                 <flux:modal.trigger name="create-device">
                     <flux:button icon="plus" variant="primary">Add Device</flux:button>
                 </flux:modal.trigger>
