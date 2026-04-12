@@ -41,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
             return URL::hasValidSignature($http, $absolute, $ignoreQuery);
         });
 
+        if (config('filesystems.disks.public.driver') === 'local' && config('app.url') === 'http://localhost') {
+            config(['filesystems.disks.public.url' => asset('storage')]);
+        }
+
         // Register OIDC provider with Socialite
         Socialite::extend('oidc', function (\Illuminate\Contracts\Foundation\Application $app): OidcProvider {
             $config = $app->make('config')->get('services.oidc', []);

@@ -6,6 +6,8 @@ services:
         environment:
             # Generate the APP_KEY with `echo "base64:$(openssl rand -base64 32)"`
             #- APP_KEY=
+            # Base URL of the application
+            #- APP_URL=
             - PHP_OPCACHE_ENABLE=1
             - TRMNL_PROXY_REFRESH_MINUTES=15
             - DB_DATABASE=database/storage/database.sqlite
