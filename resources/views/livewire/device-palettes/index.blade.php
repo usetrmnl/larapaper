@@ -171,8 +171,8 @@ new class extends Component
 
         $this->editingDevicePaletteId = null;
         $this->viewingDevicePaletteId = null;
-        $this->name = $devicePalette->name.' (Copy)';
-        $this->description = $devicePalette->description;
+        $this->name = $devicePalette->name.'_copy';
+        $this->description = $devicePalette->description.' (Copy)';
         $this->grays = $devicePalette->grays;
 
         $colors = $devicePalette->getAttribute('colors');

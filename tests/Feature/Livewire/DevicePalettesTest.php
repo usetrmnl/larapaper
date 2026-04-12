@@ -178,8 +178,8 @@ test('can duplicate a device palette', function (): void {
 
     $component
         ->assertSet('editingDevicePaletteId', null)
-        ->assertSet('name', 'original-palette (Copy)')
-        ->assertSet('description', 'Original Description')
+        ->assertSet('name', 'original-palette_copy')
+        ->assertSet('description', 'Original Description (Copy)')
         ->assertSet('grays', 4)
         ->assertSet('colors', ['#FF0000', '#00FF00'])
         ->assertSet('framework_class', 'Framework');
