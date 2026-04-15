@@ -72,6 +72,21 @@ class Playlist extends Model
         return true;
     }
 
+    public function getPlaylistConstraintRating(): int
+    {
+        $score = 0;
+
+        if ($this->active_from !== null && $this->active_until !== null) {
+            $score += 2;
+        }
+
+        if ($this->weekdays !== null && count($this->weekdays) > 0) {
+            $score += 1;
+        }
+
+        return $score;
+    }
+
     public function getNextPlaylistItem(): ?PlaylistItem
     {
         if (! $this->isActiveNow()) {
