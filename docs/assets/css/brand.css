@@ -1,0 +1,16 @@
+:root {
+    --link-color: oklch(64.6% 0.222 41.116);
+}
+
+:root[data-theme="dark"] {
+    --link-color: oklch(64.6% 0.222 41.116);
+}
+
+body[data-theme='dark'] {
+    --link-color: oklch(64.6% 0.222 41.116);
+}
+
+.site-header .logo img {
+    height: 20px;
+    width: auto;
+}

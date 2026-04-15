@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-pages.yml'
 
 permissions:
   contents: read
@@ -11,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "github-pages-docs"
+  group: 'github-pages-docs'
   cancel-in-progress: false
 
 jobs:
@@ -24,13 +27,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build and deploy Hyde docs
-        id: hyde
-        uses: hydephp/action@v2.0.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          deploy-to: "pages"
-          directory: "docs"
-          env: |
-            SITE_NAME=LaraPaper
-            SITE_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
+      - name: Install and build docmd site
+        working-directory: docs
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

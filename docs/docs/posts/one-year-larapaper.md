@@ -1,14 +1,16 @@
 ---
 title: 'One Year of LaraPaper: Building a BYOS for TRMNL'
 description: 'A year of turning LaraPaper into a BYOS.'
-category: milestones
-author: 'bnussbau'
-image: 'one-year-larapaper.jpg'
-date: '2026-03-20 18:00'
+date: '2026-03-20'
+author: bnussbau
+seo:
+  image: '/assets/images/one-year-larapaper.jpg'
+  canonicalUrl: 'https://usetrmnl.github.io/larapaper/posts/one-year-larapaper'
 ---
 
-One year ago, I started building what would later become LaraPaper because I wanted one very specific thing: a train schedule in the morning that updated more frequently. The native cloud flow was designed around a 15-minute refresh interval, but I wanted updates every 5 minutes during the morning rush.
-From there, I kept expanding LaraPaper into a BYOS (Bring Your Own Server) for TRMNL.
+![LaraPaper community milestone](/assets/images/one-year-larapaper.jpg)
+
+One year ago, I started building what would later become LaraPaper because I wanted one very specific thing: a train schedule in the morning that updated more frequently. The native cloud flow was designed around a 15-minute refresh interval, but I wanted updates every 5 minutes during the morning rush. From there, I kept expanding LaraPaper into a BYOS (Bring Your Own Server) for TRMNL.
 
 At this milestone, the project has reached **90+ releases**, **500+ commits**, **~85k downloads from the container registry** and **230+ GitHub stars**.
 
@@ -17,10 +19,9 @@ At this milestone, the project has reached **90+ releases**, **500+ commits**, *
 - **Proxy feature** for hybrid setups, combining local and cloud-native behavior.
 - **Device models support** for better compatibility across different display hardware.
 - **TRMNL recipe catalog integration** for importing and adapting existing recipes from the community.
-- **Image Webhook and Alias support** enabling local network data access and let's you combine core and self-hosted services in a more flexible way.
+- **Image Webhook and Alias support** enabling local network data access and letting you combine core and self-hosted services in a more flexible way.
 - **iCal feed support** for calendar-driven dashboards and schedules.
-- **Support for temperature and humidity sensors mounted to TRMNL e-paper devices**: added in today's release.
-
+- **Support for temperature and humidity sensors** mounted to TRMNL e-paper devices.
 
 ## How LaraPaper works
 
@@ -51,8 +52,8 @@ For the next phase, the focus is on:
 - Upgrading to the freshly released Laravel 13 framework
 - General stability improvements until a 1.0 release
 
-If LaraPaper helps your setup, you can support the project here:
+If LaraPaper helps your setup, you can support the project on the [Support](/support) page or:
 
-- Star on GitHub: https://github.com/usetrmnl/larapaper
-- GitHub Sponsors: https://github.com/sponsors/bnussbau/
-- Buy Me a Coffee: https://www.buymeacoffee.com/bnussbau
+- Star on GitHub: [github.com/usetrmnl/larapaper](https://github.com/usetrmnl/larapaper)
+- GitHub Sponsors: [github.com/sponsors/bnussbau](https://github.com/sponsors/bnussbau/)
+- Buy Me a Coffee: [buymeacoffee.com/bnussbau](https://www.buymeacoffee.com/bnussbau)

@@ -43,3 +43,5 @@ yarn-error.log
 /.junie
 /.agents
 /.github/skills
+/docs/site
+/docs/node_modules

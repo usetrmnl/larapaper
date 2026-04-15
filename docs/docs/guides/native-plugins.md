@@ -1,3 +1,8 @@
+---
+title: Native plugins
+description: Developer guide for LaraPaper native plugin handlers.
+---
+
 # Native plugins developer guide
 
 This document describes the **native plugin** system introduced alongside the registry-based handlers (`image_webhook`, `screenshot`, …). It complements **recipe** plugins (`plugin_type = recipe`), which use Liquid/Blade markup, polling, and the existing recipe editor.
