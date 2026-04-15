@@ -162,7 +162,8 @@ class Device extends Model
         /** @var \Illuminate\Support\Collection|Playlist[] $playlists */
         $playlists = $this->playlists()
             ->where('is_active', true)
-            ->get();
+            ->get()
+            ->sortByDesc(fn (Playlist $playlist): int => $playlist->getPlaylistConstraintRating());
 
         // Find the first active playlist with an available item
         foreach ($playlists as $playlist) {
