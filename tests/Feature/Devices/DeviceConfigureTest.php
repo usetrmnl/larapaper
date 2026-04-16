@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Device;
+use App\Models\Playlist;
+use App\Models\PlaylistItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -99,4 +101,23 @@ test('enabling sleep mode applies default times when none are set', function ():
         ->set('sleep_mode_enabled', true)
         ->assertSet('sleep_mode_from', '22:00')
         ->assertSet('sleep_mode_to', '06:00');
+});
+
+test('sortPlaylistItem reorders playlist items by zero-based position', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+
+    $first = PlaylistItem::factory()->create(['playlist_id' => $playlist->id, 'order' => 0]);
+    $second = PlaylistItem::factory()->create(['playlist_id' => $playlist->id, 'order' => 1]);
+    $third = PlaylistItem::factory()->create(['playlist_id' => $playlist->id, 'order' => 2]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('sortPlaylistItem', $second->id, 0);
+
+    expect(PlaylistItem::query()->find($second->id)?->order)->toBe(0);
+    expect(PlaylistItem::query()->find($first->id)?->order)->toBe(1);
+    expect(PlaylistItem::query()->find($third->id)?->order)->toBe(2);
 });

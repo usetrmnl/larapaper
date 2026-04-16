@@ -256,34 +256,27 @@ new class extends Component
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
     }
 
-    public function movePlaylistItemUp(PlaylistItem $item)
+    public function sortPlaylistItem(int $id, int $position): void
     {
-        $previousItem = $item->playlist->items()
-            ->where('order', '<', $item->order)
-            ->orderBy('order', 'desc')
-            ->first();
+        $item = PlaylistItem::query()->with('playlist.device')->findOrFail($id);
+        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
 
-        if ($previousItem) {
-            $tempOrder = $previousItem->order;
-            $previousItem->update(['order' => $item->order]);
-            $item->update(['order' => $tempOrder]);
-            $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
+        $items = $item->playlist->items()->orderBy('order')->orderBy('id')->get();
+        $ids = $items->pluck('id')->all();
+        $currentIndex = array_search($id, $ids, true);
+
+        if ($currentIndex === false) {
+            return;
         }
-    }
 
-    public function movePlaylistItemDown(PlaylistItem $item)
-    {
-        $nextItem = $item->playlist->items()
-            ->where('order', '>', $item->order)
-            ->orderBy('order')
-            ->first();
+        $ids = array_values(array_diff($ids, [$id]));
+        array_splice($ids, $position, 0, [$id]);
 
-        if ($nextItem) {
-            $tempOrder = $nextItem->order;
-            $nextItem->update(['order' => $item->order]);
-            $item->update(['order' => $tempOrder]);
-            $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
+        foreach ($ids as $index => $itemId) {
+            PlaylistItem::query()->whereKey($itemId)->update(['order' => $index]);
         }
+
+        $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
     }
 
     public function togglePlaylistItemActive(PlaylistItem $item)
@@ -773,7 +766,11 @@ new class extends Component
                         <table class="w-full" data-flux-table>
                             <thead data-flux-columns>
                             <tr>
-                                <th class="py-3 px-3 first:pl-0 last:pr-0 text-left text-sm font-medium text-zinc-800 dark:text-white"
+                                <th class="w-10 py-3 px-2 first:pl-0 text-left text-sm font-medium text-zinc-800 dark:text-white"
+                                    data-flux-column>
+                                    <span class="sr-only">Reorder</span>
+                                </th>
+                                <th class="py-3 px-3 last:pr-0 text-left text-sm font-medium text-zinc-800 dark:text-white"
                                     data-flux-column>
                                     <div class="whitespace-nowrap flex">Plugin</div>
                                 </th>
@@ -787,10 +784,29 @@ new class extends Component
                                 </th>
                             </tr>
                             </thead>
-                            <tbody class="divide-y divide-zinc-800/10 dark:divide-white/20" data-flux-rows>
+                            <tbody
+                                class="divide-y divide-zinc-800/10 dark:divide-white/20"
+                                data-flux-rows
+                                @if($playlist->items->count() > 1) wire:sort="sortPlaylistItem" @endif
+                            >
                             @foreach($playlist->items->sortBy('order') as $item)
-                                <tr data-flux-row wire:key="playlist-item-{{ $item->id }}">
-                                    <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap text-zinc-500 dark:text-zinc-300">
+                                <tr
+                                    data-flux-row
+                                    wire:key="playlist-item-{{ $item->id }}"
+                                    @if($playlist->items->count() > 1) wire:sort:item="{{ $item->id }}" @endif
+                                >
+                                    <td class="w-10 py-3 px-2 first:pl-0 align-middle text-zinc-400 dark:text-zinc-500">
+                                        @if($playlist->items->count() > 1)
+                                            <div
+                                                wire:sort:handle
+                                                class="cursor-grab active:cursor-grabbing flex justify-center touch-none"
+                                                title="Drag to reorder"
+                                            >
+                                                <flux:icon name="bars-3" variant="mini" class="size-5"/>
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td class="py-3 px-3 last:pr-0 text-sm whitespace-nowrap text-zinc-500 dark:text-zinc-300">
                                         @if($item->isMashup())
                                             <div class="flex items-center gap-2">
                                                 <div>
@@ -812,16 +828,8 @@ new class extends Component
                                     </td>
                                     <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap">
                                         <div class="flex justify-end gap-2">
-                                            @if(!$loop->first)
-                                                <flux:button wire:click="movePlaylistItemUp({{ $item->id }})"
-                                                             icon="arrow-up" variant="subtle" size="sm"/>
-                                            @endif
-                                            @if(!$loop->last)
-                                                <flux:button wire:click="movePlaylistItemDown({{ $item->id }})"
-                                                             icon="arrow-down" variant="subtle" size="sm"/>
-                                            @endif
                                             <flux:modal.trigger name="delete-playlist-item-{{ $item->id }}">
-                                                <flux:button icon="trash" size="sm"/>
+                                                <flux:button icon="trash" variant="ghost" size="sm"/>
                                             </flux:modal.trigger>
                                         </div>
 
