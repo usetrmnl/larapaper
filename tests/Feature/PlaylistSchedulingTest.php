@@ -295,3 +295,101 @@ test('at 12:01 Europe/Berlin the second playlist is active before and after spri
 
     Carbon::setTestNow();
 });
+
+test('device getNextPlaylistItem prefers the playlist with the higher constraint rating when several are active', function (): void {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $device = Device::factory()->create(['user_id' => $user->id]);
+
+    $loosePlugin = Plugin::factory()->create(['name' => 'Loose Plugin']);
+    $strictPlugin = Plugin::factory()->create(['name' => 'Strict Plugin']);
+
+    $playlistLoose = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Unconstrained',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $playlistStrict = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Weekday and time window',
+        'is_active' => true,
+        'weekdays' => [1],
+        'active_from' => '09:00',
+        'active_until' => '17:00',
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlistLoose->id,
+        'plugin_id' => $loosePlugin->id,
+        'order' => 1,
+        'is_active' => true,
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlistStrict->id,
+        'plugin_id' => $strictPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+    ]);
+
+    Carbon::setTestNow(Carbon::create(2024, 1, 1, 12, 0, 0, 'UTC'));
+
+    $next = $device->getNextPlaylistItem();
+    expect($next)->not->toBeNull()
+        ->and($next->plugin_id)->toBe($strictPlugin->id)
+        ->and($next->playlist_id)->toBe($playlistStrict->id);
+
+    Carbon::setTestNow();
+});
+
+test('device getNextPlaylistItem prefers time-only constraint over weekday-only when both are active', function (): void {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $device = Device::factory()->create(['user_id' => $user->id]);
+
+    $dayOnlyPlugin = Plugin::factory()->create(['name' => 'Day only']);
+    $timeOnlyPlugin = Plugin::factory()->create(['name' => 'Time only']);
+
+    $playlistDayOnly = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Weekdays only',
+        'is_active' => true,
+        'weekdays' => [1],
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $playlistTimeOnly = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Business hours',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => '09:00',
+        'active_until' => '17:00',
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlistDayOnly->id,
+        'plugin_id' => $dayOnlyPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlistTimeOnly->id,
+        'plugin_id' => $timeOnlyPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+    ]);
+
+    Carbon::setTestNow(Carbon::create(2024, 1, 1, 12, 0, 0, 'UTC'));
+
+    $next = $device->getNextPlaylistItem();
+    expect($next)->not->toBeNull()
+        ->and($next->plugin_id)->toBe($timeOnlyPlugin->id)
+        ->and($next->playlist_id)->toBe($playlistTimeOnly->id);
+
+    Carbon::setTestNow();
+});
