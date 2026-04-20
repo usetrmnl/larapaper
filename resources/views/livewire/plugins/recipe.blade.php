@@ -329,7 +329,10 @@ new class extends Component
 
     public function getAvailablePlugins()
     {
-        return auth()->user()->plugins()->where('id', '!=', $this->plugin->id)->get();
+        return auth()->user()->plugins()
+        ->where('id', '!=', $this->plugin->id)
+        ->where('plugin_type', 'recipe')
+        ->get();
     }
 
     public function getRequiredPluginCount(): int
