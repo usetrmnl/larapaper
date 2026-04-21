@@ -556,8 +556,14 @@ Route::post('custom_plugins/{plugin_uuid}', function (string $plugin_uuid) {
         return response()->json(['error' => 'Request must contain merge_variables key'], 400);
     }
 
+    $mergeVariables = $request->input('merge_variables');
+
+    if (! Plugin::dataPayloadWithinWireLimit($mergeVariables)) {
+        return response()->json(Plugin::oversizedDataPayloadErrorPayload(), 413);
+    }
+
     $plugin->update([
-        'data_payload' => $request->input('merge_variables'),
+        'data_payload' => $mergeVariables,
         'data_payload_updated_at' => now(),
     ]);
 

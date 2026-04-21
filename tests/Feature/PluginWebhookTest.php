@@ -67,3 +67,24 @@ test('webhook returns 404 for non-existent plugin', function (): void {
     // Assert response
     $response->assertNotFound();
 });
+
+test('webhook rejects merge_variables that exceed the wire size limit', function (): void {
+    // Tiny limit so a small payload can exceed the budget (max_size - 512 bytes).
+    config(['livewire.payload.max_size' => 768]);
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => ['old' => 'data'],
+    ]);
+
+    $oversized = ['blob' => str_repeat('A', 1024)];
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => $oversized,
+    ]);
+
+    $response->assertStatus(413)
+        ->assertJson(Plugin::oversizedDataPayloadErrorPayload());
+
+    expect($plugin->fresh()->data_payload)->toBe(['old' => 'data']);
+});

@@ -280,7 +280,17 @@ new class extends Component
         $this->validatePollingUrl();
 
         $validated = $this->validate();
-        $validated['data_payload'] = json_decode(Arr::get($validated, 'data_payload'), true);
+        $dataPayloadString = (string) Arr::get($validated, 'data_payload', '');
+        $decodedPayload = json_decode($dataPayloadString, true);
+
+        if ($this->data_strategy === 'static' && ! Plugin::staticDataPayloadWithinWireLimit($dataPayloadString, $decodedPayload)) {
+            $this->addError('data_payload', 'Data payload exceeds maximum allowed size.');
+
+            return;
+        }
+
+        $validated['data_payload'] = $decodedPayload;
+
         $this->plugin->update($validated);
 
         foreach ($this->configuration_template as $fieldKey => $field) {
@@ -671,7 +681,24 @@ HTML;
 }
 ?>
 
-<div class="py-12">
+<div
+    class="py-12"
+    x-init="
+        const maxClearBytes = @js(Plugin::maxDataPayloadBytesForRecipeStaticField());
+        $wire.$watch('data_strategy', (value, old) => {
+            if (old == null) {
+                return;
+            }
+            if (old !== 'static' || value === 'static') {
+                return;
+            }
+            const raw = $wire.data_payload ?? '';
+            if (maxClearBytes !== null && new TextEncoder().encode(raw).length > maxClearBytes) {
+                $wire.$set('data_payload', '{}', false);
+            }
+        });
+    "
+>
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold dark:text-gray-100">{{$plugin->name}}
@@ -895,7 +922,44 @@ HTML;
         </div>
         <div class="grid lg:grid-cols-2 lg:gap-8">
             <div>
-                <form wire:submit="editSettings" class="mb-6">
+                @php
+                    $dataPayloadMaxWireBytes = Plugin::maxDataPayloadBytesForRecipeStaticField();
+                @endphp
+                <form
+                    class="mb-6"
+                    x-data="{
+                        localPayloadError: null,
+                        maxWireBytes: @js($dataPayloadMaxWireBytes),
+                        submitSettings() {
+                            this.localPayloadError = null;
+                            if (this.maxWireBytes !== null && $wire.data_strategy === 'static') {
+                                const raw = $wire.data_payload ?? '';
+                                const rawBytes = new TextEncoder().encode(raw).length;
+                                let prettyBytes = 0;
+                                try {
+                                    const parsed = JSON.parse(raw);
+                                    prettyBytes = new TextEncoder().encode(JSON.stringify(parsed, null, 4)).length;
+                                } catch (e) {
+                                    // Invalid JSON: let Livewire validate; avoid blocking submit on parse errors.
+                                }
+                                const effective = Math.max(rawBytes, prettyBytes);
+                                if (effective > this.maxWireBytes) {
+                                    this.localPayloadError = 'Data payload is too large to save (' + effective.toLocaleString() + ' bytes; maximum ' + this.maxWireBytes.toLocaleString() + ' bytes including formatting). Reduce the JSON size before saving.';
+
+                                    return;
+                                }
+                            }
+                            $wire.editSettings();
+                        },
+                    }"
+                    @submit.prevent="submitSettings()"
+                >
+                    <p
+                        x-cloak
+                        x-show="localPayloadError"
+                        class="text-sm text-red-600 dark:text-red-400 mb-3"
+                        x-text="localPayloadError"
+                    ></p>
                     <div class="mb-4">
                         <flux:input label="Name" wire:model="name" id="name" class="block mt-1 w-full" type="text"
                                     name="name" autofocus/>

@@ -225,6 +225,75 @@ class Plugin extends Model
         return $this->data_payload_updated_at->addMinutes($this->data_stale_minutes)->isPast();
     }
 
+    /** Bytes reserved below livewire.payload.max_size for other component state in the request. */
+    private const WIRE_HEADROOM_BYTES = 512;
+
+    /** Extra reserve for the recipe form body (markup, views, other properties). */
+    private const RECIPE_STATIC_FIELD_RESERVE_BYTES = 1024 * 1024;
+
+    /** Max pretty-encoded data_payload size for Livewire; null when unlimited. */
+    public static function maxDataPayloadBytesForWire(): ?int
+    {
+        $maxSize = config('livewire.payload.max_size');
+
+        if (! is_int($maxSize) || $maxSize <= 0) {
+            return null;
+        }
+
+        return max(0, $maxSize - self::WIRE_HEADROOM_BYTES);
+    }
+
+    /** Stricter cap for the static JSON field in the recipe editor. */
+    public static function maxDataPayloadBytesForRecipeStaticField(): ?int
+    {
+        $base = self::maxDataPayloadBytesForWire();
+
+        if ($base === null) {
+            return null;
+        }
+
+        return max(0, $base - self::RECIPE_STATIC_FIELD_RESERVE_BYTES);
+    }
+
+    /** Size of JSON as sent on the wire (matches recipe hydration with JSON_PRETTY_PRINT). */
+    public static function encodedDataPayloadWireBytes(mixed $payload): int
+    {
+        return mb_strlen((string) json_encode($payload, JSON_PRETTY_PRINT), '8bit');
+    }
+
+    public static function dataPayloadWithinWireLimit(mixed $payload): bool
+    {
+        $limit = self::maxDataPayloadBytesForWire();
+
+        if ($limit === null) {
+            return true;
+        }
+
+        return self::encodedDataPayloadWireBytes($payload) <= $limit;
+    }
+
+    /** Ensures raw editor JSON and pretty-encoded array both fit the recipe static-field budget. */
+    public static function staticDataPayloadWithinWireLimit(string $jsonString, mixed $decoded): bool
+    {
+        $limit = self::maxDataPayloadBytesForRecipeStaticField();
+
+        if ($limit === null) {
+            return true;
+        }
+
+        if (mb_strlen($jsonString, '8bit') > $limit) {
+            return false;
+        }
+
+        return ! is_array($decoded) || self::encodedDataPayloadWireBytes($decoded) <= $limit;
+    }
+
+    /** Stored when an incoming payload exceeds the Livewire-safe byte budget. */
+    public static function oversizedDataPayloadErrorPayload(): array
+    {
+        return ['error' => 'Data payload exceeds maximum allowed size'];
+    }
+
     public function updateDataPayload(): void
     {
         if ($this->data_strategy !== 'polling' || ! $this->polling_url) {
@@ -287,6 +356,11 @@ class Plugin extends Model
 
         // unwrap IDX_0 if only one URL
         $finalPayload = (count($urls) === 1) ? reset($combinedResponse) : $combinedResponse;
+
+        if (! self::dataPayloadWithinWireLimit($finalPayload)) {
+            Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");
+            $finalPayload = self::oversizedDataPayloadErrorPayload();
+        }
 
         $this->update([
             'data_payload' => $finalPayload,

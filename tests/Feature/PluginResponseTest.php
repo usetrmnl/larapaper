@@ -312,3 +312,26 @@ ICS;
 
     Carbon::setTestNow();
 });
+
+test('polling response exceeding wire size limit stores error placeholder', function (): void {
+    // Tiny limit so a small JSON body can exceed `max_size - 512`.
+    config(['livewire.payload.max_size' => 768]);
+
+    Http::fake([
+        'example.com/api/huge' => Http::response([
+            'blob' => str_repeat('A', 2048),
+        ], 200, ['Content-Type' => 'application/json']),
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://example.com/api/huge',
+        'polling_verb' => 'get',
+    ]);
+
+    $plugin->updateDataPayload();
+    $plugin->refresh();
+
+    expect($plugin->data_payload)->toBe(Plugin::oversizedDataPayloadErrorPayload());
+    expect($plugin->data_payload_updated_at)->not->toBeNull();
+});
