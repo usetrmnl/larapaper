@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
                 'active_from' => null,
                 'active_until' => null,
-                'weekdays' => null
+                'weekdays' => null,
             ]);
 
             // Device::factory(5)->create();

@@ -786,15 +786,15 @@ return new class extends Migration
                 'published_at' => '2024-01-01 00:00:00',
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]
+            ],
         ];
 
         DeviceModel::query()->upsert(
             $deviceModels,
             ['name'],
             ['label', 'description', 'width', 'height', 'colors', 'bit_depth', 'scale_factor',
-             'rotation', 'mime_type', 'offset_x', 'offset_y', 'kind', 'published_at', 'source',
-             'created_at', 'updated_at']
+                'rotation', 'mime_type', 'offset_x', 'offset_y', 'kind', 'published_at', 'source',
+                'created_at', 'updated_at']
         );
     }
 
@@ -841,7 +841,7 @@ return new class extends Migration
             'kobo_touch',
             'kobo_forma',
             'openframe',
-            'amazon_kindle_paperwhite_signature_11th_gen'
+            'amazon_kindle_paperwhite_signature_11th_gen',
         ];
 
         DeviceModel::query()->whereIn('name', $names)->delete();

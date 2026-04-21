@@ -44,24 +44,30 @@ class XmlResponseParser implements ResponseParser
         return $array;
     }
 
-    function simplexml_load_string_strip_namespaces($xml_response) {
+    public function simplexml_load_string_strip_namespaces($xml_response)
+    {
         $xml = simplexml_load_string($xml_response);
         if ($xml === false) {
             return false;
         }
 
         $namespaces = array_keys($xml->getDocNamespaces(true));
-        $namespaces = array_filter($namespaces, function($name) { return !empty($name); });
-        if (count($namespaces) == 0) {
+        $namespaces = array_filter($namespaces, function ($name) {
+            return ! empty($name);
+        });
+        if (count($namespaces) === 0) {
             return $xml;
         }
-        $namespaces = array_map(function($ns) { return "$ns:"; }, $namespaces);
+        $namespaces = array_map(function ($ns) {
+            return "$ns:";
+        }, $namespaces);
 
         $xml_no_namespaces = str_replace(
-            array_merge(["xmlns="], $namespaces),
-            array_merge(["ns="], array_fill(0, count($namespaces), '')),
+            array_merge(['xmlns='], $namespaces),
+            array_merge(['ns='], array_fill(0, count($namespaces), '')),
             $xml_response
         );
+
         return simplexml_load_string($xml_no_namespaces);
     }
 }
