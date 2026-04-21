@@ -854,31 +854,33 @@ HTML;
             </div>
         </flux:modal>
 
-        <flux:modal name="preview-plugin" class="flex min-h-0 min-w-[850px] max-h-[90vh] flex-col gap-4">
-            <div class="flex shrink-0 items-center gap-4">
-                <flux:heading size="lg">Preview {{ $plugin->name }}</flux:heading>
-                <flux:field class="w-48">
-                    <flux:select wire:model.live="preview_device_model_id">
-                        @foreach($this->getDeviceModels() as $group)
-                            <optgroup label="{{ $group['label'] }}">
-                                @foreach($group['models'] as $model)
-                                    <option value="{{ $model->id }}">{{ $model->label ?? $model->name }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </flux:select>
-                </flux:field>
-                <flux:button icon="camera" wire:click="renderImage">Render Image</flux:button>
-            </div>
+        <flux:modal name="preview-plugin" class="min-w-[850px] max-h-[90vh]">
+            <div class="flex min-h-0 max-h-[90vh] flex-col gap-4">
+                <div class="flex shrink-0 items-center gap-4">
+                    <flux:heading size="lg">Preview {{ $plugin->name }}</flux:heading>
+                    <flux:field class="w-48">
+                        <flux:select wire:model.live="preview_device_model_id">
+                            @foreach($this->getDeviceModels() as $group)
+                                <optgroup label="{{ $group['label'] }}">
+                                    @foreach($group['models'] as $model)
+                                        <option value="{{ $model->id }}">{{ $model->label ?? $model->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </flux:select>
+                    </flux:field>
+                    <flux:button icon="camera" wire:click="renderImage">Render Image</flux:button>
+                </div>
 
-            <div
-                id="preview-stage"
-                class="flex w-full flex-1 min-h-[50vh] items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-zinc-900"
-            >
-                <div id="preview-layout" class="overflow-hidden">
-                    <div id="preview-scaler" class="origin-top-left">
-                        <iframe id="preview-frame" class="block border-0" x-show="!$wire.preview_image_url"></iframe>
-                        <img id="preview-image" class="block" x-show="$wire.preview_image_url" :src="$wire.preview_image_url">
+                <div
+                    id="preview-stage"
+                    class="flex w-full flex-1 min-h-[50vh] items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-zinc-900"
+                >
+                    <div id="preview-layout" class="overflow-hidden">
+                        <div id="preview-scaler" class="origin-top-left">
+                            <iframe id="preview-frame" class="block border-0" x-show="!$wire.preview_image_url"></iframe>
+                            <img id="preview-image" class="block" x-show="$wire.preview_image_url" :src="$wire.preview_image_url">
+                        </div>
                     </div>
                 </div>
             </div>
