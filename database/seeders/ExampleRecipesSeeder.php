@@ -20,7 +20,7 @@ class ExampleRecipesSeeder extends Seeder
                 'data_payload' => null,
                 'data_stale_minutes' => 15,
                 'data_strategy' => 'polling',
-                'polling_url' => 'https://dbf.finalrewind.org/Wien%20Hbf.json?detailed=1&version=3&limit=8&admode=dep&hafas=%C3%96BB&platforms=1%2C2',
+                'polling_url' => 'https://dbf.finalrewind.org/Wien%20Hbf%20(Bahnsteige%201-2).json?detailed=1&version=3&limit=8&admode=dep&hafas=%C3%96BB&platforms=1%2C2',
                 'polling_verb' => 'get',
                 'polling_header' => null,
                 'render_markup' => null,
