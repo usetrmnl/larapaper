@@ -276,7 +276,7 @@ new class extends Component
                 <div class="mb-6">
                     <flux:label>Webhook URL</flux:label>
                     <flux:input
-                        :value="route('api.plugin_settings.image', ['uuid' => $plugin->uuid])"
+                        :value="route('api.plugin_settings.image', ['plugin' => $plugin])"
                         class="font-mono text-sm"
                         readonly
                         copyable

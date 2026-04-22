@@ -278,6 +278,20 @@ test('user cannot update display for devices they do not own', function (): void
     $response->assertForbidden();
 });
 
+test('display.update returns success JSON for owned devices', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+
+    Sanctum::actingAs($user, ['update-screen']);
+
+    $response = $this->postJson('/api/display/update', [
+        'device_id' => $device->id,
+        'markup' => '<div>Test markup</div>',
+    ]);
+
+    $response->assertOk()->assertExactJson(['message' => 'success']);
+});
+
 test('invalid device credentials return error', function (): void {
     $response = $this->withHeaders([
         'id' => 'invalid-mac',
