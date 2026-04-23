@@ -6,6 +6,7 @@ use App\Enums\ImageFormat;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
+use App\Plugins\Enums\PluginOutput;
 use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
 use Bnussbau\TrmnlPipeline\Stages\ImageStage;
 use Bnussbau\TrmnlPipeline\TrmnlPipeline;
@@ -23,7 +24,15 @@ use function file_exists;
 
 class ImageGenerationService
 {
-    public static function generateImage(string $markup, $deviceId): string
+    public static function generateImage(string $markup, $deviceId, ?Plugin $plugin = null): string
+    {
+        return self::generateDeviceImage($deviceId, $markup, $plugin);
+    }
+
+    /**
+     * Shared entrypoint for device-bound image generation from HTML markup.
+     */
+    private static function generateDeviceImage($deviceId, string $markup, ?Plugin $plugin = null): string
     {
         $device = Device::with(['deviceModel', 'palette', 'deviceModel.palette', 'user'])->find($deviceId);
         $uuid = self::generateImageFromModel(
@@ -31,7 +40,8 @@ class ImageGenerationService
             deviceModel: $device->deviceModel,
             user: $device->user,
             palette: $device->palette ?? $device->deviceModel?->palette,
-            device: $device
+            device: $device,
+            plugin: $plugin,
         );
 
         $device->update(['current_screen_image' => $uuid]);
@@ -41,13 +51,19 @@ class ImageGenerationService
     }
 
     /**
-     * Generate an image from markup using a DeviceModel
+     * Generate an image from markup using a DeviceModel through BrowserStage + ImageStage.
      *
-     * @param  string  $markup  The HTML markup to render
+     * When $plugin resolves to a {@see \App\Plugins\PluginHandler}, its
+     * {@see \App\Plugins\PluginHandler::configureBrowserStage()} hook runs so native
+     * plugins can bind the stage to a URL or other source without this service
+     * encoding plugin-specific behavior.
+     *
+     * @param  string  $markup  The HTML markup to render (may be ignored by the handler hook)
      * @param  DeviceModel|null  $deviceModel  The device model to use for image generation
      * @param  \App\Models\User|null  $user  Optional user for timezone settings
      * @param  \App\Models\DevicePalette|null  $palette  Optional palette, falls back to device model's palette
      * @param  Device|null  $device  Optional device for legacy devices without DeviceModel
+     * @param  Plugin|null  $plugin  Optional plugin instance whose handler configures BrowserStage
      * @return string The UUID of the generated image
      */
     public static function generateImageFromModel(
@@ -55,7 +71,8 @@ class ImageGenerationService
         ?DeviceModel $deviceModel = null,
         ?\App\Models\User $user = null,
         ?\App\Models\DevicePalette $palette = null,
-        ?Device $device = null
+        ?Device $device = null,
+        ?Plugin $plugin = null,
     ): string {
         $uuid = Uuid::uuid4()->toString();
 
@@ -74,7 +91,12 @@ class ImageGenerationService
                 : null;
 
             $browserStage = new BrowserStage($browsershotInstance);
-            $browserStage->html($markup);
+            $handler = $plugin?->handler();
+            if ($handler !== null) {
+                $handler->configureBrowserStage($browserStage, $markup, $plugin);
+            } else {
+                $browserStage->html($markup);
+            }
 
             $browserStage->timezone($user->timezone ?? config('app.timezone'));
 
@@ -100,7 +122,7 @@ class ImageGenerationService
                 default => null,
             };
 
-            $imageStage = new ImageStage();
+            $imageStage = new ImageStage;
             $imageStage->format($fileExtension)
                 ->width($imageSettings['width'])
                 ->height($imageSettings['height'])
@@ -120,7 +142,7 @@ class ImageGenerationService
             }
 
             try {
-                (new TrmnlPipeline())->pipe($browserStage)
+                (new TrmnlPipeline)->pipe($browserStage)
                     ->pipe($imageStage)
                     ->process();
 
@@ -347,10 +369,22 @@ class ImageGenerationService
      */
     public static function resetIfNotCacheable(?Plugin $plugin, Device|DeviceModel|null $deviceOrModel = null): void
     {
-        if (! $plugin?->id || $plugin->plugin_type === 'image_webhook') {
+        if (! $plugin?->id) {
             return;
         }
-        if ($deviceOrModel === null || $plugin->plugin_type !== 'recipe') {
+
+        $output = $plugin->handler()?->output();
+
+        // Plugins that emit device-ready bytes (e.g. Image Webhook) aren't re-rendered
+        // per-device, so the cached current_image is always valid for them.
+        if ($output === PluginOutput::ProcessedImage) {
+            return;
+        }
+        if ($deviceOrModel === null) {
+            return;
+        }
+        $needsMetadata = $plugin->plugin_type === 'recipe' || $output === PluginOutput::Image;
+        if (! $needsMetadata) {
             return;
         }
         if ($plugin->current_image === null) {

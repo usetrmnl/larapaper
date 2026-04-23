@@ -69,7 +69,8 @@ class DisplayAliasController extends Controller
                 markup: $markup,
                 deviceModel: $deviceModel,
                 user: $plugin->user,
-                palette: $deviceModel->palette
+                palette: $deviceModel->palette,
+                plugin: $plugin,
             );
 
             if ($deviceModelName === 'og_png') {

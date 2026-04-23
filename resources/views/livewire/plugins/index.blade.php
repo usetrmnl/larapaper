@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\ExampleRecipesSeederCommand;
+use App\Plugins\PluginRegistry;
 use App\Services\PluginImportService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -30,11 +31,30 @@ new class extends Component
 
     public string $sortBy = 'date_asc';
 
-    public array $native_plugins = [
-        'markup' => ['name' => 'Markup', 'flux_icon_name' => 'code-bracket', 'detail_view_route' => 'plugins.markup'],
-        'api' => ['name' => 'API', 'flux_icon_name' => 'braces', 'detail_view_route' => 'plugins.api'],
-        'image-webhook' => ['name' => 'Image Webhook', 'flux_icon_name' => 'photo', 'detail_view_route' => 'plugins.image-webhook'],
-    ];
+    public array $native_plugins = [];
+
+    protected function nativePlugins(): array
+    {
+        $docs = [
+            ['name' => 'Markup', 'flux_icon_name' => 'code-bracket', 'detail_view_url' => route('plugins.markup')],
+            ['name' => 'API', 'flux_icon_name' => 'braces', 'detail_view_url' => route('plugins.api')],
+        ];
+
+        $registered = [];
+        foreach (app(PluginRegistry::class)->all() as $handler) {
+            if (! $handler->hasInstances()) {
+                continue;
+            }
+
+            $registered[] = [
+                'name' => $handler->name(),
+                'flux_icon_name' => $handler->icon(),
+                'detail_view_url' => route('plugins.type', ['type' => $handler->key()]),
+            ];
+        }
+
+        return array_merge($docs, $registered);
+    }
 
     protected $rules = [
         'name' => 'required|string|max:255',
@@ -54,7 +74,7 @@ new class extends Component
             ->get()
             ->makeHidden(['render_markup', 'data_payload'])
             ->toArray();
-        $allPlugins = array_merge($this->native_plugins, $userPlugins ?? []);
+        $allPlugins = array_merge($this->nativePlugins(), $userPlugins ?? []);
         $allPlugins = array_values($allPlugins);
         $allPlugins = $this->sortPlugins($allPlugins);
         $this->plugins = $allPlugins;
@@ -400,7 +420,7 @@ new class extends Component
                     x-data="{ pluginName: {{ json_encode(strtolower($plugin['name'] ?? '')) }} }"
                     x-show="searchTerm.length <= 1 || pluginName.includes(searchTerm.toLowerCase())"
                     class="styled-container">
-                    <a href="{{ ($plugin['detail_view_route']) ? route($plugin['detail_view_route']) : route('plugins.recipe', ['plugin' => $plugin['id']]) }}"
+                    <a href="{{ $plugin['detail_view_url'] ?? route('plugins.recipe', ['plugin' => $plugin['id']]) }}"
                        class="block h-full">
                         <div class="flex items-center space-x-4 px-10 py-8 h-full">
                             @isset($plugin['icon_url'])

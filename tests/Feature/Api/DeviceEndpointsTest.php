@@ -686,6 +686,9 @@ test('plugins in playlist are rendered in order', function (): void {
     $firstPluginItem = PlaylistItem::where('plugin_id', $firstPlugin->id)->first();
     expect($firstPluginItem->last_displayed_at)->not->toBeNull();
 
+    // Distinct seconds for last_displayed_at so playlist rotation is deterministic.
+    $this->travel(1)->seconds();
+
     // Second request should show the second plugin
     $secondResponse = $this->withHeaders([
         'id' => $device->mac_address,

@@ -82,4 +82,5 @@ test('it saves current_image_metadata for recipe plugins', function (): void {
     expect($plugin->current_image_metadata['width'])->toBe(800);
     expect($plugin->current_image_metadata['height'])->toBe(480);
     expect($plugin->current_image_metadata['mime_type'])->toBe('image/png');
+    expect($plugin->data_payload_updated_at)->not->toBeNull();
 });

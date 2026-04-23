@@ -12,6 +12,8 @@ use App\Liquid\Filters\StringMarkup;
 use App\Liquid\Filters\Uniqueness;
 use App\Liquid\Tags\PluginRenderTag;
 use App\Liquid\Tags\TemplateTag;
+use App\Plugins\PluginHandler;
+use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
 use App\Services\PluginImportService;
 use Carbon\Carbon;
@@ -207,11 +209,25 @@ class Plugin extends Model
         return false; // All required fields are set
     }
 
+    /**
+     * Resolve the registered PluginHandler for this plugin's plugin_type, if any.
+     *
+     * Returns null for 'recipe' and any unregistered types.
+     */
+    public function handler(): ?PluginHandler
+    {
+        if (empty($this->plugin_type)) {
+            return null;
+        }
+
+        return App::make(PluginRegistry::class)->get($this->plugin_type);
+    }
+
     public function isDataStale(): bool
     {
-        // Image webhook plugins don't use data staleness - images are pushed directly
-        if ($this->plugin_type === 'image_webhook') {
-            return false;
+        $handlerStale = $this->handler()?->isDataStale($this);
+        if ($handlerStale !== null) {
+            return $handlerStale;
         }
 
         if ($this->data_strategy === 'webhook') {

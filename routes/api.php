@@ -10,8 +10,8 @@ use App\Http\Controllers\Api\Firmware\DeviceLogController;
 use App\Http\Controllers\Api\Firmware\DisplayController;
 use App\Http\Controllers\Api\Firmware\ScreenController;
 use App\Http\Controllers\Api\Firmware\SetupController;
+use App\Http\Controllers\Api\PluginActionController;
 use App\Http\Controllers\Api\PluginArchiveController;
-use App\Http\Controllers\Api\PluginImageWebhookController;
 use App\Http\Controllers\Api\PluginWebhookController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -56,7 +56,11 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/custom_plugins/{plugin:uuid}', PluginWebhookController::class)
     ->name('api.custom_plugins.webhook');
 
-Route::post('/plugin_settings/{plugin:uuid}/image', PluginImageWebhookController::class)
+Route::post('/plugins/{plugin:uuid}/webhook', PluginActionController::class)
+    ->name('api.plugins.webhook');
+
+// BC shim: old image-webhook clients still POST here; forwarded to the generic handler.
+Route::post('/plugin_settings/{plugin:uuid}/image', PluginActionController::class)
     ->name('api.plugin_settings.image');
 
 Route::get('/display/{plugin:uuid}/alias', DisplayAliasController::class)

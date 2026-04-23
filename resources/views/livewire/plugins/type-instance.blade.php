@@ -1,13 +1,23 @@
 <?php
 
+use App\Models\Playlist;
 use App\Models\Plugin;
+use App\Plugins\PluginHandler;
+use App\Plugins\PluginRegistry;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
 {
+    #[Locked]
+    public string $type = '';
+
     public Plugin $plugin;
 
-    public string $name;
+    public string $name = '';
+
+    public array $configuration = [];
 
     public array $checked_devices = [];
 
@@ -21,23 +31,54 @@ new class extends Component
 
     public array $device_active_until = [];
 
-    public function mount(): void
+    public function mount(string $type, Plugin $plugin): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
-        abort_unless($this->plugin->plugin_type === 'image_webhook', 404);
+        $handler = app(PluginRegistry::class)->get($type);
+        abort_if($handler === null || ! $handler->hasInstances(), 404);
 
-        $this->name = $this->plugin->name;
+        abort_unless(auth()->user()->plugins->contains($plugin), 403);
+        abort_unless($plugin->plugin_type === $type, 404);
+
+        $this->type = $type;
+        $this->plugin = $plugin;
+        $this->name = $plugin->name;
+        $this->configuration = (array) ($plugin->configuration ?? []);
     }
 
-    protected array $rules = [
-        'name' => 'required|string|max:255',
-        'checked_devices' => 'array',
-        'device_playlist_names' => 'array',
-        'device_playlists' => 'array',
-        'device_weekdays' => 'array',
-        'device_active_from' => 'array',
-        'device_active_until' => 'array',
-    ];
+    public function getHandlerProperty(): PluginHandler
+    {
+        return app(PluginRegistry::class)->get($this->type);
+    }
+
+    protected function rules(): array
+    {
+        $rules = [
+            'name' => 'required|string|max:255',
+            'checked_devices' => 'array',
+            'device_playlist_names' => 'array',
+            'device_playlists' => 'array',
+            'device_weekdays' => 'array',
+            'device_active_from' => 'array',
+            'device_active_until' => 'array',
+        ];
+
+        foreach ($this->handler->fields() as $field) {
+            $key = $field['key'];
+            $fieldRules = [];
+
+            if ($field['required'] ?? false) {
+                $fieldRules[] = 'required';
+            } else {
+                $fieldRules[] = 'nullable';
+            }
+
+            $fieldRules[] = ($field['type'] ?? 'text') === 'number' ? 'integer' : 'string';
+
+            $rules["configuration.{$key}"] = $fieldRules;
+        }
+
+        return $rules;
+    }
 
     public function updateName(): void
     {
@@ -46,7 +87,27 @@ new class extends Component
         $this->plugin->update(['name' => $this->name]);
     }
 
-    public function addToPlaylist()
+    public function updateConfiguration(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        $fieldRules = [];
+        foreach ($this->handler->fields() as $field) {
+            $key = $field['key'];
+            $rules = [];
+            $rules[] = ($field['required'] ?? false) ? 'required' : 'nullable';
+            $rules[] = ($field['type'] ?? 'text') === 'number' ? 'integer' : 'string';
+            $fieldRules["configuration.{$key}"] = $rules;
+        }
+
+        if ($fieldRules !== []) {
+            $this->validate($fieldRules);
+        }
+
+        $this->plugin->update(['configuration' => $this->configuration]);
+    }
+
+    public function addToPlaylist(): void
     {
         $this->validate([
             'checked_devices' => 'required|array|min:1',
@@ -69,10 +130,8 @@ new class extends Component
         }
 
         foreach ($this->checked_devices as $deviceId) {
-            $playlist = null;
-
             if ($this->device_playlists[$deviceId] === 'new') {
-                $playlist = App\Models\Playlist::create([
+                $playlist = Playlist::create([
                     'device_id' => $deviceId,
                     'name' => $this->device_playlist_names[$deviceId],
                     'weekdays' => ! empty($this->device_weekdays[$deviceId] ?? null) ? $this->device_weekdays[$deviceId] : null,
@@ -80,12 +139,11 @@ new class extends Component
                     'active_until' => $this->device_active_until[$deviceId] ?? null,
                 ]);
             } else {
-                $playlist = App\Models\Playlist::findOrFail($this->device_playlists[$deviceId]);
+                $playlist = Playlist::findOrFail($this->device_playlists[$deviceId]);
             }
 
             $maxOrder = $playlist->items()->max('order') ?? 0;
 
-            // Image webhook plugins only support full layout
             $playlist->items()->create([
                 'plugin_id' => $this->plugin->id,
                 'order' => $maxOrder + 1,
@@ -105,25 +163,14 @@ new class extends Component
 
     public function getDevicePlaylists($deviceId)
     {
-        return App\Models\Playlist::where('device_id', $deviceId)->get();
-    }
-
-    public function hasAnyPlaylistSelected(): bool
-    {
-        foreach ($this->checked_devices as $deviceId) {
-            if (isset($this->device_playlists[$deviceId]) && ! empty($this->device_playlists[$deviceId])) {
-                return true;
-            }
-        }
-
-        return false;
+        return Playlist::where('device_id', $deviceId)->get();
     }
 
     public function deletePlugin(): void
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
         $this->plugin->delete();
-        $this->redirect(route('plugins.image-webhook'));
+        $this->redirect(route('plugins.type', ['type' => $this->type]));
     }
 
     public function getImagePath(): ?string
@@ -132,10 +179,9 @@ new class extends Component
             return null;
         }
 
-        $extensions = ['png', 'bmp'];
-        foreach ($extensions as $ext) {
+        foreach (['png', 'bmp'] as $ext) {
             $path = 'images/generated/'.$this->plugin->current_image.'.'.$ext;
-            if (Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            if (Storage::disk('public')->exists($path)) {
                 return $path;
             }
         }
@@ -148,7 +194,7 @@ new class extends Component
 <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold dark:text-gray-100">Image Webhook – {{$plugin->name}}</h2>
+            <h2 class="text-2xl font-semibold dark:text-gray-100">{{ $this->handler->name() }} – {{$plugin->name}}</h2>
 
             <flux:button.group>
                 <flux:modal.trigger name="add-to-playlist">
@@ -235,7 +281,6 @@ new class extends Component
                         </div>
                     @endif
 
-
                     <div class="flex">
                         <flux:spacer/>
                         <flux:button type="submit" variant="primary">Add to Playlist</flux:button>
@@ -244,7 +289,7 @@ new class extends Component
             </div>
         </flux:modal>
 
-        <flux:modal name="delete-plugin" class="min-w-[22rem] space-y-6">
+        <flux:modal name="delete-plugin" class="min-w-88 space-y-6">
             <div>
                 <flux:heading size="lg">Delete {{ $plugin->name }}?</flux:heading>
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">This will also remove this instance from your playlists.</p>
@@ -273,21 +318,48 @@ new class extends Component
                     </div>
                 </form>
 
-                <div class="mb-6">
-                    <flux:label>Webhook URL</flux:label>
-                    <flux:input
-                        :value="route('api.plugin_settings.image', ['plugin' => $plugin])"
-                        class="font-mono text-sm"
-                        readonly
-                        copyable
-                    />
-                    <flux:description class="mt-2">POST an image (PNG or BMP) to this URL to update the displayed image.</flux:description>
+                @if(count($this->handler->fields()) > 0)
+                    <form wire:submit="updateConfiguration" class="mb-6 space-y-4">
+                        @foreach($this->handler->fields() as $field)
+                            @php
+                                $key = $field['key'];
+                                $type = $field['type'] ?? 'text';
+                                $label = $field['label'] ?? $key;
+                                $help = $field['help'] ?? null;
+                            @endphp
+                            <div>
+                                @if($type === 'textarea')
+                                    <flux:textarea
+                                        :label="$label"
+                                        wire:model="configuration.{{ $key }}"
+                                        rows="4"
+                                    />
+                                @else
+                                    <flux:input
+                                        :type="$type === 'number' ? 'number' : 'text'"
+                                        :label="$label"
+                                        wire:model="configuration.{{ $key }}"
+                                    />
+                                @endif
+                                @if($help)
+                                    <flux:description class="mt-1">{{ $help }}</flux:description>
+                                @endif
+                                @error("configuration.{$key}")
+                                    <flux:callout variant="danger" icon="x-circle" heading="{{ $message }}" class="mt-2" />
+                                @enderror
+                            </div>
+                        @endforeach
 
-                    <flux:callout variant="warning" icon="exclamation-circle" class="mt-4">
-                        <flux:callout.text>Images must be posted in a format that can directly be read by the device. You need to take care of image format, dithering, and bit-depth. Check device logs if the image is not shown.</flux:callout.text>
-                    </flux:callout>
+                        <div class="flex">
+                            <flux:spacer/>
+                            <flux:button type="submit" variant="primary">Save Settings</flux:button>
+                        </div>
+                    </form>
+                @endif
 
-                </div>
+                @if($this->handler->settingsPartial())
+                    @include($this->handler->settingsPartial(), ['plugin' => $plugin])
+                @endif
             </div>
 
             <div>
@@ -297,7 +369,7 @@ new class extends Component
                         <img src="{{ Storage::disk('public')->url($this->getImagePath()) }}" alt="{{ $plugin->name }}" class="w-full h-auto rounded-lg border border-zinc-200 dark:border-zinc-700 mt-2" />
                     @else
                         <flux:callout variant="warning" class="mt-2">
-                            <flux:text>No image uploaded yet. POST an image to the webhook URL to get started.</flux:text>
+                            <flux:text>No image available yet.</flux:text>
                         </flux:callout>
                     @endif
                 </div>
@@ -305,4 +377,3 @@ new class extends Component
         </div>
     </div>
 </div>
-

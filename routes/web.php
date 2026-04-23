@@ -24,8 +24,8 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('plugins/recipe/{plugin}', 'plugins.recipe')->name('plugins.recipe');
     Route::livewire('plugins/markup', 'plugins.markup')->name('plugins.markup');
     Route::livewire('plugins/api', 'plugins.api')->name('plugins.api');
-    Route::livewire('plugins/image-webhook', 'plugins.image-webhook')->name('plugins.image-webhook');
-    Route::livewire('plugins/image-webhook/{plugin}', 'plugins.image-webhook-instance')->name('plugins.image-webhook-instance');
+    Route::livewire('plugins/type/{type}', 'plugins.type')->name('plugins.type');
+    Route::livewire('plugins/type/{type}/{plugin}', 'plugins.type-instance')->name('plugins.type-instance');
     Route::livewire('playlists', 'playlists.index')->name('playlists.index');
 
     Route::get('plugin_settings/{trmnlp_id}/edit', function (Request $request, string $trmnlp_id) {

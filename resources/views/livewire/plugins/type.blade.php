@@ -1,11 +1,17 @@
 <?php
 
 use App\Models\Plugin;
+use App\Plugins\PluginHandler;
+use App\Plugins\PluginRegistry;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
 {
+    #[Locked]
+    public string $type = '';
+
     public string $name = '';
 
     public array $instances = [];
@@ -14,16 +20,25 @@ new class extends Component
         'name' => 'required|string|max:255',
     ];
 
-    public function mount(): void
+    public function mount(string $type): void
     {
+        $handler = app(PluginRegistry::class)->get($type);
+        abort_if($handler === null || ! $handler->hasInstances(), 404);
+
+        $this->type = $type;
         $this->refreshInstances();
+    }
+
+    public function getHandlerProperty(): PluginHandler
+    {
+        return app(PluginRegistry::class)->get($this->type);
     }
 
     public function refreshInstances(): void
     {
         $this->instances = auth()->user()
             ->plugins()
-            ->where('plugin_type', 'image_webhook')
+            ->where('plugin_type', $this->type)
             ->orderBy('created_at', 'desc')
             ->get()
             ->toArray();
@@ -38,9 +53,8 @@ new class extends Component
             'uuid' => Str::uuid(),
             'user_id' => auth()->id(),
             'name' => $this->name,
-            'plugin_type' => 'image_webhook',
-            'data_strategy' => 'static', // Not used for image_webhook, but required
-            'data_stale_minutes' => 60, // Not used for image_webhook, but required
+            'plugin_type' => $this->type,
+            ...$this->handler->defaultAttributes(),
         ]);
 
         $this->reset(['name']);
@@ -55,7 +69,7 @@ new class extends Component
 
         $plugin = Plugin::where('id', $pluginId)
             ->where('user_id', auth()->id())
-            ->where('plugin_type', 'image_webhook')
+            ->where('plugin_type', $this->type)
             ->firstOrFail();
 
         $plugin->delete();
@@ -67,7 +81,7 @@ new class extends Component
 <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold dark:text-gray-100">Image Webhook
+            <h2 class="text-2xl font-semibold dark:text-gray-100">{{ $this->handler->name() }}
                 <flux:badge size="sm" class="ml-2">Plugin</flux:badge>
             </h2>
             <flux:modal.trigger name="create-instance">
@@ -78,8 +92,8 @@ new class extends Component
         <flux:modal name="create-instance" class="md:w-96">
             <div class="space-y-6">
                 <div>
-                    <flux:heading size="lg">Create Image Webhook Instance</flux:heading>
-                    <flux:subheading>Create a new instance that accepts images via webhook</flux:subheading>
+                    <flux:heading size="lg">Create {{ $this->handler->name() }} Instance</flux:heading>
+                    <flux:subheading>{{ $this->handler->description() }}</flux:subheading>
                 </div>
 
                 <form wire:submit="createInstance">
@@ -100,7 +114,7 @@ new class extends Component
             <div class="text-center py-12">
                 <flux:callout>
                     <flux:heading size="sm">No instances yet</flux:heading>
-                    <flux:text>Create your first Image Webhook instance to get started.</flux:text>
+                    <flux:text>Create your first {{ $this->handler->name() }} instance to get started.</flux:text>
                 </flux:callout>
             </div>
         @else
@@ -129,7 +143,7 @@ new class extends Component
                         <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap font-medium text-zinc-800 dark:text-white text-right">
                             <div class="flex items-center justify-end">
                                 <flux:button.group>
-                                    <flux:button href="{{ route('plugins.image-webhook-instance', ['plugin' => $instance['id']]) }}" wire:navigate icon="pencil" iconVariant="outline">
+                                    <flux:button href="{{ route('plugins.type-instance', ['type' => $type, 'plugin' => $instance['id']]) }}" wire:navigate icon="pencil" iconVariant="outline">
                                     </flux:button>
                                     <flux:modal.trigger name="delete-instance-{{ $instance['id'] }}">
                                         <flux:button icon="trash" iconVariant="outline">
@@ -162,4 +176,3 @@ new class extends Component
         @endforeach
     </div>
 </div>
-

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Device;
 use App\Models\Plugin;
+use App\Plugins\Enums\PluginOutput;
 use App\Services\ImageGenerationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,20 +30,36 @@ class GenerateScreenJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $newImageUuid = ImageGenerationService::generateImage($this->markup, $this->deviceId);
+        $plugin = $this->pluginId ? Plugin::find($this->pluginId) : null;
+        $output = $plugin?->handler()?->output();
 
-        Device::find($this->deviceId)->update(['current_screen_image' => $newImageUuid]);
-
-        if ($this->pluginId) {
-            $plugin = Plugin::find($this->pluginId);
-            $update = ['current_image' => $newImageUuid];
-            if ($plugin->plugin_type === 'recipe') {
-                $device = Device::with(['deviceModel', 'deviceModel.palette'])->find($this->deviceId);
-                $update['current_image_metadata'] = ImageGenerationService::buildImageMetadataFromDevice($device);
+        // ProcessedImage: plugin stores device-ready image.
+        if ($output === PluginOutput::ProcessedImage) {
+            if ($plugin->current_image !== null) {
+                Device::find($this->deviceId)->update(['current_screen_image' => $plugin->current_image]);
             }
-            $plugin->update($update);
+
+            return;
+        }
+
+        // Html, Image, or default: same pipeline and plugin fields after generation.
+        $newImageUuid = ImageGenerationService::generateImage($this->markup, $this->deviceId, $plugin);
+
+        if ($plugin) {
+            $plugin->update([
+                'current_image' => $newImageUuid,
+                'current_image_metadata' => $this->imageMetadataForDevice(),
+                'data_payload_updated_at' => now(),
+            ]);
         }
 
         ImageGenerationService::cleanupFolder();
+    }
+
+    private function imageMetadataForDevice(): array
+    {
+        $device = Device::with(['deviceModel', 'deviceModel.palette'])->findOrFail($this->deviceId);
+
+        return ImageGenerationService::buildImageMetadataFromDevice($device);
     }
 }

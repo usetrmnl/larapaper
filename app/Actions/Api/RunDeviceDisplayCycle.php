@@ -5,6 +5,7 @@ namespace App\Actions\Api;
 use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
 use App\Models\Plugin;
+use App\Plugins\Enums\PluginOutput;
 use App\Services\DeviceImageResolver;
 use App\Services\ImageGenerationService;
 use Exception;
@@ -92,7 +93,8 @@ class RunDeviceDisplayCycle
         if ($plugin->isDataStale() || $plugin->current_image === null) {
             $plugin->updateDataPayload();
             try {
-                $markup = $plugin->render(device: $device);
+                $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
+                $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
                 GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup);
             } catch (Exception $e) {
                 Log::error("Failed to render plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
