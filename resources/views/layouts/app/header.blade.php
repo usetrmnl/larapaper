@@ -19,7 +19,7 @@
             Dashboard
         </flux:navbar.item>
         <flux:navbar.item icon="trmnl" href="{{ route('devices') }}" wire:navigate
-                          :current="request()->routeIs(['devices', 'devices.configure'])">
+                          :current="request()->routeIs(['devices', 'devices.configure', 'device-models.index', 'device-palettes.index'])">
             Devices
         </flux:navbar.item>
         <flux:navbar.item icon="puzzle-piece" href="{{ route('plugins.index') }}" wire:navigate
@@ -108,7 +108,7 @@
                 Dashboard
             </flux:navlist.item>
             <flux:navlist.item icon="trmnl" href="{{ route('devices') }}" wire:navigate
-                              :current="request()->routeIs('devices')" class="m-2">
+                              :current="request()->routeIs(['devices', 'devices.configure', 'device-models.index', 'device-palettes.index'])" class="m-2">
                 Devices
             </flux:navlist.item>
             <flux:navlist.item icon="puzzle-piece" href="{{ route('plugins.index') }}" wire:navigate

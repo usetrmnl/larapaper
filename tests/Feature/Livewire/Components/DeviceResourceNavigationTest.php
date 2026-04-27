@@ -25,6 +25,18 @@ it('shows the flux segmented device admin nav on the device models page', functi
     $response->assertSee('wire:model.live="section"', false);
 });
 
+it('marks the app header devices nav item current on the device models page', function (): void {
+    $user = User::factory()->create();
+    $devicesHref = preg_quote(route('devices'), '/');
+    $html = $this->actingAs($user)->get(route('device-models.index'))->getContent();
+
+    $currentAttr = 'data-current="data-current"';
+    $matches = preg_match('/<a[^>]+href="'.$devicesHref.'"[^>]*\b'.preg_quote($currentAttr, '/').'/', $html) === 1
+        || preg_match('/<a[^>]*\b'.preg_quote($currentAttr, '/').'[^>]+href="'.$devicesHref.'"/', $html) === 1;
+
+    expect($matches)->toBeTrue();
+});
+
 it('shows the flux segmented device admin nav on the device palettes page', function (): void {
     $user = User::factory()->create();
 
@@ -33,6 +45,18 @@ it('shows the flux segmented device admin nav on the device palettes page', func
     $response->assertSuccessful();
     $response->assertSee('data-flux-radio-group', false);
     $response->assertSee('wire:model.live="section"', false);
+});
+
+it('marks the app header devices nav item current on the device palettes page', function (): void {
+    $user = User::factory()->create();
+    $devicesHref = preg_quote(route('devices'), '/');
+    $html = $this->actingAs($user)->get(route('device-palettes.index'))->getContent();
+
+    $currentAttr = 'data-current="data-current"';
+    $matches = preg_match('/<a[^>]+href="'.$devicesHref.'"[^>]*\b'.preg_quote($currentAttr, '/').'/', $html) === 1
+        || preg_match('/<a[^>]*\b'.preg_quote($currentAttr, '/').'[^>]+href="'.$devicesHref.'"/', $html) === 1;
+
+    expect($matches)->toBeTrue();
 });
 
 it('redirects when the device admin segment changes', function (): void {
