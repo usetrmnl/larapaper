@@ -257,7 +257,7 @@ new class extends Component
         'data_strategy' => 'required|string|in:polling,webhook,static',
         'polling_url' => 'required_if:data_strategy,polling|nullable',
         'polling_verb' => 'required|string|in:get,post',
-        'polling_header' => 'nullable|string|max:255',
+        'polling_header' => 'nullable|string|max:10240',
         'polling_body' => 'nullable|string',
         'data_payload' => 'required_if:data_strategy,static|nullable|json',
         'markup_code' => 'nullable|string',
