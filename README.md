@@ -3,7 +3,7 @@
 [![tests](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml/badge.svg)](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml)
 
 LaraPaper is a self-hostable implementation of a TRMNL server (BYOS), built with Laravel.
-It allows you to manage TRMNL devices, generate screens using **native plugins** (Screens API, Markup), **recipes** (130+ from the [OSS community catalog](https://bnussbau.github.io/trmnl-recipe-catalog/), 700+ from the [TRMNL catalog](https://trmnl.com/recipes), or your own), or the **API**, and can also act as a **proxy** for the native cloud service (Core). With over 90k downloads and 250+ stars, it’s the most popular community-driven BYOS.
+It allows you to manage TRMNL devices, generate screens using **native plugins** (Screens API, Markup), **recipes** (150+ from the [OSS community catalog](https://bnussbau.github.io/trmnl-recipe-catalog/), 700+ from the [TRMNL catalog](https://trmnl.com/recipes), or your own), or the **API**, and can also act as a **proxy** for the native cloud service (Core). With over 140k downloads and 300+ stars, it’s the most popular community-driven BYOS.
 
 ![Screenshot](README_byos-screenshot.png)
 ![Screenshot](README_byos-screenshot-dark.png)
@@ -19,7 +19,7 @@ It allows you to manage TRMNL devices, generate screens using **native plugins**
   * Compatible open-source recipes are available in the [community catalog](https://bnussbau.github.io/trmnl-recipe-catalog/)
   * Import from the [TRMNL community recipe catalog](https://trmnl.com/recipes)
   * Supported Devices
-    * TRMNL OG (1-bit & 2-bit), TRMNL X
+    * TRMNL OG (1-bit & 2-bit, BRWY), TRMNL X
     * SeeedStudio TRMNL 7,5" (OG) DIY Kit
     * Seeed Studio (XIAO 7.5" ePaper Panel)
     * reTerminal E1001 Monochrome ePaper Display
