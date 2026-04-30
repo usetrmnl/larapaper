@@ -39,3 +39,19 @@ test('render preview dispatches screen dimensions from selected device model', f
                 && $params['preview'] !== '';
         });
 });
+
+test('add to playlist modal gates layout block with alpine using wire state', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->assertSee('($wire.checked_devices ?? []).length > 0 && ($wire.checked_devices ?? []).some', false);
+});

@@ -440,17 +440,6 @@ new class extends Component
         return App\Models\Playlist::where('device_id', $deviceId)->get();
     }
 
-    public function hasAnyPlaylistSelected(): bool
-    {
-        foreach ($this->checked_devices as $deviceId) {
-            if (isset($this->device_playlists[$deviceId]) && ! empty($this->device_playlists[$deviceId])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public function getConfigurationValue($key, $default = null)
     {
         return $this->configuration[$key] ?? $default;
@@ -818,7 +807,10 @@ HTML;
                         </div>
                     @endif
 
-                    @if(count($checked_devices) > 0 && $this->hasAnyPlaylistSelected())
+                    <div
+                        x-show="($wire.checked_devices ?? []).length > 0 && ($wire.checked_devices ?? []).some((id) => { const v = ($wire.device_playlists ?? {})[id]; return v !== undefined && v !== null && v !== ''; })"
+                        style="display: none;"
+                    >
                         <flux:separator text="Layout" />
                         <div class="mt-4 mb-4">
                             <flux:radio.group wire:model.live="mashup_layout" variant="segmented">
@@ -855,7 +847,7 @@ HTML;
                                 </div>
                             </div>
                         @endif
-                    @endif
+                    </div>
 
                     <div class="flex">
                         <flux:spacer/>
