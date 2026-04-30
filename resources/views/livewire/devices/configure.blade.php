@@ -5,6 +5,7 @@ use App\Models\DeviceModel;
 use App\Models\Firmware;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
+use App\Models\Plugin;
 use Livewire\Component;
 
 new class extends Component
@@ -299,6 +300,29 @@ new class extends Component
         $item->delete();
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
         Flux::modal('delete-playlist-item-'.$item->id)->close();
+    }
+
+    public function clearPluginImageCache(PlaylistItem $item): void
+    {
+        $item->loadMissing(['playlist.device', 'plugin']);
+
+        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+
+        if ($item->isMashup()) {
+            return;
+        }
+
+        if (! $item->plugin_id || ! $item->plugin || $item->plugin->plugin_type !== 'recipe') {
+            return;
+        }
+
+        abort_unless($item->plugin->user_id === auth()->id(), 403);
+
+        $item->plugin->clearCurrentImage();
+
+        Flux::toast(variant: 'success', text: 'Image cache cleared.');
+
+        $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
     }
 
     public function editPlaylist(Playlist $playlist)
@@ -827,7 +851,15 @@ new class extends Component
                                                      :checked="$item->is_active"/>
                                     </td>
                                     <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap">
-                                        <div class="flex justify-end gap-2">
+                                        <div class="flex items-center justify-end gap-2">
+                                            @if(! $item->isMashup() && $item->plugin?->plugin_type === 'recipe')
+                                                <flux:dropdown>
+                                                    <flux:button icon="ellipsis-horizontal" variant="ghost" size="xs"/>
+                                                    <flux:menu>
+                                                        <flux:menu.item icon="x-mark" wire:click="clearPluginImageCache({{ $item->id }})">Clear image cache</flux:menu.item>
+                                                    </flux:menu>
+                                                </flux:dropdown>
+                                            @endif
                                             <flux:modal.trigger name="delete-playlist-item-{{ $item->id }}">
                                                 <flux:button icon="trash" variant="ghost" size="sm"/>
                                             </flux:modal.trigger>

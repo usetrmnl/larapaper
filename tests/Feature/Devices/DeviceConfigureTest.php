@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Device;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
+use App\Models\Plugin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -120,4 +121,53 @@ test('sortPlaylistItem reorders playlist items by zero-based position', function
     expect(PlaylistItem::query()->find($second->id)?->order)->toBe(0);
     expect(PlaylistItem::query()->find($first->id)?->order)->toBe(1);
     expect(PlaylistItem::query()->find($third->id)?->order)->toBe(2);
+});
+
+test('devices configure clearPluginImageCache clears recipe plugin cache and shows toast', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'current_image' => 'cached-uuid',
+        'current_image_metadata' => ['width' => 800, 'height' => 480],
+    ]);
+    $item = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('clearPluginImageCache', $item->id)
+        ->assertDispatched('toast-show');
+
+    $plugin->refresh();
+    expect($plugin->current_image)->toBeNull();
+    expect($plugin->current_image_metadata)->toBeNull();
+});
+
+test('devices configure clearPluginImageCache does nothing when plugin is not type recipe', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->imageWebhook()->create([
+        'user_id' => $user->id,
+        'current_image' => 'webhook-uuid',
+        'current_image_metadata' => ['width' => 800, 'height' => 480],
+    ]);
+    $item = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('clearPluginImageCache', $item->id)
+        ->assertNotDispatched('toast-show');
+
+    expect($plugin->fresh()->current_image)->toBe('webhook-uuid');
 });

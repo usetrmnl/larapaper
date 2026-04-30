@@ -98,6 +98,17 @@ class Plugin extends Model
     }
 
     /**
+     * Clear the cached generated image UUID and metadata so the next render can regenerate.
+     */
+    public function clearCurrentImage(): void
+    {
+        $this->update([
+            'current_image' => null,
+            'current_image_metadata' => null,
+        ]);
+    }
+
+    /**
      * YAML for the custom_fields editor
      */
     public function getCustomFieldsEditorYaml(): string

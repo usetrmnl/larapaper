@@ -9,6 +9,19 @@ use Illuminate\Support\Facades\Http;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
+test('clearCurrentImage nulls current_image and current_image_metadata', function (): void {
+    $plugin = Plugin::factory()->create([
+        'current_image' => 'cached-uuid',
+        'current_image_metadata' => ['width' => 800, 'height' => 480],
+    ]);
+
+    $plugin->clearCurrentImage();
+
+    $plugin->refresh();
+    expect($plugin->current_image)->toBeNull();
+    expect($plugin->current_image_metadata)->toBeNull();
+});
+
 test('plugin has required attributes', function (): void {
     $plugin = Plugin::factory()->create([
         'name' => 'Test Plugin',
