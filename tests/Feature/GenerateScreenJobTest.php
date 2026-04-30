@@ -4,6 +4,7 @@ use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
+use App\Models\User;
 use Bnussbau\TrmnlPipeline\TrmnlPipeline;
 use Illuminate\Support\Facades\Storage;
 
@@ -59,6 +60,39 @@ test('it preserves gitignore file during cleanup', function (): void {
     $job->handle();
 
     Storage::disk('public')->assertExists('/images/generated/.gitignore');
+});
+
+test('it copies plugin current image to device for processed image plugins without pipeline', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'current_screen_image' => 'previous-screen',
+    ]);
+    $plugin = Plugin::factory()->for($user)->imageWebhook()->create([
+        'current_image' => 'webhook-ready-uuid',
+    ]);
+
+    $job = new GenerateScreenJob($device->id, $plugin->id, '<div>ignored</div>');
+    $job->handle();
+
+    expect($device->fresh()->current_screen_image)->toBe('webhook-ready-uuid');
+    expect($plugin->fresh()->current_image)->toBe('webhook-ready-uuid');
+});
+
+test('it skips device update for processed image plugin when current image is missing', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'current_screen_image' => 'stable-screen',
+    ]);
+    $plugin = Plugin::factory()->for($user)->imageWebhook()->create([
+        'current_image' => null,
+    ]);
+
+    $job = new GenerateScreenJob($device->id, $plugin->id, '<div>ignored</div>');
+    $job->handle();
+
+    expect($device->fresh()->current_screen_image)->toBe('stable-screen');
 });
 
 test('it saves current_image_metadata for recipe plugins', function (): void {
