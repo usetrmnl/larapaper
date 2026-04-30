@@ -57,8 +57,8 @@ class ScreenshotPlugin extends PluginHandler
             [
                 'key' => 'url',
                 'label' => 'URL',
-                'type' => 'text',
-                'help' => 'Public URL Browsershot will capture.',
+                'type' => 'url',
+                'help' => 'HTTPS or HTTP URL Browsershot will capture. Needs to be public or accessible from LaraPaper.',
                 'required' => true,
             ],
         ];

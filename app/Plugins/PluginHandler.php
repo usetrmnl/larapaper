@@ -70,7 +70,7 @@ abstract class PluginHandler
     /**
      * Schema-driven inputs rendered by the shared instance page.
      *
-     * Each entry: ['key' => string, 'label' => string, 'type' => 'text'|'number'|'textarea', 'help' => ?string].
+     * Each entry: ['key' => string, 'label' => string, 'type' => 'text'|'number'|'textarea'|'url', 'help' => ?string].
      * Values are persisted into Plugin::$configuration (JSON) under the given key.
      *
      * @return array<int, array<string, mixed>>

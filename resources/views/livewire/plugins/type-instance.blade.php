@@ -50,6 +50,44 @@ new class extends Component
         return app(PluginRegistry::class)->get($this->type);
     }
 
+    /**
+     * @param  array<string, mixed>  $field
+     * @return list<string>
+     */
+    protected function rulesForHandlerConfigurationField(array $field): array
+    {
+        $rules = [];
+        $rules[] = ($field['required'] ?? false) ? 'required' : 'nullable';
+
+        $type = $field['type'] ?? 'text';
+        if ($type === 'number') {
+            $rules[] = 'integer';
+        } elseif ($type === 'url') {
+            $rules[] = 'string';
+            $rules[] = 'url:http,https';
+        } else {
+            $rules[] = 'string';
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Validate {@see $configuration} against the active handler's {@see PluginHandler::fields()} schema.
+     */
+    protected function validateHandlerConfiguration(): void
+    {
+        $fieldRules = [];
+        foreach ($this->handler->fields() as $field) {
+            $key = $field['key'];
+            $fieldRules["configuration.{$key}"] = $this->rulesForHandlerConfigurationField($field);
+        }
+
+        if ($fieldRules !== []) {
+            $this->validate($fieldRules);
+        }
+    }
+
     protected function rules(): array
     {
         $rules = [
@@ -64,17 +102,7 @@ new class extends Component
 
         foreach ($this->handler->fields() as $field) {
             $key = $field['key'];
-            $fieldRules = [];
-
-            if ($field['required'] ?? false) {
-                $fieldRules[] = 'required';
-            } else {
-                $fieldRules[] = 'nullable';
-            }
-
-            $fieldRules[] = ($field['type'] ?? 'text') === 'number' ? 'integer' : 'string';
-
-            $rules["configuration.{$key}"] = $fieldRules;
+            $rules["configuration.{$key}"] = $this->rulesForHandlerConfigurationField($field);
         }
 
         return $rules;
@@ -91,18 +119,7 @@ new class extends Component
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
 
-        $fieldRules = [];
-        foreach ($this->handler->fields() as $field) {
-            $key = $field['key'];
-            $rules = [];
-            $rules[] = ($field['required'] ?? false) ? 'required' : 'nullable';
-            $rules[] = ($field['type'] ?? 'text') === 'number' ? 'integer' : 'string';
-            $fieldRules["configuration.{$key}"] = $rules;
-        }
-
-        if ($fieldRules !== []) {
-            $this->validate($fieldRules);
-        }
+        $this->validateHandlerConfiguration();
 
         $this->plugin->update(['configuration' => $this->configuration]);
     }
@@ -112,6 +129,8 @@ new class extends Component
         $this->validate([
             'checked_devices' => 'required|array|min:1',
         ]);
+
+        $this->validateHandlerConfiguration();
 
         foreach ($this->checked_devices as $deviceId) {
             if (! isset($this->device_playlists[$deviceId]) || empty($this->device_playlists[$deviceId])) {
@@ -326,6 +345,11 @@ new class extends Component
                                 $type = $field['type'] ?? 'text';
                                 $label = $field['label'] ?? $key;
                                 $help = $field['help'] ?? null;
+                                $inputType = match ($type) {
+                                    'number' => 'number',
+                                    'url' => 'url',
+                                    default => 'text',
+                                };
                             @endphp
                             <div>
                                 @if($type === 'textarea')
@@ -336,7 +360,7 @@ new class extends Component
                                     />
                                 @else
                                     <flux:input
-                                        :type="$type === 'number' ? 'number' : 'text'"
+                                        :type="$inputType"
                                         :label="$label"
                                         wire:model="configuration.{{ $key }}"
                                     />
