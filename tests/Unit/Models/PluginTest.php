@@ -745,6 +745,30 @@ test('plugin render includes utc_offset and time_zone_iana in trmnl.user context
         ->and($rendered)->toMatch('/\|-?\d+/'); // Should contain a pipe followed by a number (offset in seconds)
 });
 
+test('plugin render applies user timezone offset when using date filter with numeric epoch', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-01-10 12:00:00', 'UTC'));
+
+    config(['app.timezone' => 'UTC', 'services.trmnl.liquid_enabled' => false]);
+
+    $user = User::factory()->create([
+        'timezone' => 'Europe/Berlin',
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'liquid',
+        'preferred_renderer' => null,
+        'render_markup' => "{{ '2026-01-15T12:00:00+00:00' | date: '%s' | plus: trmnl.user.utc_offset | date: '%H:%M' }}",
+    ]);
+
+    $rendered = mb_trim($plugin->render('full', false));
+
+    // Noon UTC → 13:00 in Berlin (CET) when Keepsuit date() formats the numeric epoch using the owner zone
+    expect($rendered)->toBe('13:00');
+
+    Carbon::setTestNow();
+});
+
 /**
  * Plugin security: XSS Payload Dataset
  * [Input, Expected Result, Forbidden String]
