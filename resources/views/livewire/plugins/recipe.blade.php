@@ -1143,7 +1143,7 @@ HTML;
                             <flux:input
                                 label="Webhook URL"
                                 descriptionTrailing="Send JSON payload with key <code>merge_variables</code> to the webhook URL. The payload will be merged with the plugin data."
-                                :value="route('api.custom_plugins.webhook', ['plugin_uuid' => $plugin->uuid])"
+                                :value="route('api.custom_plugins.webhook', ['plugin' => $plugin->uuid])"
                                 class="block mt-1 w-full font-mono"
                                 readonly
                                 copyable
