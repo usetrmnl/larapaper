@@ -258,6 +258,10 @@ class Plugin extends Model
     /** Extra reserve for the recipe form body (markup, views, other properties). */
     private const RECIPE_STATIC_FIELD_RESERVE_BYTES = 1024 * 1024;
 
+    public const WEBHOOK_MERGE_STRATEGY_DEEP_MERGE = 'deep_merge';
+
+    public const WEBHOOK_MERGE_STRATEGY_STREAM = 'stream';
+
     /** Max pretty-encoded data_payload size for Livewire; null when unlimited. */
     public static function maxDataPayloadBytesForWire(): ?int
     {
@@ -319,6 +323,89 @@ class Plugin extends Model
     public static function oversizedDataPayloadErrorPayload(): array
     {
         return ['error' => 'Data payload exceeds maximum allowed size'];
+    }
+
+    /** Supported TRMNL webhook merge strategies for recipe plugins. */
+    public static function webhookMergeStrategies(): array
+    {
+        return [
+            self::WEBHOOK_MERGE_STRATEGY_DEEP_MERGE,
+            self::WEBHOOK_MERGE_STRATEGY_STREAM,
+        ];
+    }
+
+    public static function mergeWebhookPayload(
+        mixed $currentPayload,
+        mixed $incomingPayload,
+        ?string $mergeStrategy = null,
+        ?int $streamLimit = null,
+    ): mixed {
+        return match ($mergeStrategy) {
+            null, '' => $incomingPayload,
+            self::WEBHOOK_MERGE_STRATEGY_DEEP_MERGE => self::deepMergeWebhookPayload($currentPayload, $incomingPayload),
+            self::WEBHOOK_MERGE_STRATEGY_STREAM => self::streamWebhookPayload($currentPayload, $incomingPayload, $streamLimit),
+            default => throw new InvalidArgumentException("Unsupported webhook merge strategy [{$mergeStrategy}]"),
+        };
+    }
+
+    private static function deepMergeWebhookPayload(mixed $currentPayload, mixed $incomingPayload): mixed
+    {
+        if (! is_array($currentPayload) || ! is_array($incomingPayload)) {
+            return $incomingPayload;
+        }
+
+        $mergedPayload = $currentPayload;
+
+        foreach ($incomingPayload as $key => $value) {
+            if (
+                array_key_exists($key, $mergedPayload)
+                && self::isAssociativeArray($mergedPayload[$key])
+                && self::isAssociativeArray($value)
+            ) {
+                $mergedPayload[$key] = self::deepMergeWebhookPayload($mergedPayload[$key], $value);
+
+                continue;
+            }
+
+            $mergedPayload[$key] = $value;
+        }
+
+        return $mergedPayload;
+    }
+
+    private static function streamWebhookPayload(mixed $currentPayload, mixed $incomingPayload, ?int $streamLimit): mixed
+    {
+        if (! is_array($incomingPayload)) {
+            return $incomingPayload;
+        }
+
+        $mergedPayload = is_array($currentPayload) ? $currentPayload : [];
+
+        foreach ($incomingPayload as $key => $value) {
+            if (is_array($value) && array_is_list($value)) {
+                $existingValue = $mergedPayload[$key] ?? [];
+                $streamedValue = is_array($existingValue) && array_is_list($existingValue)
+                    ? [...$existingValue, ...$value]
+                    : $value;
+
+                if ($streamLimit !== null) {
+                    $streamedValue = array_slice($streamedValue, -$streamLimit);
+                }
+
+                $mergedPayload[$key] = $streamedValue;
+
+                continue;
+            }
+
+            $mergedPayload[$key] = $value;
+        }
+
+        return $mergedPayload;
+    }
+
+    private static function isAssociativeArray(mixed $value): bool
+    {
+        return is_array($value) && ! array_is_list($value);
     }
 
     public function updateDataPayload(): void

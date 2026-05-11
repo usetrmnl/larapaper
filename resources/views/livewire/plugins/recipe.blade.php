@@ -1140,15 +1140,16 @@ HTML;
                         </div>
                     @elseif($data_strategy === 'webhook')
                         <div class="mb-4">
-                            <flux:input
-                                label="Webhook URL"
-                                descriptionTrailing="Send JSON payload with key <code>merge_variables</code> to the webhook URL. The payload will be merged with the plugin data."
-                                :value="route('api.custom_plugins.webhook', ['plugin' => $plugin->uuid])"
-                                class="block mt-1 w-full font-mono"
-                                readonly
-                                copyable
-                            >
-                            </flux:input>
+                            <flux:field>
+                                <flux:label>Webhook URL</flux:label>
+                                <flux:input
+                                    :value="route('api.custom_plugins.webhook', ['plugin' => $plugin->uuid])"
+                                    class="block mt-1 w-full font-mono"
+                                    readonly
+                                    copyable
+                                />
+                                <flux:description>POST JSON with <code>merge_variables</code> to replace data, or add <code>merge_strategy</code> of <code>deep_merge</code> or <code>stream</code>. GET the same URL to retrieve the latest stored <code>merge_variables</code>.</flux:description>
+                            </flux:field>
                         </div>
                     @elseif($data_strategy === 'static')
                         <flux:text class="mb-2">Enter static JSON data in the Data Payload field.</flux:text>

@@ -53,7 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | Public plugin endpoints (uuid-scoped route-model binding)
 |--------------------------------------------------------------------------
 */
-Route::post('/custom_plugins/{plugin:uuid}', PluginWebhookController::class)
+Route::match(['get', 'post'], '/custom_plugins/{plugin:uuid}', PluginWebhookController::class)
     ->name('api.custom_plugins.webhook');
 
 Route::post('/plugins/{plugin:uuid}/webhook', PluginActionController::class)
