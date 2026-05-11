@@ -26,6 +26,26 @@ test('webhook updates plugin data for webhook strategy', function (): void {
     ]);
 });
 
+test('webhook returns stored merge variables for webhook strategy', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => [
+            'text' => 'Latest payload',
+            'metrics' => ['temperature' => 42],
+        ],
+    ]);
+
+    $response = $this->getJson("/api/custom_plugins/{$plugin->uuid}");
+
+    $response->assertOk()
+        ->assertJson([
+            'merge_variables' => [
+                'text' => 'Latest payload',
+                'metrics' => ['temperature' => 42],
+            ],
+        ]);
+});
+
 test('webhook returns 400 for non-webhook strategy plugins', function (): void {
     // Create a plugin with non-webhook strategy
     $plugin = Plugin::factory()->create([
@@ -43,6 +63,85 @@ test('webhook returns 400 for non-webhook strategy plugins', function (): void {
         ->assertJson(['error' => 'Plugin does not use webhook strategy']);
 });
 
+test('webhook deep_merge updates nested payload keys without replacing siblings', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => [
+            'sensor' => [
+                'temperature' => 40,
+                'humidity' => 55,
+            ],
+            'status' => 'ok',
+        ],
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => [
+            'sensor' => ['temperature' => 42],
+        ],
+        'merge_strategy' => 'deep_merge',
+    ]);
+
+    $response->assertOk()
+        ->assertJson(['message' => 'Data updated successfully']);
+
+    expect($plugin->fresh()->data_payload)->toBe([
+        'sensor' => [
+            'temperature' => 42,
+            'humidity' => 55,
+        ],
+        'status' => 'ok',
+    ]);
+});
+
+test('webhook stream appends top level arrays and preserves other keys', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => [
+            'temperatures' => [38, 39],
+            'status' => 'ok',
+        ],
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => [
+            'temperatures' => [40, 42],
+            'status' => 'alert',
+        ],
+        'merge_strategy' => 'stream',
+    ]);
+
+    $response->assertOk();
+
+    expect($plugin->fresh()->data_payload)->toBe([
+        'temperatures' => [38, 39, 40, 42],
+        'status' => 'alert',
+    ]);
+});
+
+test('webhook stream_limit trims older streamed items', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => [
+            'temperatures' => [36, 37, 38],
+        ],
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => [
+            'temperatures' => [39, 40],
+        ],
+        'merge_strategy' => 'stream',
+        'stream_limit' => 4,
+    ]);
+
+    $response->assertOk();
+
+    expect($plugin->fresh()->data_payload)->toBe([
+        'temperatures' => [37, 38, 39, 40],
+    ]);
+});
+
 test('webhook returns 400 when merge_variables is missing', function (): void {
     // Create a plugin with webhook strategy
     $plugin = Plugin::factory()->create([
@@ -56,6 +155,35 @@ test('webhook returns 400 when merge_variables is missing', function (): void {
     // Assert response
     $response->assertStatus(400)
         ->assertJson(['error' => 'Request must contain merge_variables key']);
+});
+
+test('webhook returns 400 for invalid merge_strategy', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => ['new' => 'data'],
+        'merge_strategy' => 'append_forever',
+    ]);
+
+    $response->assertStatus(400)
+        ->assertJson(['error' => 'merge_strategy must be one of: deep_merge, stream']);
+});
+
+test('webhook returns 400 for invalid stream_limit', function (): void {
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => ['temperatures' => [42]],
+        'merge_strategy' => 'stream',
+        'stream_limit' => 0,
+    ]);
+
+    $response->assertStatus(400)
+        ->assertJson(['error' => 'stream_limit must be a positive integer']);
 });
 
 test('webhook returns 404 for non-existent plugin', function (): void {
@@ -87,4 +215,27 @@ test('webhook rejects merge_variables that exceed the wire size limit', function
         ->assertJson(Plugin::oversizedDataPayloadErrorPayload());
 
     expect($plugin->fresh()->data_payload)->toBe(['old' => 'data']);
+});
+
+test('webhook rejects merged payloads that exceed the wire size limit', function (): void {
+    config(['livewire.payload.max_size' => 768]);
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'webhook',
+        'data_payload' => ['temperatures' => [str_repeat('A', 240)]],
+    ]);
+
+    $response = $this->postJson("/api/custom_plugins/{$plugin->uuid}", [
+        'merge_variables' => [
+            'temperatures' => [str_repeat('B', 240)],
+        ],
+        'merge_strategy' => 'stream',
+    ]);
+
+    $response->assertStatus(413)
+        ->assertJson(Plugin::oversizedDataPayloadErrorPayload());
+
+    expect($plugin->fresh()->data_payload)->toBe([
+        'temperatures' => [str_repeat('A', 240)],
+    ]);
 });
