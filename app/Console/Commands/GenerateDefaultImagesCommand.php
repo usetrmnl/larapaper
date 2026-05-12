@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\DeviceModel;
-use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
-use Bnussbau\TrmnlPipeline\Stages\ImageStage;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\Stages\BrowserStage;
+use Bnussbau\EpaperPipeline\Stages\ImageStage;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -148,7 +148,7 @@ class GenerateDefaultImagesCommand extends Command
                 // ->offsetY($deviceModel->offset_y)
                 ->outputPath($outputPath);
 
-            (new TrmnlPipeline())->pipe($browserStage)
+            (new EpaperPipeline())->pipe($browserStage)
                 ->pipe($imageStage)
                 ->process();
 

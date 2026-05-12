@@ -6,7 +6,7 @@ use App\Enums\ImageFormat;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Services\ImageGenerationService;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -16,11 +16,11 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Storage::fake('public');
     Storage::disk('public')->makeDirectory('/images/generated');
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
 });
 
 afterEach(function (): void {
-    TrmnlPipeline::restore();
+    EpaperPipeline::restore();
 });
 
 it('plugins table has current_image_metadata column', function (): void {

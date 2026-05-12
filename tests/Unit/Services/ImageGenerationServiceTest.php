@@ -6,13 +6,13 @@ use App\Enums\ImageFormat;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Services\ImageGenerationService;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
 });
 
 it('get_image_settings returns device model settings when available', function (): void {

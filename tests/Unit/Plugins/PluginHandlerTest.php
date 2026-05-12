@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
 use App\Plugins\PluginHandler;
-use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
+use Bnussbau\EpaperPipeline\Stages\BrowserStage;
 use Illuminate\Http\Request;
 
 test('default produce throws runtime exception', function (): void {

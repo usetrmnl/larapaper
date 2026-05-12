@@ -8,7 +8,7 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
-use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
+use Bnussbau\EpaperPipeline\Stages\BrowserStage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;

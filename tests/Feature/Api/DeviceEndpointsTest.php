@@ -8,7 +8,7 @@ use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Models\User;
 use App\Services\ImageGenerationService;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -16,7 +16,7 @@ use Laravel\Sanctum\Sanctum;
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
     Storage::fake('public');
     Storage::disk('public')->makeDirectory('/images/generated');
 });
@@ -1118,7 +1118,7 @@ test('screens endpoint matches MAC address case-insensitively', function (): voi
 });
 
 test('display endpoint handles plugin rendering errors gracefully', function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
 
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
@@ -1173,12 +1173,12 @@ test('display endpoint handles plugin rendering errors gracefully', function ():
 
     // Verify the error image exists
     $errorImagePath = Storage::disk('public')->path("images/generated/{$device->current_screen_image}.png");
-    // The TrmnlPipeline is faked, so we just verify the UUID was set
+    // The EpaperPipeline is faked, so we just verify the UUID was set
     expect($device->current_screen_image)->toBeString();
 });
 
 test('display endpoint handles mashup rendering errors gracefully', function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
 
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
@@ -1246,7 +1246,7 @@ test('display endpoint handles mashup rendering errors gracefully', function ():
 });
 
 test('generateDefaultScreenImage creates error screen with plugin name', function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
     Storage::fake('public');
     Storage::disk('public')->makeDirectory('/images/generated');
 
@@ -1258,7 +1258,7 @@ test('generateDefaultScreenImage creates error screen with plugin name', functio
 
     // Verify the error image path would be created
     $errorPath = "images/generated/{$errorUuid}.png";
-    // Since TrmnlPipeline is faked, we just verify the UUID was generated
+    // Since EpaperPipeline is faked, we just verify the UUID was generated
     expect($errorUuid)->toBeString();
 });
 

@@ -4,7 +4,7 @@ namespace App\Plugins;
 
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
-use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
+use Bnussbau\EpaperPipeline\Stages\BrowserStage;
 use RuntimeException;
 
 /**

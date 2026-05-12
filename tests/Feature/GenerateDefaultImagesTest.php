@@ -3,11 +3,11 @@
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Services\ImageGenerationService;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
     Storage::fake('public');
 
     Storage::disk('public')->makeDirectory('/images/default-screens');

@@ -7,9 +7,9 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
-use Bnussbau\TrmnlPipeline\Stages\BrowserStage;
-use Bnussbau\TrmnlPipeline\Stages\ImageStage;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\Stages\BrowserStage;
+use Bnussbau\EpaperPipeline\Stages\ImageStage;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -142,7 +142,7 @@ class ImageGenerationService
             }
 
             try {
-                (new TrmnlPipeline)->pipe($browserStage)
+                (new EpaperPipeline())->pipe($browserStage)
                     ->pipe($imageStage)
                     ->process();
 
@@ -564,7 +564,7 @@ class ImageGenerationService
             }
 
             try {
-                (new TrmnlPipeline())->pipe($browserStage)
+                (new EpaperPipeline())->pipe($browserStage)
                     ->pipe($imageStage)
                     ->process();
 

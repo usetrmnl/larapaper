@@ -1,13 +1,13 @@
 <?php
 
 use App\Models\Device;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Support\Facades\Storage;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
     Storage::fake('public');
 });
 

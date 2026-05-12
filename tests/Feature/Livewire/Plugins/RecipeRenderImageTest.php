@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Models\User;
-use Bnussbau\TrmnlPipeline\TrmnlPipeline;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -13,7 +13,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    TrmnlPipeline::fake();
+    EpaperPipeline::fake();
 });
 
 test('render image generates image and dispatches event', function (): void {
