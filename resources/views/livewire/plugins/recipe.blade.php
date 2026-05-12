@@ -1148,7 +1148,7 @@ HTML;
                                     readonly
                                     copyable
                                 />
-                                <flux:description>POST JSON with <code>merge_variables</code> to replace data, or add <code>merge_strategy</code> of <code>deep_merge</code> or <code>stream</code>. GET the same URL to retrieve the latest stored <code>merge_variables</code>.</flux:description>
+                                <flux:description>POST JSON with <code>merge_variables</code> to replace data, or add <code>merge_strategy</code> of <code>deep_merge</code> or <code>stream</code>. GET the same URL to retrieve the latest stored <code>merge_variables</code>. <a href="https://docs.trmnl.com/go/private-plugins/webhooks#update-existing-content" target="_blank">Docs</a></flux:description>
                             </flux:field>
                         </div>
                     @elseif($data_strategy === 'static')
