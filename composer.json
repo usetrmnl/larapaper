@@ -10,17 +10,6 @@
         "laravel"
     ],
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/laravel-shift/sidecar.git",
-            "options": {
-                "versions": {
-                    "hammerstone/sidecar": "dev-l13-compatibility"
-                }
-            }
-        }
-    ],
     "require": {
         "php": "^8.4",
         "ext-imagick": "*",
@@ -28,12 +17,12 @@
         "ext-zip": "*",
         "bnussbau/laravel-trmnl-blade": "^2.3",
         "bnussbau/epaper-pipeline-php": "^1.0",
-        "keepsuit/laravel-liquid": "^0.6",
+        "keepsuit/laravel-liquid": "^0.5.2",
         "laravel/fortify": "^1.30",
-        "laravel/framework": "^13.0",
+        "laravel/framework": "^12.1",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.23",
-        "laravel/tinker": "^3.0",
+        "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.0",
         "livewire/flux": "^2.0",
         "livewire/livewire": "^4.0",
@@ -43,7 +32,6 @@
         "spatie/laravel-settings": "^3.6",
         "stevebauman/purify": "^6.3",
         "symfony/yaml": "^7.3",
-        "hammerstone/sidecar": "dev-l13-compatibility as 0.8.0",
         "wnx/sidecar-browsershot": "^2.6"
     },
     "require-dev": {
