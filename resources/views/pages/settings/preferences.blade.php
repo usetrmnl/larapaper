@@ -1,5 +1,6 @@
 <?php
 
+use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -35,7 +36,7 @@ new class extends Component
 
         Auth::user()->update($validated);
 
-        $this->dispatch('profile-updated');
+        Flux::toast(variant: 'success', text: __('Saved.'));
     }
 }; ?>
 
@@ -63,13 +64,7 @@ new class extends Component
                 </flux:select>
 
                 <div class="flex items-center gap-4">
-                    <div class="flex items-center justify-end">
-                        <flux:button variant="primary" type="submit" class="w-full">{{ __('Save') }}</flux:button>
-                    </div>
-
-                    <x-action-message class="me-3" on="profile-updated">
-                        {{ __('Saved.') }}
-                    </x-action-message>
+                    <flux:button variant="primary" type="submit">{{ __('Save') }}</flux:button>
                 </div>
             </form>
 

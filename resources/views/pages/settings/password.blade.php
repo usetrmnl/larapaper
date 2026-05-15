@@ -1,8 +1,8 @@
 <?php
 
 use App\Concerns\PasswordValidationRules;
+use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -38,7 +38,7 @@ new class extends Component
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        $this->dispatch('password-updated');
+        Flux::toast(variant: 'success', text: __('Saved.'));
     }
 }; ?>
 
@@ -56,6 +56,7 @@ new class extends Component
                     type="password"
                     required
                     autocomplete="current-password"
+                    viewable
                 />
                 <flux:input
                     wire:model="password"
@@ -63,6 +64,7 @@ new class extends Component
                     type="password"
                     required
                     autocomplete="new-password"
+                    viewable
                 />
                 <flux:input
                     wire:model="password_confirmation"
@@ -70,18 +72,13 @@ new class extends Component
                     type="password"
                     required
                     autocomplete="new-password"
+                    viewable
                 />
 
                 <div class="flex items-center gap-4">
-                    <div class="flex items-center justify-end">
-                        <flux:button variant="primary" type="submit" class="w-full" data-test="update-password-button">
-                            {{ __('Save') }}
-                        </flux:button>
-                    </div>
-
-                    <x-action-message class="me-3" on="password-updated">
-                        {{ __('Saved.') }}
-                    </x-action-message>
+                    <flux:button variant="primary" type="submit" data-test="update-password-button">
+                        {{ __('Save') }}
+                    </flux:button>
                 </div>
             </form>
             @if (Laravel\Fortify\Features::canManageTwoFactorAuthentication() && auth()?->user()?->oidc_sub === null)

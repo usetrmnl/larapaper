@@ -5,6 +5,7 @@ use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
@@ -152,7 +153,8 @@ new class extends Component
     /**
      * Get the current modal configuration state.
      */
-    public function getModalConfigProperty(): array
+    #[Computed]
+    public function modalConfig(): array
     {
         if ($this->twoFactorEnabled) {
             return [
@@ -267,7 +269,11 @@ new class extends Component
 
             @if ($showVerificationStep)
                 <div class="space-y-6">
-                    <div class="flex flex-col items-center space-y-3 justify-center">
+                    <div
+                        class="flex flex-col items-center space-y-3 justify-center"
+                        x-data
+                        x-init="$nextTick(() => $el.querySelector('input')?.focus())"
+                    >
                         <flux:otp
                             name="code"
                             wire:model="code"
