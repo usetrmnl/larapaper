@@ -87,7 +87,7 @@ Laravel Forge, or bare metal PHP server with Nginx or Apache is also supported.
 
 #### Requirements
 
-* PHP >= 8.2
+* PHP >= 8.4
 * ext-imagick
 * puppeteer [see Browsershot docs](https://spatie.be/docs/browsershot/v4/requirements)
 
@@ -226,7 +226,7 @@ You can dynamically update screens by sending a POST request.
 
 ### Releated Work
 * [bnussbau/laravel-trmnl-blade](https://github.com/bnussbau/laravel-trmnl-blade) – Blade Components on top of the TRMNL Design System
-* [bnussbau/trmnl-pipeline-php](https://github.com/bnussbau/trmnl-pipeline-php) – Browser Rendering and Image Conversion Pipeline with support for TRMNL Models API
+* [bnussbau/epaper-pipeline-php](https://github.com/bnussbau/epaper-pipeline-php) – Browser Rendering and Image Conversion Pipeline with support for TRMNL Models API
 * [bnussbau/trmnl-recipe-catalog](https://github.com/bnussbau/trmnl-recipe-catalog) – A community-driven catalog of public repositories containing trmnlp-compatible recipes.
 
 
