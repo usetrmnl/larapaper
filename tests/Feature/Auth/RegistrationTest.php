@@ -1,6 +1,12 @@
 <?php
 
+use Laravel\Fortify\Features;
+
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $this->skipUnlessFortifyHas(Features::registration());
+});
 
 test('registration screen can be rendered', function (): void {
     $response = $this->get(route('register'));

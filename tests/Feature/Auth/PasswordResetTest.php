@@ -3,13 +3,18 @@
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Fortify\Features;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
-test('reset password link screen can be rendered', function (): void {
-    $response = $this->get('/forgot-password');
+beforeEach(function (): void {
+    $this->skipUnlessFortifyHas(Features::resetPasswords());
+});
 
-    $response->assertStatus(200);
+test('reset password link screen can be rendered', function (): void {
+    $response = $this->get(route('password.request'));
+
+    $response->assertOk();
 });
 
 test('reset password link can be requested', function (): void {
