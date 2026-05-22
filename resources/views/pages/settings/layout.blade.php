@@ -4,11 +4,11 @@
             <flux:navlist.item :href="route('settings.preferences')" wire:navigate>{{ __('Preferences') }}</flux:navlist.item>
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
             <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('Profile') }}</flux:navlist.item>
-            @if(auth()?->user()?->oidc_sub === null)
-                <flux:navlist.item :href="route('user-password.edit')" wire:navigate>{{ __('Password') }}</flux:navlist.item>
+            @if (auth()?->user()?->oidc_sub === null)
+                <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support') }}</flux:navlist.item>
-            @if(config('app.version'))
+            @if (config('app.version'))
                 <flux:navlist.item :href="route('settings.update')" wire:navigate>{{ __('Updates') }}</flux:navlist.item>
             @endif
         </flux:navlist>

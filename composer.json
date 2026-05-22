@@ -29,7 +29,7 @@
         "bnussbau/laravel-trmnl-blade": "^2.3",
         "bnussbau/epaper-pipeline-php": "^1.0",
         "keepsuit/laravel-liquid": "^0.6",
-        "laravel/fortify": "^1.30",
+        "laravel/fortify": "^1.37",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.23",
