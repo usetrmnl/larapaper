@@ -9,6 +9,29 @@ test('login screen can be rendered', function (): void {
     $response = $this->get('/login');
 
     $response->assertOk();
+    $response->assertDontSee('Sign in with a passkey');
+});
+
+test('login screen shows passkey sign-in when passkeys are enabled', function (): void {
+    config(['app.passkeys.enabled' => true]);
+
+    Features::passkeys([
+        'confirmPassword' => true,
+    ]);
+
+    $features = array_values(array_filter(config('fortify.features', [])));
+    $passkeysFeature = Features::passkeys();
+    if (! in_array($passkeysFeature, $features, true)) {
+        $features[] = $passkeysFeature;
+    }
+    config(['fortify.features' => $features]);
+
+    $this->skipUnlessFortifyHas(Features::passkeys());
+
+    $response = $this->get('/login');
+
+    $response->assertOk();
+    $response->assertSee('Sign in with a passkey');
 });
 
 test('users can authenticate using the login screen', function (): void {

@@ -155,7 +155,7 @@ return [
             'confirmPassword' => true,
             // 'window' => 0,
         ]),
-        Features::passkeys([
+        config('app.passkeys.enabled') && Features::passkeys([
             'confirmPassword' => true,
         ]),
     ],

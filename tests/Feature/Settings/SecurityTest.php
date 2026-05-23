@@ -10,6 +10,8 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function (): void {
     $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
 
+    config(['app.passkeys.enabled' => true]);
+
     Features::twoFactorAuthentication([
         'confirm' => true,
         'confirmPassword' => true,
@@ -18,6 +20,13 @@ beforeEach(function (): void {
     Features::passkeys([
         'confirmPassword' => true,
     ]);
+
+    $features = array_values(array_filter(config('fortify.features', [])));
+    $passkeysFeature = Features::passkeys();
+    if (! in_array($passkeysFeature, $features, true)) {
+        $features[] = $passkeysFeature;
+    }
+    config(['fortify.features' => $features]);
 });
 
 test('security settings page can be rendered', function (): void {

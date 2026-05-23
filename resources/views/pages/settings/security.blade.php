@@ -56,7 +56,7 @@ new #[Title('Security settings')] class extends Component {
             $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
         }
 
-        $this->canManagePasskeys = Features::canManagePasskeys();
+        $this->canManagePasskeys = config('app.passkeys.enabled') && Features::canManagePasskeys();
 
         if ($this->canManagePasskeys) {
             $this->loadPasskeys();

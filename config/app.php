@@ -127,6 +127,21 @@ return [
         'enabled' => env('REGISTRATION_ENABLED', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Passkeys (PASSKEYS_ENABLED)
+    |--------------------------------------------------------------------------
+    |
+    | When false, passkey UI is hidden and Fortify does not register passkey
+    | routes. Defined here (not in a dedicated file) so the value is available
+    | before config/fortify.php is loaded.
+    |
+    */
+
+    'passkeys' => [
+        'enabled' => filter_var(env('PASSKEYS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
     'pixel_logo_enabled' => env('PIXELLOGO_ENABLED', true),
 
     'force_https' => env('FORCE_HTTPS', false),
