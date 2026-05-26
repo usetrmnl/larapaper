@@ -120,17 +120,13 @@ php artisan db:seed --class=ExampleRecipesSeeder
 | `TRMNL_PROXY_BASE_URL`        | Base URL of the native TRMNL service                                                                                                        | https://trmnl.app |
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often should the server fetch new images from native service                                                                            | 15                |
 | `REGISTRATION_ENABLED`        | Allow user registration via Webinterface                                                                                                    | 1                 |
+| `PASSKEYS_ENABLED`            | Enable Passkeys for login (requires HTTPS)                                                                                                  | 0                 |
 | `SSL_MODE`                    | SSL Mode, if not using a Reverse Proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off`             |
 | `FORCE_HTTPS`                 | If your server handles SSL termination, enforce HTTPS. Alternative: `TRUSTED_PROXIES`.                                                      | 0                 |
 | `TRUSTED_PROXIES`             | If your server handles SSL termination, allow mixed mode. e.g. `"172.0.0.0/8"` or `*`                                                       | null              |
 | `PHP_OPCACHE_ENABLE`          | Enable PHP Opcache                                                                                                                          | 0                 |
 | `TRMNL_IMAGE_URL_TIMEOUT`     | How long TRMNL waits for a response on the display endpoint. (sec)                                                                          | 30                |
 | `APP_TIMEZONE`                | Default timezone, which will be used by the PHP date functions. UTC is recommended.                                                         | UTC               |
-
-##### Experimental Environment Variables
-| Environment Variable             | Description                                                                    | Default |
-|----------------------------------|--------------------------------------------------------------------------------|---------|
-| `PUPPETEER_WINDOW_SIZE_STRATEGY` | Set to `v2` to size the browser window to match the device’s screen dimensions | `null`  |
 
 #### Login
 
@@ -225,8 +221,8 @@ You can dynamically update screens by sending a POST request.
 ```
 
 ### Releated Work
-* [bnussbau/laravel-trmnl-blade](https://github.com/bnussbau/laravel-trmnl-blade) – Blade Components on top of the TRMNL Design System
 * [bnussbau/epaper-pipeline-php](https://github.com/bnussbau/epaper-pipeline-php) – Browser Rendering and Image Conversion Pipeline with support for TRMNL Models API
+* [bnussbau/laravel-trmnl-blade](https://github.com/bnussbau/laravel-trmnl-blade) – Blade Components on top of the TRMNL Design System
 * [bnussbau/trmnl-recipe-catalog](https://github.com/bnussbau/trmnl-recipe-catalog) – A community-driven catalog of public repositories containing trmnlp-compatible recipes.
 
 
