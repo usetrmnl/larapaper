@@ -3,12 +3,14 @@
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
+use App\Services\PluginExportService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Keepsuit\Liquid\Exceptions\LiquidException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 new class extends Component
 {
@@ -638,6 +640,13 @@ HTML;
         $this->redirect(route('plugins.recipe', ['plugin' => $newPlugin]));
     }
 
+    public function exportPluginArchive(PluginExportService $exporter): BinaryFileResponse
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        return $exporter->exportToZip($this->plugin, auth()->user());
+    }
+
     public function deletePlugin(): void
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
@@ -733,6 +742,8 @@ HTML;
                         <flux:modal.trigger name="delete-plugin">
                             <flux:menu.item icon="trash" variant="danger">Delete Plugin</flux:menu.item>
                         </flux:modal.trigger>
+                        <flux:menu.separator />
+                        <flux:menu.item icon="archive-box" wire:click="exportPluginArchive">Export Recipe Archive</flux:menu.item>
                     </flux:menu>
                 </flux:dropdown>
             </flux:button.group>
