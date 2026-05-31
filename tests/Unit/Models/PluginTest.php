@@ -769,6 +769,37 @@ test('plugin render applies user timezone offset when using date filter with num
     Carbon::setTestNow();
 });
 
+test('plugin liquid render keeps UTC epoch math after iCal polling mutates PHP default timezone', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-05-26 12:00:00', 'UTC'));
+
+    config(['app.timezone' => 'UTC', 'services.trmnl.liquid_enabled' => false]);
+
+    $user = User::factory()->create([
+        'timezone' => 'Europe/Berlin',
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'liquid',
+        'data_strategy' => 'static',
+        'data_payload' => [
+            'IDX_0' => [
+                'ical' => [
+                    ['DTSTART' => '2026-05-26T00:00:00-06:00'],
+                    ['DTSTART' => '2026-05-26T02:00:00-04:00'],
+                ],
+            ],
+        ],
+        'render_markup' => '{% for event in IDX_0.ical limit:1 %}{{ event.DTSTART | date: "%s" | plus: trmnl.user.utc_offset | date: "%d.%m %H:%M" }}{% endfor %}',
+    ]);
+
+    $rendered = mb_trim($plugin->render('full', false));
+
+    expect($rendered)->toBe('26.05 08:00');
+
+    Carbon::setTestNow();
+});
+
 /**
  * Plugin security: XSS Payload Dataset
  * [Input, Expected Result, Forbidden String]

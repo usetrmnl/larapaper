@@ -322,3 +322,30 @@ ICS;
 
     Carbon::setTestNow();
 });
+
+test('IcalResponseParser restores PHP default timezone after parsing recurring events', function (): void {
+    $calendarWithRecurring = <<<'ICS'
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Recurring//EN
+BEGIN:VEVENT
+UID:recurring-tz-leak@example.com
+DTSTAMP:20260529T181959Z
+SUMMARY:Weekly
+DTSTART;TZID=America/Denver:20260613T000000
+DTEND;TZID=America/Denver:20260614T000000
+RRULE:FREQ=WEEKLY;INTERVAL=4;BYDAY=SA
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR
+ICS;
+
+    Carbon::setTestNow(Carbon::parse('2026-05-28 00:00:00', 'UTC'));
+
+    $parser = new IcalResponseParser;
+    $parser->parse(new Response(new GuzzleHttp\Psr7\Response(200, ['Content-Type' => 'text/calendar'], $calendarWithRecurring)));
+
+    expect(date_default_timezone_get())->toBe('UTC');
+
+    Carbon::setTestNow();
+});
