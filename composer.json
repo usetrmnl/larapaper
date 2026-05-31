@@ -10,17 +10,7 @@
         "laravel"
     ],
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/bnussbau/sidecar.git",
-            "options": {
-                "versions": {
-                    "hammerstone/sidecar": "0.8.0"
-                }
-            }
-        }
-    ],
+    "repositories": [],
     "require": {
         "php": "^8.4",
         "ext-imagick": "*",

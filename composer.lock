@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "59223d1b56df726d5a22813f9393f99f",
+    "content-hash": "9ffedeb7f723be3a089a6c97a03a2c97",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1640,16 +1640,16 @@
         },
         {
             "name": "hammerstone/sidecar",
-            "version": "0.8.0",
+            "version": "v0.8.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/bnussbau/sidecar.git",
-                "reference": "0c40d970cd57b56895a8dd461882c3d8ad13e1fe"
+                "url": "https://github.com/aarondfrancis/sidecar.git",
+                "reference": "36a415bdcb71cad5f80876bbe491c5ec827065b5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bnussbau/sidecar/zipball/0c40d970cd57b56895a8dd461882c3d8ad13e1fe",
-                "reference": "0c40d970cd57b56895a8dd461882c3d8ad13e1fe",
+                "url": "https://api.github.com/repos/aarondfrancis/sidecar/zipball/36a415bdcb71cad5f80876bbe491c5ec827065b5",
+                "reference": "36a415bdcb71cad5f80876bbe491c5ec827065b5",
                 "shasum": ""
             },
             "require": {
@@ -1679,11 +1679,7 @@
                     "Hammerstone\\Sidecar\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Hammerstone\\Sidecar\\Tests\\": "tests/"
-                }
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -1695,9 +1691,10 @@
             ],
             "description": "A Laravel package to deploy Lambda functions alongside your main application.",
             "support": {
-                "source": "https://github.com/bnussbau/sidecar/tree/0.8.0"
+                "issues": "https://github.com/aarondfrancis/sidecar/issues",
+                "source": "https://github.com/aarondfrancis/sidecar/tree/v0.8.0"
             },
-            "time": "2026-02-24T15:13:48+00:00"
+            "time": "2026-05-31T07:20:41+00:00"
         },
         {
             "name": "keepsuit/laravel-liquid",
