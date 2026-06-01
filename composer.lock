@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9ffedeb7f723be3a089a6c97a03a2c97",
+    "content-hash": "fda5dab33487640c88c36fb6686686a7",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -4056,16 +4056,16 @@
         },
         {
             "name": "om/icalparser",
-            "version": "v4.1.1",
+            "version": "v4.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/OzzyCzech/icalparser.git",
-                "reference": "8c7bd202c52d9baf2f83c088ae090d3b9127b19e"
+                "reference": "a78f0421c5ae0ec234c3d5f52a6bdbaaa9551fa2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/OzzyCzech/icalparser/zipball/8c7bd202c52d9baf2f83c088ae090d3b9127b19e",
-                "reference": "8c7bd202c52d9baf2f83c088ae090d3b9127b19e",
+                "url": "https://api.github.com/repos/OzzyCzech/icalparser/zipball/a78f0421c5ae0ec234c3d5f52a6bdbaaa9551fa2",
+                "reference": "a78f0421c5ae0ec234c3d5f52a6bdbaaa9551fa2",
                 "shasum": ""
             },
             "require": {
@@ -4101,9 +4101,9 @@
             ],
             "support": {
                 "issues": "https://github.com/OzzyCzech/icalparser/issues",
-                "source": "https://github.com/OzzyCzech/icalparser/tree/v4.1.1"
+                "source": "https://github.com/OzzyCzech/icalparser/tree/v4.1.2"
             },
-            "time": "2026-03-27T06:33:20+00:00"
+            "time": "2026-06-01T06:15:09+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",

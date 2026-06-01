@@ -27,7 +27,7 @@
         "league/flysystem-aws-s3-v3": "^3.0",
         "livewire/flux": "^2.13.1",
         "livewire/livewire": "^4.0",
-        "om/icalparser": "^4.0",
+        "om/icalparser": "^4.1.2",
         "spatie/browsershot": "^5.0",
         "spatie/temporary-directory": "^2.3",
         "spatie/laravel-settings": "^3.6",

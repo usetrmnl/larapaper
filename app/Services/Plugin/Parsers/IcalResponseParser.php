@@ -24,8 +24,6 @@ class IcalResponseParser implements ResponseParser
             return null;
         }
 
-        $previousDefaultTimezone = date_default_timezone_get();
-
         try {
             // Workaround for om/icalparser v4.0.0 bug where it fails if ORGANIZER or ATTENDEE has no parameters.
             // When ORGANIZER or ATTENDEE has no parameters (no semicolon after the key),
@@ -58,9 +56,6 @@ class IcalResponseParser implements ResponseParser
             Log::warning('Failed to parse iCal response: '.$exception->getMessage());
 
             return ['error' => 'Failed to parse iCal response'];
-        } finally {
-            // om\IcalParser mutates PHP's default timezone while expanding recurring events.
-            date_default_timezone_set($previousDefaultTimezone);
         }
     }
 
