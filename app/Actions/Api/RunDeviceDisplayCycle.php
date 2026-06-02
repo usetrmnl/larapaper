@@ -4,6 +4,7 @@ namespace App\Actions\Api;
 
 use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
+use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
 use App\Services\DeviceImageResolver;
@@ -72,34 +73,68 @@ class RunDeviceDisplayCycle
             return null;
         }
 
-        $refreshTimeOverride = $playlistItem->playlist()->first()->refresh_time;
+        $playlist = $playlistItem->playlist;
+        $refreshTimeOverride = $playlist?->refresh_time;
 
-        if (! $playlistItem->isMashup()) {
-            $this->renderSinglePlugin($device, $playlistItem);
-        } else {
-            $this->renderMashup($device, $playlistItem);
+        if (! $playlist) {
+            return null;
+        }
+
+        foreach ($playlist->getCycleItemsStartingFrom($playlistItem) as $candidate) {
+            if ($candidate->isMashup()) {
+                $this->renderMashup($device, $candidate);
+
+                return $refreshTimeOverride;
+            }
+
+            if ($this->renderSinglePlugin($device, $candidate)) {
+                return $refreshTimeOverride;
+            }
         }
 
         return $refreshTimeOverride;
     }
 
-    private function renderSinglePlugin(Device $device, $playlistItem): void
+    private function renderSinglePlugin(Device $device, PlaylistItem $playlistItem): bool
     {
         $plugin = $playlistItem->plugin;
 
         ImageGenerationService::resetIfNotCacheable($plugin, $device);
         $plugin->refresh();
 
-        if ($plugin->isDataStale() || $plugin->current_image === null) {
+        $isDataStale = $plugin->isDataStale();
+
+        if (! $isDataStale && $this->shouldSkipFromPayload($plugin)) {
+            return false;
+        }
+
+        if ($isDataStale) {
             $plugin->updateDataPayload();
+            $plugin->refresh();
+        }
+
+        if ($this->shouldSkipFromPayload($plugin)) {
+            return false;
+        }
+
+        $needsRender = $isDataStale || $plugin->current_image === null;
+
+        if ($needsRender) {
             try {
                 $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
                 $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
+
+                if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
+                    return false;
+                }
+
                 GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup);
             } catch (Exception $e) {
                 Log::error("Failed to render plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
                 $errorImageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'error', $plugin->name);
                 $device->update(['current_screen_image' => $errorImageUuid]);
+
+                return true;
             }
         }
 
@@ -108,7 +143,11 @@ class RunDeviceDisplayCycle
         if ($plugin->current_image !== null) {
             $playlistItem->update(['last_displayed_at' => now()]);
             $device->update(['current_screen_image' => $plugin->current_image]);
+
+            return true;
         }
+
+        return true;
     }
 
     private function renderMashup(Device $device, $playlistItem): void
@@ -137,6 +176,20 @@ class RunDeviceDisplayCycle
         if ($device->current_screen_image !== null) {
             $playlistItem->update(['last_displayed_at' => now()]);
         }
+    }
+
+    private function shouldSkipFromPayload(Plugin $plugin): bool
+    {
+        return is_array($plugin->data_payload)
+            && ($plugin->data_payload['TRMNL_SKIP_DISPLAY'] ?? false) === true;
+    }
+
+    private function shouldSkipFromMarkup(string $markup): bool
+    {
+        return preg_match(
+            '/<script\b[^>]*>.*?window\.TRMNL_SKIP_DISPLAY\s*=\s*true\b.*?<\/script>/is',
+            $markup
+        ) === 1;
     }
 
     /**

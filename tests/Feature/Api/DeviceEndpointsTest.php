@@ -9,6 +9,7 @@ use App\Models\Plugin;
 use App\Models\User;
 use App\Services\ImageGenerationService;
 use Bnussbau\EpaperPipeline\EpaperPipeline;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -719,6 +720,370 @@ test('plugins in playlist are rendered in order', function (): void {
     $thirdResponse->assertOk();
     expect($thirdResponse['filename'])
         ->not->toBe($secondResponse['filename']);
+});
+
+test('display endpoint keeps current screen when all active playlist items are skipped', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '55:11:22:33:44:77',
+        'api_key' => 'all-skip-api-key',
+        'proxy_cloud' => false,
+        'current_screen_image' => 'stable-screen',
+    ]);
+
+    $imageMetadata = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $firstSkipPlugin = Plugin::factory()->create([
+        'name' => 'First Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['TRMNL_SKIP_DISPLAY' => true],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'first-skip-image',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    $secondSkipPlugin = Plugin::factory()->create([
+        'name' => 'Second Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['TRMNL_SKIP_DISPLAY' => true],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'second-skip-image',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    Storage::disk('public')->put('images/generated/stable-screen.bmp', 'stable');
+
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'All Skip Test',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $firstSkippedItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $firstSkipPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $secondSkippedItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $secondSkipPlugin->id,
+        'order' => 2,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $response = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $response->assertOk();
+
+    expect($response['filename'])->toBe('stable-screen.bmp')
+        ->and($firstSkippedItem->fresh()->last_displayed_at)->toBeNull()
+        ->and($secondSkippedItem->fresh()->last_displayed_at)->toBeNull();
+});
+
+test('display endpoint skips playlist items when rendered markup requests TRMNL skip', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '55:11:22:33:44:99',
+        'api_key' => 'markup-skip-api-key',
+        'proxy_cloud' => false,
+    ]);
+
+    $imageMetadata = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $skipPlugin = Plugin::factory()->create([
+        'name' => 'Markup Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Skip me'],
+        'data_payload_updated_at' => now(),
+        'current_image' => null,
+        'markup_language' => 'blade',
+        'render_markup' => <<<'BLADE'
+<div>Hidden</div>
+<script>
+window.TRMNL_SKIP_DISPLAY = true;
+</script>
+BLADE,
+    ]);
+
+    $nextPlugin = Plugin::factory()->create([
+        'name' => 'Next Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Visible item'],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'next-markup-plugin-image',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    Storage::disk('public')->put('images/generated/next-markup-plugin-image.bmp', 'next');
+
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Markup Skip Test',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $skippedItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $skipPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $nextPlugin->id,
+        'order' => 2,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $response = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $response->assertOk();
+
+    expect($response['filename'])->toBe('next-markup-plugin-image.bmp')
+        ->and($skippedItem->fresh()->last_displayed_at)->toBeNull();
+});
+
+test('display endpoint continues normal playlist rotation after skipping an item', function (): void {
+    Http::fake([
+        'https://example.com/rotation-skip' => Http::response([
+            'TRMNL_SKIP_DISPLAY' => true,
+        ], 200),
+    ]);
+
+    $device = Device::factory()->create([
+        'mac_address' => '55:11:22:33:44:88',
+        'api_key' => 'skip-rotation-api-key',
+        'proxy_cloud' => false,
+    ]);
+
+    $imageMetadata = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $skipPlugin = Plugin::factory()->create([
+        'name' => 'Rotation Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://example.com/rotation-skip',
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'render_markup_view' => 'trmnl',
+        'data_payload_updated_at' => null,
+        'current_image' => null,
+    ]);
+
+    $secondPlugin = Plugin::factory()->create([
+        'name' => 'Second Visible Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Visible item B'],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'rotation-visible-b',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    $thirdPlugin = Plugin::factory()->create([
+        'name' => 'Third Visible Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Visible item C'],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'rotation-visible-c',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    Storage::disk('public')->put('images/generated/rotation-visible-b.bmp', 'visible-b');
+    Storage::disk('public')->put('images/generated/rotation-visible-c.bmp', 'visible-c');
+
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Skip Rotation Test',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $skippedItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $skipPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $secondVisibleItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $secondPlugin->id,
+        'order' => 2,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $thirdVisibleItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $thirdPlugin->id,
+        'order' => 3,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $firstResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $firstResponse->assertOk();
+    expect($firstResponse['filename'])->toBe('rotation-visible-b.bmp')
+        ->and($skippedItem->fresh()->last_displayed_at)->toBeNull()
+        ->and($secondVisibleItem->fresh()->last_displayed_at)->not->toBeNull()
+        ->and($thirdVisibleItem->fresh()->last_displayed_at)->toBeNull();
+
+    $this->travel(1)->seconds();
+
+    $secondResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $secondResponse->assertOk();
+    expect($secondResponse['filename'])->toBe('rotation-visible-c.bmp')
+        ->and($skippedItem->fresh()->last_displayed_at)->toBeNull()
+        ->and($secondVisibleItem->fresh()->last_displayed_at)->not->toBeNull()
+        ->and($thirdVisibleItem->fresh()->last_displayed_at)->not->toBeNull();
+});
+
+test('display endpoint does not re-poll fresh skip payloads on later rotation passes', function (): void {
+    Http::fake([
+        'https://example.com/fresh-skip' => Http::response([
+            'TRMNL_SKIP_DISPLAY' => true,
+        ], 200),
+    ]);
+
+    $device = Device::factory()->create([
+        'mac_address' => '55:11:22:33:44:89',
+        'api_key' => 'fresh-skip-api-key',
+        'proxy_cloud' => false,
+    ]);
+
+    $imageMetadata = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $skipPlugin = Plugin::factory()->create([
+        'name' => 'Fresh Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://example.com/fresh-skip',
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload_updated_at' => null,
+        'current_image' => null,
+    ]);
+
+    $visiblePlugin = Plugin::factory()->create([
+        'name' => 'Visible After Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Visible item'],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'visible-after-skip-image',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    Storage::disk('public')->put('images/generated/visible-after-skip-image.bmp', 'visible-after-skip');
+
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Fresh Skip Polling Test',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $skipPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $visiblePlugin->id,
+        'order' => 2,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $firstResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $firstResponse->assertOk();
+    expect($firstResponse['filename'])->toBe('visible-after-skip-image.bmp');
+
+    $this->travel(1)->seconds();
+
+    $secondResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $secondResponse->assertOk();
+    expect($secondResponse['filename'])->toBe('visible-after-skip-image.bmp');
+
+    Http::assertSentCount(1);
 });
 
 test('display endpoint updates last_refreshed_at timestamp', function (): void {
