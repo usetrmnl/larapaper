@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Playlist extends Model
 {
@@ -93,12 +94,8 @@ class Playlist extends Model
             return null;
         }
 
-        // Get active playlist items ordered by display order
-        /** @var \Illuminate\Support\Collection|PlaylistItem[] $playlistItems */
-        $playlistItems = $this->items()
-            ->where('is_active', true)
-            ->orderBy('order')
-            ->get();
+        /** @var Collection<int, PlaylistItem> $playlistItems */
+        $playlistItems = $this->getActiveItems();
 
         if ($playlistItems->isEmpty()) {
             return null;
@@ -126,5 +123,47 @@ class Playlist extends Model
         }
 
         return $nextItem;
+    }
+
+    /**
+     * @return Collection<int, PlaylistItem>
+     */
+    public function getActiveItems(): Collection
+    {
+        return $this->items()
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, PlaylistItem>
+     */
+    public function getCycleItemsStartingFrom(?PlaylistItem $startingItem = null): Collection
+    {
+        $playlistItems = $this->getActiveItems();
+
+        if ($playlistItems->isEmpty()) {
+            return collect();
+        }
+
+        $startingItem ??= $this->getNextPlaylistItem();
+
+        if (! $startingItem) {
+            return collect();
+        }
+
+        $startingIndex = $playlistItems->search(
+            fn (PlaylistItem $playlistItem): bool => $playlistItem->id === $startingItem->id
+        );
+
+        if ($startingIndex === false) {
+            return $playlistItems->values();
+        }
+
+        return $playlistItems
+            ->slice($startingIndex)
+            ->concat($playlistItems->take($startingIndex))
+            ->values();
     }
 }
