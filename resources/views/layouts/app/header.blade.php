@@ -70,6 +70,7 @@
             <flux:menu.radio.group>
                 <flux:menu.item href="{{ route('settings.preferences') }}" wire:navigate icon="cog">Settings</flux:menu.item>
                 <flux:menu.item href="{{ route('settings.support') }}" wire:navigate icon="heart">Support</flux:menu.item>
+                <flux:menu.item href="{{ route('settings.lab') }}" wire:navigate icon="beaker">Lab</flux:menu.item>
                 @if(config('app.version'))
                     <flux:menu.item href="{{ route('settings.update') }}" wire:navigate icon="arrow-down-circle">
                         <div class="flex items-center gap-2">

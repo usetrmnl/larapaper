@@ -8,6 +8,7 @@
                 <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('settings.lab')" wire:navigate>{{ __('Lab') }}</flux:navlist.item>
             @if (config('app.version'))
                 <flux:navlist.item :href="route('settings.update')" wire:navigate>{{ __('Updates') }}</flux:navlist.item>
             @endif
