@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fda5dab33487640c88c36fb6686686a7",
+    "content-hash": "763bfc82dd2712b48172836914681dda",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -4057,6 +4057,76 @@
                 }
             ],
             "time": "2026-02-16T23:10:27+00:00"
+        },
+        {
+            "name": "offload-project/laravel-toggle",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/offload-project/laravel-toggle.git",
+                "reference": "fc714aed26cf667a77591be3c4dd53ff7fa173ec"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/offload-project/laravel-toggle/zipball/fc714aed26cf667a77591be3c4dd53ff7fa173ec",
+                "reference": "fc714aed26cf667a77591be3c4dd53ff7fa173ec",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0|^12.0|^13.0",
+                "illuminate/database": "^11.0|^12.0|^13.0",
+                "illuminate/support": "^11.0|^12.0|^13.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "captainhook/captainhook-phar": "^5.27",
+                "inertiajs/inertia-laravel": "^2.0",
+                "larastan/larastan": "^3.8.1",
+                "laravel/pint": "^1.26.0",
+                "orchestra/testbench": "^9.0|^10.8|^11.0",
+                "pestphp/pest": "^3.0|^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+                "ramsey/conventional-commits": "^1.6"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Toggle": "OffloadProject\\Toggle\\Facades\\Toggle"
+                    },
+                    "providers": [
+                        "OffloadProject\\Toggle\\ToggleServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OffloadProject\\Toggle\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Offload Project"
+                }
+            ],
+            "description": "A simple and flexible feature toggle (feature flag) package for Laravel",
+            "homepage": "https://github.com/offload-project/laravel-toggle",
+            "keywords": [
+                "feature-flags",
+                "feature-toggles",
+                "flags",
+                "laravel",
+                "toggles"
+            ],
+            "support": {
+                "issues": "https://github.com/offload-project/laravel-toggle/issues",
+                "source": "https://github.com/offload-project/laravel-toggle/tree/v2.0.0"
+            },
+            "time": "2026-04-27T15:35:41+00:00"
         },
         {
             "name": "om/icalparser",
