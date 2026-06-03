@@ -8,7 +8,7 @@ export default defineConfig({
     light: 'assets/images/logo-light.svg',
     dark: 'assets/images/logo-dark.svg',
     alt: 'LaraPaper',
-    href: '/',
+    href: '/larapaper/'
   },
   favicon: 'assets/favicon.ico',
 
@@ -29,7 +29,7 @@ export default defineConfig({
       components: {
         search: true,
         themeSwitch: true,
-        sponsor: "/sponsor",
+        sponsor: "https://buymeacoffee.com/bnussbau",
       },
     },
     footer: {
@@ -55,7 +55,7 @@ export default defineConfig({
   pageNavigation: true,
 
   redirects: {
-    '/posts/one-year-larapaper.html': '/posts/one-year-larapaper',
+    '/posts/one-year-larapaper.html': 'https://usetrmnl.github.io/larapaper/posts/one-year-larapaper/',
   },
 
   navigation: [

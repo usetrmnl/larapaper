@@ -8,7 +8,7 @@ seo:
   canonicalUrl: 'https://usetrmnl.github.io/larapaper/posts/one-year-larapaper'
 ---
 
-![LaraPaper community milestone](/assets/images/one-year-larapaper.jpg)
+![LaraPaper community milestone](/larapaper/assets/images/one-year-larapaper.jpg)
 
 One year ago, I started building what would later become LaraPaper because I wanted one very specific thing: a train schedule in the morning that updated more frequently. The native cloud flow was designed around a 15-minute refresh interval, but I wanted updates every 5 minutes during the morning rush. From there, I kept expanding LaraPaper into a BYOS (Bring Your Own Server) for TRMNL.
 
