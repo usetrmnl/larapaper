@@ -104,16 +104,17 @@ class RunDeviceDisplayCycle
 
         $isDataStale = $plugin->isDataStale();
 
-        if (! $isDataStale && $this->shouldSkipFromPayload($plugin)) {
-            return false;
-        }
-
         if ($isDataStale) {
             $plugin->updateDataPayload();
             $plugin->refresh();
         }
 
         if ($this->shouldSkipFromPayload($plugin)) {
+            Log::info('Skipping rendering because payload sets TRMNL_SKIP_DISPLAY', [
+                'device_id' => $device->id,
+                'plugin_id' => $plugin->id,
+            ]);
+
             return false;
         }
 
@@ -125,6 +126,11 @@ class RunDeviceDisplayCycle
                 $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
 
                 if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
+                    Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
+                        'device_id' => $device->id,
+                        'plugin_id' => $plugin->id,
+                    ]);
+
                     return false;
                 }
 
