@@ -17,6 +17,7 @@ use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
 use App\Services\PluginImportService;
 use Carbon\Carbon;
+use Closure;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,7 @@ class Plugin extends Model
         'no_bleed' => 'boolean',
         'dark_mode' => 'boolean',
         'preferred_renderer' => 'string',
+        'framework_version' => 'string',
         'plugin_type' => 'string',
         'alias' => 'boolean',
         'current_image_metadata' => 'array',
@@ -106,6 +108,34 @@ class Plugin extends Model
             'current_image' => null,
             'current_image_metadata' => null,
         ]);
+    }
+
+    public function resolvedFrameworkVersion(): string
+    {
+        return $this->framework_version ?? config('trmnl-blade.framework_version');
+    }
+
+    public static function validateFrameworkVersion(mixed $value, Closure $fail): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (! is_string($value) || ! preg_match('/^\d+\.\d+\.\d+$/', $value)) {
+            $fail('Framework version must be in X.Y.Z format.');
+
+            return;
+        }
+
+        if (version_compare($value, '2.0.0', '<')) {
+            $fail('Framework version must be at least 2.0.0.');
+
+            return;
+        }
+
+        if (version_compare($value, '4.0.0', '>=')) {
+            $fail('Framework version must be lower than 4.0.0.');
+        }
     }
 
     /**
@@ -822,6 +852,7 @@ class Plugin extends Model
                         'darkMode' => $this->dark_mode,
                         'scaleLevel' => $device?->scaleLevel(),
                         'cssVariables' => $device?->deviceModel?->css_variables,
+                        'frameworkVersion' => $this->resolvedFrameworkVersion(),
                         'slot' => $renderedContent,
                     ])->render();
                 }
@@ -833,6 +864,7 @@ class Plugin extends Model
                     'darkMode' => $this->dark_mode,
                     'scaleLevel' => $device?->scaleLevel(),
                     'cssVariables' => $device?->deviceModel?->css_variables,
+                    'frameworkVersion' => $this->resolvedFrameworkVersion(),
                     'slot' => $renderedContent,
                 ])->render();
 
@@ -857,6 +889,7 @@ class Plugin extends Model
                         'darkMode' => $this->dark_mode,
                         'scaleLevel' => $device?->scaleLevel(),
                         'cssVariables' => $device?->deviceModel?->css_variables,
+                        'frameworkVersion' => $this->resolvedFrameworkVersion(),
                         'slot' => $renderedView,
                     ])->render();
                 }
@@ -868,6 +901,7 @@ class Plugin extends Model
                     'darkMode' => $this->dark_mode,
                     'scaleLevel' => $device?->scaleLevel(),
                     'cssVariables' => $device?->deviceModel?->css_variables,
+                    'frameworkVersion' => $this->resolvedFrameworkVersion(),
                     'slot' => $renderedView,
                 ])->render();
             }

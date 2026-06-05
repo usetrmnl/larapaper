@@ -23,6 +23,8 @@ new class extends Component
 
     public string $configurationTemplateYaml = '';
 
+    public string $framework_version = '';
+
     public int $resetIndex = 0;
 
     public function mount(): void
@@ -34,6 +36,7 @@ new class extends Component
         $this->alias = $this->plugin->alias ?? false;
         $this->use_trmnl_liquid_renderer = $this->plugin->preferred_renderer === 'trmnl-liquid';
         $this->configurationTemplateYaml = $this->plugin->getCustomFieldsEditorYaml();
+        $this->framework_version = $this->plugin->framework_version ?? '';
     }
 
     public function saveTrmnlpId(): void
@@ -51,6 +54,13 @@ new class extends Component
             ],
             'alias' => 'boolean',
             'use_trmnl_liquid_renderer' => 'boolean',
+            'framework_version' => [
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    Plugin::validateFrameworkVersion($value, $fail);
+                },
+            ],
             'configurationTemplateYaml' => [
                 'nullable',
                 'string',
@@ -87,6 +97,7 @@ new class extends Component
             'trmnlp_id' => empty($this->trmnlp_id) ? null : $this->trmnlp_id,
             'alias' => $this->alias,
             'preferred_renderer' => $this->use_trmnl_liquid_renderer ? 'trmnl-liquid' : null,
+            'framework_version' => $this->framework_version === '' ? null : $this->framework_version,
             'configuration_template' => $configurationTemplate,
         ]);
 
@@ -117,6 +128,25 @@ new class extends Component
                     />
                     <flux:error name="trmnlp_id" />
                     <flux:description>Recipe ID in the TRMNL Recipe Catalog. If set, it can be used with <code>trmnlp</code>. </flux:description>
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>TRMNL Framework version</flux:label>
+                    <flux:input
+                        wire:model="framework_version"
+                        placeholder="Latest (currently v{{ config('trmnl-blade.framework_version') }})"
+                        pattern="(2|3)\.\d+\.\d+"
+                        title="Version 2.0.0 to 3.x.x, or leave empty for latest"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        maxlength="12"
+                    />
+                    <flux:error name="framework_version" />
+                    <flux:description>
+                        Leave empty to use the latest framework (currently v{{ config('trmnl-blade.framework_version') }}).
+                        Newly created recipes use the latest framework by default until a new major version is released.
+                        Pinned versions must be between 2.0.0 and 3.x.x. <a href="https://trmnl.com/framework/releases" target="_blank" rel="noopener noreferrer">Framework releases</a>.
+                    </flux:description>
                 </flux:field>
 
                 <flux:field>

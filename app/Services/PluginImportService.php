@@ -183,6 +183,7 @@ class PluginImportService
                 'render_markup_shared' => $sharedMarkup,
                 'configuration_template' => $configurationTemplate,
                 'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
+                'framework_version' => $settings['framework_version'] ?? null,
             ]);
 
         if (! $plugin_updated) {
@@ -361,6 +362,7 @@ class PluginImportService
                 'configuration_template' => $configurationTemplate,
                 'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
                 'preferred_renderer' => $preferredRenderer,
+                'framework_version' => $settings['framework_version'] ?? null,
                 'icon_url' => $iconUrl,
             ]);
 

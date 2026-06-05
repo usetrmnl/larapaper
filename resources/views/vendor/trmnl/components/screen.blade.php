@@ -6,7 +6,14 @@
     'colorDepth' => '1bit',
     'scaleLevel' => null,
     'cssVariables' => null,
+    'frameworkVersion' => null,
 ])
+
+@php
+    $resolvedFrameworkVersion = $frameworkVersion
+        ?? config('trmnl-blade.framework_css_version')
+        ?? config('trmnl-blade.framework_version', '2.3.7');
+@endphp
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -19,12 +26,12 @@
               href="{{ config('trmnl-blade.framework_css_url') }}">
     @else
         <link rel="stylesheet"
-              href="{{ config('services.trmnl.base_url') }}/css/{{ config('trmnl-blade.framework_css_version') ?? config('trmnl-blade.framework_version', '2.1.0') }}/plugins.css">
+              href="{{ config('services.trmnl.base_url') }}/css/{{ $resolvedFrameworkVersion }}/plugins.css">
     @endif
     @if (config('trmnl-blade.framework_js_url'))
         <script src="{{ config('trmnl-blade.framework_js_url') }}"></script>
     @else
-        <script src="{{ config('services.trmnl.base_url') }}/js/{{ config('trmnl-blade.framework_js_version') ?? config('trmnl-blade.framework_version', '2.1.0') }}/plugins.js"></script>
+        <script src="{{ config('services.trmnl.base_url') }}/js/{{ $resolvedFrameworkVersion }}/plugins.js"></script>
     @endif
     <title>{{ $title ?? config('app.name') }}</title>
     @if(config('app.puppeteer_window_size_strategy') === 'v2' && !empty($cssVariables) && is_array($cssVariables))

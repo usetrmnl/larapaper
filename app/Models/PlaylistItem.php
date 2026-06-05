@@ -143,6 +143,9 @@ class PlaylistItem extends Model
                 'deviceVariant' => $device?->deviceModel?->css_name ?? $device?->deviceVariant() ?? 'og',
                 'scaleLevel' => $device?->scaleLevel(),
                 'cssVariables' => $device?->deviceModel?->css_variables,
+                'frameworkVersion' => $this->plugin instanceof Plugin
+                    ? $this->plugin->resolvedFrameworkVersion()
+                    : null,
                 'slot' => $this->plugin instanceof Plugin
                     ? $this->plugin->render('full', false, $device)
                     : throw new Exception('Invalid plugin instance'),
@@ -161,11 +164,15 @@ class PlaylistItem extends Model
             $pluginMarkups[] = $plugin->render($size, false, $device);
         }
 
+        // Framework CSS/JS loads once per screen; first plugin in mashup order sets the version.
+        $frameworkVersion = $plugins->first()?->resolvedFrameworkVersion();
+
         return view('trmnl-layouts.mashup', [
             'colorDepth' => $device?->colorDepth(),
             'deviceVariant' => $device?->deviceModel?->css_name ?? $device?->deviceVariant() ?? 'og',
             'scaleLevel' => $device?->scaleLevel(),
             'cssVariables' => $device?->deviceModel?->css_variables,
+            'frameworkVersion' => $frameworkVersion,
             'mashupLayout' => $this->getMashupLayoutType(),
             'slot' => implode('', $pluginMarkups),
         ])->render();

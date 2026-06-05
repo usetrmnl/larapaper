@@ -8,6 +8,23 @@ use Illuminate\Database\Seeder;
 class ExampleRecipesSeeder extends Seeder
 {
     /**
+     * @return list<string>
+     */
+    public static function exampleUuids(): array
+    {
+        return [
+            '9e46c6cf-358c-4bfe-8998-436b3a207fec',
+            '3b046eda-34e9-4232-b935-c33b989a284b',
+            '21464b16-5f5a-4099-a967-f5c915e3da54',
+            '8d472959-400f-46ee-afb2-4a9f1cfd521f',
+            '4349fdad-a273-450b-aa00-3d32f2de788d',
+            'be5f7e1f-3ad8-4d66-93b2-36f7d6dcbd80',
+            '82d3ee14-d578-4969-bda5-2bbf825435fe',
+            '1d98bca4-837d-4b01-b1a1-e3b6e56eca90',
+        ];
+    }
+
+    /**
      * Run the database seeds.
      */
     public function run($user_id = 1): void
@@ -28,6 +45,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'train-front',
+                'framework_version' => null,
             ]
         );
 
@@ -47,6 +65,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'sun',
+                'framework_version' => null,
             ]
         );
 
@@ -66,6 +85,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'chat-bubble-bottom-center',
+                'framework_version' => null,
             ]
         );
 
@@ -85,6 +105,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'calendar',
+                'framework_version' => null,
             ]
         );
 
@@ -104,6 +125,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'thermometer',
+                'framework_version' => null,
             ]
         );
 
@@ -123,6 +145,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'sunrise',
+                'framework_version' => null,
             ]
         );
 
@@ -142,6 +165,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'flower',
+                'framework_version' => null,
             ]
         );
 
@@ -179,6 +203,7 @@ class ExampleRecipesSeeder extends Seeder
                 'detail_view_route' => null,
                 'icon_url' => null,
                 'flux_icon_name' => 'calendar',
+                'framework_version' => null,
             ]
         );
     }

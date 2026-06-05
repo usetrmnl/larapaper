@@ -230,3 +230,71 @@ test('recipe settings validates each custom field has field_type and name', func
 
     expect($plugin->fresh()->configuration_template)->toBeEmpty();
 });
+
+test('recipe settings saves null framework_version when input is empty', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'framework_version' => '2.3.7',
+    ]);
+
+    Livewire::test('plugins.recipes.settings', ['plugin' => $plugin])
+        ->set('framework_version', '')
+        ->call('saveTrmnlpId')
+        ->assertHasNoErrors();
+
+    expect($plugin->fresh()->framework_version)->toBeNull();
+});
+
+test('recipe settings saves any valid framework_version from input', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'framework_version' => null,
+    ]);
+
+    Livewire::test('plugins.recipes.settings', ['plugin' => $plugin])
+        ->set('framework_version', '3.0.5')
+        ->call('saveTrmnlpId')
+        ->assertHasNoErrors();
+
+    expect($plugin->fresh()->framework_version)->toBe('3.0.5');
+});
+
+test('recipe settings rejects framework_version below 2.0.0', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'framework_version' => null,
+    ]);
+
+    Livewire::test('plugins.recipes.settings', ['plugin' => $plugin])
+        ->set('framework_version', '1.2.3')
+        ->call('saveTrmnlpId')
+        ->assertHasErrors(['framework_version']);
+
+    expect($plugin->fresh()->framework_version)->toBeNull();
+});
+
+test('recipe settings rejects framework_version 4.0.0 and above', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'framework_version' => null,
+    ]);
+
+    Livewire::test('plugins.recipes.settings', ['plugin' => $plugin])
+        ->set('framework_version', '4.0.0')
+        ->call('saveTrmnlpId')
+        ->assertHasErrors(['framework_version']);
+
+    expect($plugin->fresh()->framework_version)->toBeNull();
+});

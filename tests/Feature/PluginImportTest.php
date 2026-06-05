@@ -14,6 +14,28 @@ beforeEach(function (): void {
     Storage::fake('local');
 });
 
+it('imports plugin with framework_version from settings', function (): void {
+    $user = User::factory()->create();
+
+    $settingsYaml = str_replace(
+        "name: Test Plugin\n",
+        "name: Test Plugin\nframework_version: 3.0.5\n",
+        getValidSettingsYaml()
+    );
+
+    $zipContent = createMockZipFile([
+        'src/settings.yml' => $settingsYaml,
+        'src/full.liquid' => getValidFullLiquid(),
+    ]);
+
+    $zipFile = UploadedFile::fake()->createWithContent('test-plugin.zip', $zipContent);
+
+    $pluginImportService = new PluginImportService();
+    $plugin = $pluginImportService->importFromZip($zipFile, $user);
+
+    expect($plugin->framework_version)->toBe('3.0.5');
+});
+
 it('imports plugin from valid zip file', function (): void {
     $user = User::factory()->create();
 
