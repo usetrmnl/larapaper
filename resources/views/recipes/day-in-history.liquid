@@ -5,7 +5,7 @@
                  data-list-limit="true"
                  data-list-max-height="340">
                 <div class="title center">Events</div>
-                {% for event in data.metadata.events %}
+                {% for event in data.metadata.events limit: 7 %}
                     <div class="item ">
                         <div class="meta">
                             <span class="index"></span>
@@ -21,7 +21,7 @@
                  data-list-limit="true"
                  data-list-max-height="340">
                 <div class="title center">Births</div>
-                {% for birth in data.metadata.births %}
+                {% for birth in data.metadata.births limit:4 %}
                     <div class="item ">
                         <div class="meta">
                             <span class="index"></span>
@@ -33,7 +33,7 @@
                     </div>
                 {% endfor %}
                 <div class="title center">Deaths</div>
-                {% for death in data.metadata.deaths %}
+                {% for death in data.metadata.deaths limit:4 %}
                     <div class="item ">
                         <div class="meta">
                             <span class="index"></span>

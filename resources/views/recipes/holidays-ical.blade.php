@@ -45,13 +45,13 @@
 <x-trmnl::view size="{{$size}}">
     <x-trmnl::layout class="layout--col gap--small">
         <x-trmnl::table>
+             <colgroup>
+                <col span="3" style="width: 33%">
+            </colgroup>
             <thead>
             <tr>
                 <th>
                     <x-trmnl::title>Date</x-trmnl::title>
-                </th>
-                <th>
-                    <x-trmnl::title>Time</x-trmnl::title>
                 </th>
                 <th>
                     <x-trmnl::title>Event</x-trmnl::title>
@@ -66,14 +66,6 @@
                 <tr>
                     <td>
                         <x-trmnl::label>{{ $event['start']?->format('D, M j') }}</x-trmnl::label>
-                    </td>
-                    <td>
-                        <x-trmnl::label>
-                            {{ $event['start']?->format('H:i') }}
-                            @if($event['end'])
-                                – {{ $event['end']->format('H:i') }}
-                            @endif
-                        </x-trmnl::label>
                     </td>
                     <td>
                         <x-trmnl::label variant="primary">{{ $event['summary'] }}</x-trmnl::label>
