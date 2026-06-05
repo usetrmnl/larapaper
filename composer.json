@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "bnussbau/laravel-trmnl-server",
+    "name": "usetrmnl/larapaper",
     "type": "project",
     "description": "TRMNL Server Implementation (BYOS) for Laravel",
     "keywords": [
