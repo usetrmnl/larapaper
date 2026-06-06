@@ -21,6 +21,7 @@ use Closure;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Blade;
@@ -464,36 +465,44 @@ class Plugin extends Model
             filled(...)
         ));
 
-        $combinedResponse = [];
+        $resolvedBody = ($this->polling_verb === 'post' && $this->polling_body)
+            ? $this->resolveLiquidVariables($this->polling_body)
+            : null;
+        $contentType = $headers['Content-Type'] ?? 'application/json';
 
-        // Loop through all URLs (Handles 1 or many)
-        foreach ($urls as $index => $url) {
-            $httpRequest = Http::withHeaders($headers);
-
-            if ($this->polling_verb === 'post' && $this->polling_body) {
-                $contentType = (array_key_exists('Content-Type', $headers))
-                    ? $headers['Content-Type']
-                    : 'application/json';
-
-                $resolvedBody = $this->resolveLiquidVariables($this->polling_body);
-                $httpRequest = $httpRequest->withBody($resolvedBody, $contentType);
+        $isPost = $this->polling_verb === 'post';
+        $responses = Http::pool(function (Pool $pool) use ($urls, $headers, $resolvedBody, $contentType, $isPost) {
+            $requests = [];
+            foreach ($urls as $url) {
+                $request = $pool->withHeaders($headers)->timeout(10);
+                if ($isPost && $resolvedBody !== null) {
+                    $request = $request->withBody($resolvedBody, $contentType);
+                }
+                $requests[] = $isPost ? $request->post($url) : $request->get($url);
             }
 
+            return $requests;
+        });
+
+        $combinedResponse = [];
+        foreach ($urls as $index => $url) {
             try {
-                $httpResponse = ($this->polling_verb === 'post')
-                    ? $httpRequest->post($url)
-                    : $httpRequest->get($url);
+                $httpResponse = $responses[$index];
+                if ($httpResponse instanceof Exception) {
+                    throw $httpResponse;
+                }
+                if ($httpResponse->failed()) {
+                    Log::warning("Plugin {$this->id} got HTTP {$httpResponse->status()} from {$url}");
+                    $combinedResponse["IDX_{$index}"] = ['error' => 'Failed to fetch data'];
+
+                    continue;
+                }
 
                 $response = $this->parseResponse($httpResponse);
-
-                // Nest if it's a sequential array
-                if (array_keys($response) === range(0, count($response) - 1)) {
-                    $combinedResponse["IDX_{$index}"] = ['data' => $response];
-                } else {
-                    $combinedResponse["IDX_{$index}"] = $response;
-                }
+                $isSequential = array_keys($response) === range(0, count($response) - 1);
+                $combinedResponse["IDX_{$index}"] = $isSequential ? ['data' => $response] : $response;
             } catch (Exception $e) {
-                Log::warning("Failed to fetch data from URL {$url}: ".$e->getMessage());
+                Log::warning("Plugin {$this->id} failed to fetch/parse {$url}: ".$e->getMessage());
                 $combinedResponse["IDX_{$index}"] = ['error' => 'Failed to fetch data'];
             }
         }
