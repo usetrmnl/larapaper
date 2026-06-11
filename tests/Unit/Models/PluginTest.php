@@ -1198,6 +1198,7 @@ test('updating render-affecting attributes invalidates cached image and metadata
     ['data_payload', ['count' => 1], ['count' => 42]],
     ['preferred_renderer', null, 'liquid'],
     ['framework_version', null, '3.1.0'],
+    ['transform_code', null, 'function run($input) { return $input; }'],
     ['transform_language', null, 'jq'],
 ]);
 

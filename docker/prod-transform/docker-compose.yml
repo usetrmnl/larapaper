@@ -1,0 +1,35 @@
+services:
+    app:
+        image: ghcr.io/usetrmnl/larapaper:latest
+        ports:
+            - "4567:8080"
+        environment:
+            # Generate the APP_KEY with `echo "base64:$(openssl rand -base64 32)"`
+            #- APP_KEY=
+            # Base URL of the application
+            #- APP_URL=
+            # Set to true if running behind a reverse proxy that terminates HTTPS (e.g. Nginx, Traefik, Cloudflare Tunnel)
+            #- FORCE_HTTPS=true
+            - PHP_OPCACHE_ENABLE=1
+            - TRMNL_PROXY_REFRESH_MINUTES=15
+            - DB_DATABASE=database/storage/database.sqlite
+            # Enables transforms. TRANSFORM_RUNNER_URL defaults to http://transform:3000 (the service below).
+            - TRANSFORM_PROVIDER=http
+        volumes:
+            - database:/var/www/html/database/storage
+            - storage:/var/www/html/storage/app/public/images/generated
+        depends_on:
+            - transform
+        restart: unless-stopped
+    transform:
+        image: ghcr.io/bnussbau/byos-transform-runner:latest
+        # The runner isolates each transform with bubblewrap, which needs user namespaces.
+        security_opt:
+            - seccomp=unconfined
+            - apparmor=unconfined
+        expose:
+            - "3000"
+        restart: unless-stopped
+volumes:
+    database:
+    storage:

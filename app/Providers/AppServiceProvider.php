@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Services\OidcProvider;
+use App\Services\Plugin\Transform\HttpTransformProvider;
+use App\Services\Plugin\Transform\TransformProvider;
 use App\Services\QrCodeService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -19,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind('qr-code', fn (): QrCodeService => new QrCodeService);
+
+        $this->app->bind(TransformProvider::class, HttpTransformProvider::class);
     }
 
     /**
@@ -51,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Register OIDC provider with Socialite
-        Socialite::extend('oidc', function (\Illuminate\Contracts\Foundation\Application $app): OidcProvider {
+        Socialite::extend('oidc', function (Application $app): OidcProvider {
             $config = $app->make('config')->get('services.oidc', []);
 
             return new OidcProvider(

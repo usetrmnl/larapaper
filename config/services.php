@@ -46,6 +46,15 @@ return [
         'liquid_path' => env('TRMNL_LIQUID_PATH', '/usr/local/bin/trmnl-liquid-cli'),
     ],
 
+    'transform' => [
+        // Set to `http` to enable transforms on an external runner implementing POST /run.
+        'provider' => env('TRANSFORM_PROVIDER'),
+        'runner_url' => env('TRANSFORM_RUNNER_URL', 'http://transform:3000'),
+        'runner_token' => env('TRANSFORM_RUNNER_TOKEN'),
+        'max_output_bytes' => env('TRANSFORM_MAX_OUTPUT_BYTES', 1048576),
+        'timeout_seconds' => env('TRANSFORM_TIMEOUT_SECONDS', 5),
+    ],
+
     'webhook' => [
         'notifications' => [
             'url' => env('WEBHOOK_NOTIFICATION_URL', null),

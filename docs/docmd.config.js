@@ -93,6 +93,8 @@ export default defineConfig({
         { title: 'Generating screens', path: '/usage/generating-screens', icon: 'image' },
         { title: 'Cloud proxy', path: '/usage/cloud-proxy', icon: 'cloud' },
         { title: 'Demo plugins', path: '/usage/demo-plugins', icon: 'puzzle' },
+        { title: 'Transform', path: '/usage/transform', icon: 'braces' },
+        { title: 'Transform providers', path: '/usage/transform-provider', icon: 'server' },
       ],
     },
     {

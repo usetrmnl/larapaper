@@ -7,10 +7,13 @@ use App\Liquid\PluginLiquidEnvironment;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
+use App\Services\Plugin\Transform\TransformException;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginImportService;
 use App\Support\UserBladeExecution;
 use Carbon\Carbon;
 use Closure;
+use DateTimeInterface;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +35,9 @@ class Plugin extends Model
 {
     use HasFactory;
 
+    /** Maximum length of the stored transform error (message plus script output). */
+    private const MAX_TRANSFORM_ERROR_LENGTH = 8192;
+
     protected $guarded = ['id'];
 
     protected $casts = [
@@ -48,6 +54,8 @@ class Plugin extends Model
         'plugin_type' => 'string',
         'alias' => 'boolean',
         'current_image_metadata' => 'array',
+        'transform_language' => 'string',
+        'transform_failed_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -82,6 +90,7 @@ class Plugin extends Model
                 'data_payload',
                 'preferred_renderer',
                 'framework_version',
+                'transform_code',
                 'transform_language',
             ])) {
                 $model->current_image = null;
@@ -384,6 +393,66 @@ class Plugin extends Model
         return ['error' => 'Data payload exceeds maximum allowed size'];
     }
 
+    /**
+     * Run the recipe's transform on polled or static data once transforms are enabled
+     * and the recipe has a transform language (null means no transform).
+     * Throws so the caller can fall back to the untransformed payload.
+     *
+     * @throws TransformException
+     */
+    private function applyTransform(mixed $payload): mixed
+    {
+        if (
+            ! is_array($payload)
+            || blank($this->transform_language)
+            || ! TransformService::isEnabled()
+            || ! in_array($this->data_strategy, TransformService::strategies(), true)
+        ) {
+            return $payload;
+        }
+
+        return app(TransformService::class)->transform($this, $payload);
+    }
+
+    /**
+     * Transform the payload and build the attributes to store. A failing transform
+     * stores the untransformed payload and records the error on the plugin.
+     *
+     * @return array{data_payload: mixed, data_payload_updated_at: DateTimeInterface, transform_error: ?string, transform_failed_at: ?DateTimeInterface}
+     */
+    private function transformedPayloadAttributes(mixed $rawPayload): array
+    {
+        $transformError = null;
+
+        try {
+            $finalPayload = $this->applyTransform($rawPayload);
+        } catch (TransformException $e) {
+            Log::warning('Transform failed; storing the untransformed payload', ['plugin_id' => $this->id, 'error' => $e->getMessage()]);
+            $finalPayload = $rawPayload;
+            $transformError = mb_substr(mb_trim($e->getMessage()."\n".($e->diagnostics ?? '')), 0, self::MAX_TRANSFORM_ERROR_LENGTH);
+        }
+
+        if (! self::dataPayloadWithinWireLimit($finalPayload)) {
+            Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");
+            $finalPayload = self::oversizedDataPayloadErrorPayload();
+        }
+
+        return [
+            'data_payload' => $finalPayload,
+            'data_payload_updated_at' => now(),
+            'transform_error' => $transformError,
+            'transform_failed_at' => $transformError === null ? null : ($this->transform_failed_at ?? now()),
+        ];
+    }
+
+    /**
+     * Store static data, replacing it with the transform output when the recipe has a transform.
+     */
+    public function storeStaticDataPayload(mixed $payload): void
+    {
+        $this->update($this->transformedPayloadAttributes($payload));
+    }
+
     /** Supported TRMNL webhook merge strategies for recipe plugins. */
     public static function webhookMergeStrategies(): array
     {
@@ -472,6 +541,16 @@ class Plugin extends Model
         if ($this->data_strategy !== 'polling' || ! $this->polling_url) {
             return;
         }
+
+        $this->update($this->transformedPayloadAttributes($this->fetchPollingPayload()));
+    }
+
+    /**
+     * Fetch and parse the polling URLs without transforming or storing the result.
+     * One URL yields its parsed response; several yield `IDX_n` keys.
+     */
+    public function fetchPollingPayload(): mixed
+    {
         $headers = ['User-Agent' => 'usetrmnl/larapaper', 'Accept' => 'application/json'];
 
         // resolve headers
@@ -537,17 +616,7 @@ class Plugin extends Model
         }
 
         // unwrap IDX_0 if only one URL
-        $finalPayload = (count($urls) === 1) ? reset($combinedResponse) : $combinedResponse;
-
-        if (! self::dataPayloadWithinWireLimit($finalPayload)) {
-            Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");
-            $finalPayload = self::oversizedDataPayloadErrorPayload();
-        }
-
-        $this->update([
-            'data_payload' => $finalPayload,
-            'data_payload_updated_at' => now(),
-        ]);
+        return (count($urls) === 1) ? reset($combinedResponse) : $combinedResponse;
     }
 
     private function parseResponse(Response $httpResponse): array
@@ -729,6 +798,20 @@ class Plugin extends Model
         }
 
         return $process->output();
+    }
+
+    /**
+     * `trmnl` context passed to transforms. No device is bound while data is transformed,
+     * and system/sensor values are render-time only.
+     *
+     * @return array<string, mixed>
+     */
+    public function transformContext(): array
+    {
+        $context = $this->trmnlContext();
+        unset($context['system'], $context['sensors']);
+
+        return $context;
     }
 
     /**
@@ -966,7 +1049,7 @@ class Plugin extends Model
         // Get all attributes except id and uuid
         // Use toArray() to get cast values (respects JSON casts)
         $attributes = $this->toArray();
-        unset($attributes['id'], $attributes['uuid'], $attributes['trmnlp_id']);
+        unset($attributes['id'], $attributes['uuid'], $attributes['trmnlp_id'], $attributes['transform_error'], $attributes['transform_failed_at']);
 
         // Handle render_markup_view - copy file content to render_markup
         if ($this->render_markup_view) {

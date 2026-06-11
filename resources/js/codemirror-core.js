@@ -1,7 +1,8 @@
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { ViewPlugin } from '@codemirror/view';
 import { indentWithTab, selectAll } from '@codemirror/commands';
-import { foldGutter, foldKeymap } from '@codemirror/language';
+import { foldGutter, foldKeymap, StreamLanguage } from '@codemirror/language';
+import { ruby } from '@codemirror/legacy-modes/mode/ruby';
 import { history, historyKeymap } from '@codemirror/commands';
 import { searchKeymap } from '@codemirror/search';
 import { html } from '@codemirror/lang-html';
@@ -10,6 +11,8 @@ import { json } from '@codemirror/lang-json';
 import { css } from '@codemirror/lang-css';
 import { liquid } from '@codemirror/lang-liquid';
 import { yaml } from '@codemirror/lang-yaml';
+import { php } from '@codemirror/lang-php';
+import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { githubLight } from '@fsegurai/codemirror-theme-github-light';
 
@@ -23,6 +26,12 @@ const LANGUAGE_MAP = {
     'html': html,
     'yaml': yaml,
     'yml': yaml,
+    'php': php,
+    'python': python,
+    'ruby': () => StreamLanguage.define(ruby),
+    'rb': () => StreamLanguage.define(ruby),
+    // No highlighting (e.g. Ruby transforms)
+    'text': () => [],
 };
 
 // Theme support mapping

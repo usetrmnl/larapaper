@@ -2,6 +2,7 @@
 
 use App\Console\Commands\ExampleRecipesSeederCommand;
 use App\Plugins\PluginRegistry;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginImportService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -163,6 +164,11 @@ new class extends Component
     {
         Artisan::call(ExampleRecipesSeederCommand::class, ['user_id' => auth()->id()]);
         $this->refreshPlugins();
+    }
+
+    public function transformIsEnabled(): bool
+    {
+        return TransformService::isEnabled();
     }
 
     public function importZip(PluginImportService $pluginImportService): void
@@ -356,9 +362,11 @@ new class extends Component
                                     >API responses in formats other than <span class="font-mono">JSON</span> are not yet
                                     fully supported.</flux:text>
                             </li>
-                            <li>
-                                <flux:text>Transform/Serverless is not yet supported</flux:text>
-                            </li>
+                            @unless ($this->transformIsEnabled())
+                                <li>
+                                    <flux:text>Transform/Serverless is not yet supported</flux:text>
+                                </li>
+                            @endunless
                             <li>
                                 <flux:text>There are limitations in payload size (Data Payload, Template).</flux:text>
                             </li>

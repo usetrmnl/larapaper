@@ -3,6 +3,8 @@
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
+use App\Services\Plugin\Transform\TransformException;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginExportService;
 use App\Support\UserBladeExecution;
 use Illuminate\Support\Arr;
@@ -16,6 +18,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 new class extends Component
 {
+    /** Transform languages a recipe may store and edit; the configured provider decides which can run. */
+    private const TRANSFORM_LANGUAGES = ['php', 'node', 'python', 'ruby'];
+
     public Plugin $plugin;
 
     public ?string $markup_code;
@@ -41,6 +46,18 @@ new class extends Component
     public ?string $polling_header;
 
     public ?string $polling_body;
+
+    public ?string $transform_code = null;
+
+    /** Transform language; null means the recipe has no transform. */
+    public ?string $transform_language = null;
+
+    /**
+     * Result of the last "Run" in the transform editor (never stored on the plugin).
+     *
+     * @var array{error: ?string, output: ?string, logs: string, duration_ms: ?int}|null
+     */
+    public ?array $transform_run = null;
 
     public $data_payload;
 
@@ -153,6 +170,8 @@ new class extends Component
         $this->polling_verb = $this->plugin->polling_verb;
         $this->polling_header = $this->plugin->polling_header;
         $this->polling_body = $this->plugin->polling_body;
+        $this->transform_code = $this->plugin->transform_code;
+        $this->transform_language = filled($this->plugin->transform_language) ? (string) $this->plugin->transform_language : null;
         $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
     }
 
@@ -187,6 +206,10 @@ new class extends Component
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
         $this->validate();
 
+        if (! $this->validateTransform()) {
+            return;
+        }
+
         // Update markup_code for the active tab
         if (isset($this->markup_layouts[$this->active_tab])) {
             $this->markup_layouts[$this->active_tab] = $this->markup_code ?? '';
@@ -201,6 +224,32 @@ new class extends Component
             'render_markup_shared' => ! empty($this->markup_layouts['shared']) ? $this->markup_layouts['shared'] : null,
             'markup_language' => $this->markup_language ?? null,
         ]);
+
+        if ($this->transformIsAvailable()) {
+            $this->plugin->update([
+                'transform_code' => filled($this->transform_code) ? $this->transform_code : null,
+                'transform_language' => $this->transform_language,
+            ]);
+        }
+    }
+
+    /**
+     * An enabled transform needs code in a language the configured provider can run.
+     */
+    private function validateTransform(): bool
+    {
+        if (! $this->showsTransformTab()) {
+            return true;
+        }
+
+        if (blank($this->transform_code)) {
+            $this->addError('transform_code', 'Transform code is required when the transform is enabled.');
+
+            return false;
+        }
+
+        // Languages the provider cannot run may still be saved (e.g. imported Ruby); the editor shows a callout.
+        return true;
     }
 
     public function addLayoutTab(string $layout): void
@@ -230,15 +279,66 @@ new class extends Component
 
     public function switchTab(string $layout): void
     {
-        if (in_array($layout, $this->active_tabs, true)) {
-            // Save current tab's content before switching
-            if (isset($this->markup_layouts[$this->active_tab])) {
-                $this->markup_layouts[$this->active_tab] = $this->markup_code ?? '';
-            }
+        $isTransformTab = $layout === 'transform' && $this->showsTransformTab();
 
-            $this->active_tab = $layout;
+        if (! $isTransformTab && ! in_array($layout, $this->active_tabs, true)) {
+            return;
+        }
+
+        // Save current tab's content before switching
+        if (isset($this->markup_layouts[$this->active_tab])) {
+            $this->markup_layouts[$this->active_tab] = $this->markup_code ?? '';
+        }
+
+        $this->active_tab = $layout;
+
+        if (! $isTransformTab) {
             $this->markup_code = $this->markup_layouts[$layout] ?? '';
         }
+    }
+
+    /**
+     * Add or remove the recipe's transform from the code editor; applied on save.
+     */
+    public function toggleTransformTab(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        if (! $this->transformIsAvailable()) {
+            return;
+        }
+
+        $this->transform_run = null;
+
+        if ($this->showsTransformTab()) {
+            $this->transform_language = null;
+
+            if ($this->active_tab === 'transform') {
+                $this->switchTab('full');
+            }
+
+            return;
+        }
+
+        if (blank($this->transform_code)) {
+            $this->transform_language = $this->transformLanguages()[0] ?? 'php';
+            $this->transform_code = $this->transformExample($this->transform_language);
+        } else {
+            // Re-adding the tab keeps the previous code; recognise its language.
+            $this->transform_language = $this->guessTransformLanguage((string) $this->transform_code);
+        }
+
+        $this->switchTab('transform');
+    }
+
+    private function guessTransformLanguage(string $code): string
+    {
+        return match (true) {
+            str_contains($code, '<?php') => 'php',
+            preg_match('/^\s*def\s+run\s*\(.*\)\s*:/m', $code) === 1 => 'python',
+            preg_match('/^\s*def\s+run\b/m', $code) === 1 => 'ruby',
+            default => 'node',
+        };
     }
 
     public function toggleLayoutTab(string $layout): void
@@ -312,6 +412,8 @@ new class extends Component
             'device_active_until' => 'array',
             'no_bleed' => 'boolean',
             'dark_mode' => 'boolean',
+            'transform_code' => 'nullable|string|max:200000',
+            'transform_language' => ['nullable', 'string', Rule::in(self::TRANSFORM_LANGUAGES)],
         ];
     }
 
@@ -322,7 +424,9 @@ new class extends Component
         // Custom validation for polling_url with Liquid variable resolution
         $this->validatePollingUrl();
 
-        $validated = $this->validate();
+        // The transform is saved together with the markup in the code editor.
+        $validated = Arr::except($this->validate(), ['transform_code', 'transform_language']);
+
         $dataPayloadString = (string) Arr::get($validated, 'data_payload', '');
         $decodedPayload = json_decode($dataPayloadString, true);
 
@@ -334,7 +438,19 @@ new class extends Component
 
         $validated['data_payload'] = $decodedPayload;
 
+        // Changed static data runs through the transform, whose output replaces the stored data.
+        $storesStaticData = $this->data_strategy === 'static' && $decodedPayload !== $this->plugin->data_payload;
+        if ($storesStaticData) {
+            unset($validated['data_payload']);
+        }
+
         $this->plugin->update($validated);
+
+        if ($storesStaticData) {
+            $this->plugin->storeStaticDataPayload($decodedPayload);
+            $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
+            $this->data_payload_updated_at = $this->plugin->data_payload_updated_at;
+        }
 
         foreach ($this->configuration_template as $fieldKey => $field) {
             if (($field['field_type'] ?? null) !== 'multi_string') {
@@ -553,6 +669,164 @@ HTML;
 HTML;
     }
 
+    public function transformIsEnabled(): bool
+    {
+        return TransformService::isEnabled();
+    }
+
+    /**
+     * Transforms run on polled and static data once a transform provider is configured.
+     */
+    public function transformIsAvailable(): bool
+    {
+        return $this->transformIsEnabled() && in_array($this->data_strategy, TransformService::strategies(), true);
+    }
+
+    /**
+     * The last data update stored untransformed data because the transform failed.
+     */
+    public function showsTransformFailure(): bool
+    {
+        return filled($this->plugin->transform_error) && $this->transformIsAvailable();
+    }
+
+    public function showsTransformTab(): bool
+    {
+        return filled($this->transform_language) && $this->transformIsAvailable();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function transformLanguages(): array
+    {
+        return app(TransformService::class)->languages();
+    }
+
+    public function transformEditorLanguage(): string
+    {
+        return match ($this->transform_language) {
+            'node' => 'javascript',
+            'python' => 'python',
+            'ruby' => 'ruby',
+            default => 'php',
+        };
+    }
+
+    public function updatedTransformLanguage(?string $language): void
+    {
+        if ($language === null) {
+            return;
+        }
+
+        $this->transform_run = null;
+
+        // Swap an untouched example for the new language's example.
+        $examples = array_map($this->transformExample(...), self::TRANSFORM_LANGUAGES);
+        if (blank($this->transform_code) || in_array(mb_trim((string) $this->transform_code), array_map(mb_trim(...), $examples), true)) {
+            $this->transform_code = $this->transformExample($language);
+        }
+    }
+
+    public function renderTransformExample(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        $this->transform_code = $this->transformExample($this->transform_language);
+    }
+
+    public function transformExample(string $language): string
+    {
+        return match ($language) {
+            'node' => <<<'JS'
+function run(input) {
+    return { ...input, transformed_at: new Date().toISOString() };
+}
+JS,
+            'ruby' => <<<'RB'
+def run(input)
+  input.merge('transformed_at' => Time.now.utc.strftime('%Y-%m-%dT%H:%M:%SZ'))
+end
+RB,
+            'python' => <<<'PY'
+from datetime import datetime, timezone
+
+def run(input):
+    input["transformed_at"] = datetime.now(timezone.utc).isoformat()
+    return input
+PY,
+            default => <<<'PHP'
+<?php
+
+function run(array $input): array
+{
+    $input['transformed_at'] = date(DATE_ATOM);
+
+    return $input;
+}
+PHP,
+        };
+    }
+
+    /**
+     * Run the editor's (unsaved) transform code on freshly fetched polling data, or on
+     * the static data in the editor. Nothing is stored; the output is shown below the editor.
+     */
+    public function runTransform(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless($this->transformIsAvailable(), 403);
+
+        $this->validate([
+            'transform_code' => 'required|string|max:200000',
+            'transform_language' => ['required', 'string', Rule::in(self::TRANSFORM_LANGUAGES)],
+        ]);
+
+        try {
+            $payload = $this->data_strategy === 'static'
+                ? json_decode((string) $this->data_payload, true)
+                : $this->plugin->fetchPollingPayload();
+            $result = app(TransformService::class)->run(
+                $this->plugin,
+                $this->transform_language,
+                (string) $this->transform_code,
+                is_array($payload) ? $payload : [],
+            );
+
+            $this->transform_run = [
+                'error' => null,
+                'output' => (string) json_encode($result->output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'logs' => $result->stderr,
+                'duration_ms' => $result->durationMs,
+            ];
+        } catch (TransformException $e) {
+            $this->transform_run = ['error' => $e->getMessage(), 'output' => null, 'logs' => $e->diagnostics ?? '', 'duration_ms' => null];
+        } catch (Exception $e) {
+            $this->transform_run = ['error' => 'Fetching the polling data failed: '.$e->getMessage(), 'output' => null, 'logs' => '', 'duration_ms' => null];
+        }
+    }
+
+    /**
+     * Every language a transform may be written in, including ones the provider cannot run.
+     *
+     * @return list<string>
+     */
+    public function transformLanguageOptions(): array
+    {
+        return self::TRANSFORM_LANGUAGES;
+    }
+
+    public function transformLanguageLabel(string $language): string
+    {
+        return match ($language) {
+            'php' => 'PHP',
+            'node' => 'JavaScript',
+            'python' => 'Python',
+            'ruby' => 'Ruby',
+            default => $language,
+        };
+    }
+
     public function renderPreview($size = 'full'): void
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
@@ -750,6 +1024,7 @@ HTML;
     {
         $this->plugin = $this->plugin->fresh();
         $this->configuration_template = $this->plugin->configuration_template ?? [];
+        $this->fillFormFields();
     }
 
     // Laravel Livewire computed property: access with $this->parsed_urls
@@ -1274,6 +1549,7 @@ HTML;
                                     <flux:icon.cog-6-tooth class="size-4" />
                                     Settings
                                 </button>
+
                             </div>
 
                             <div class="styled-container flex-col rounded-tl-none bg-transparent p-4">
@@ -1354,6 +1630,7 @@ HTML;
                                         />
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     @elseif ($data_strategy === 'webhook')
@@ -1410,7 +1687,24 @@ HTML;
                             class="ml-2"
                         >{{ $this->data_payload_updated_at?->diffForHumans() ?? 'Never' }}</flux:badge>
                     @endisset
+                    @if ($this->showsTransformFailure())
+                        <flux:badge icon="exclamation-triangle" size="sm" variant="pill" color="red" class="ml-2">
+                            Untransformed
+                        </flux:badge>
+                    @endif
                 </div>
+                @if ($this->showsTransformFailure())
+                    <flux:callout variant="danger" icon="exclamation-triangle" class="mb-3">
+                        <flux:callout.heading>
+                            Transform failing since {{ $plugin->transform_failed_at?->diffForHumans() }}
+                        </flux:callout.heading>
+                        <flux:callout.text>
+                            The data payload holds the untransformed data. If the template needs the transformed data,
+                            rendering fails and the device shows the error screen.
+                        </flux:callout.text>
+                        <pre class="mt-2 max-h-48 overflow-auto font-mono text-xs whitespace-pre-wrap wrap-anywhere text-red-800 dark:text-red-200">{{ $plugin->transform_error }}</pre>
+                    </flux:callout>
+                @endif
                 <flux:error name="data_payload" />
                 <flux:field>
                     @php
@@ -1545,6 +1839,18 @@ HTML;
                                 </button>
                             @endforeach
 
+                            @if ($this->showsTransformTab())
+                                <button
+                                    type="button"
+                                    wire:click="switchTab('transform')"
+                                    class="tab-button {{ $active_tab === 'transform' ? 'is-active' : '' }}"
+                                    wire:key="tab-transform"
+                                >
+                                    <flux:icon.bolt class="size-4" />
+                                    Transform
+                                </button>
+                            @endif
+
                             <flux:dropdown>
                                 <flux:button icon="plus" variant="ghost" size="sm" class="m-0.5"></flux:button>
                                 <flux:menu>
@@ -1560,11 +1866,180 @@ HTML;
                                             </div>
                                         </flux:menu.item>
                                     @endforeach
+                                    @if ($this->transformIsAvailable())
+                                        <flux:menu.separator />
+                                        <flux:menu.item wire:click="toggleTransformTab">
+                                            <div class="flex items-center gap-2">
+                                                @if ($this->showsTransformTab())
+                                                    <flux:icon.check class="size-4" />
+                                                @else
+                                                    <span class="inline-block h-4 w-4"></span>
+                                                @endif
+                                                <span>Transform</span>
+                                            </div>
+                                        </flux:menu.item>
+                                    @endif
                                 </flux:menu>
                             </flux:dropdown>
                         </div>
 
                         <div class="styled-container flex-col rounded-tl-none bg-transparent p-4">
+                            @if ($active_tab === 'transform' && $this->showsTransformTab())
+                                <div class="space-y-4" wire:key="transform-editor">
+                                    @php
+                                        $runnableTransformLanguages = $this->transformLanguages();
+                                        $transformTextareaId = 'transform-code-'.$plugin->id;
+                                    @endphp
+
+                                    @if ($this->showsTransformFailure())
+                                        <flux:callout variant="danger" icon="exclamation-triangle" class="mb-3">
+                                            <flux:callout.heading>
+                                                Transform failing since {{ $plugin->transform_failed_at?->diffForHumans() }}
+                                            </flux:callout.heading>
+                                            <flux:callout.text>
+                                                The data payload holds the untransformed data. If the template needs the transformed data,
+                                                rendering fails and the device shows the error screen.
+                                            </flux:callout.text>
+                                            <pre class="mt-2 max-h-48 overflow-auto font-mono text-xs whitespace-pre-wrap wrap-anywhere text-red-800 dark:text-red-200">{{ $plugin->transform_error }}</pre>
+                                        </flux:callout>
+                                    @endif
+
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <flux:radio.group wire:model.live="transform_language" variant="segmented" size="sm">
+                                            @foreach ($this->transformLanguageOptions() as $language)
+                                                <flux:radio value="{{ $language }}" label="{{ $this->transformLanguageLabel($language) }}" />
+                                            @endforeach
+                                        </flux:radio.group>
+                                        <flux:button type="button" wire:click="renderTransformExample" size="sm" variant="ghost">
+                                            Insert example
+                                        </flux:button>
+                                    </div>
+                                    <flux:error name="transform_language" />
+
+                                    @if ($runnableTransformLanguages === [])
+                                        <flux:callout variant="warning" icon="exclamation-triangle">
+                                            <flux:callout.heading>The transform runner is not available</flux:callout.heading>
+                                            <flux:callout.text>
+                                                The runner at <code class="text-xs">TRANSFORM_RUNNER_URL</code> did not answer
+                                                <code class="text-xs">GET /manifest</code> with its language capabilities, so
+                                                transforms cannot run and the untransformed data is stored.
+                                            </flux:callout.text>
+                                        </flux:callout>
+                                    @elseif (! in_array($transform_language, $runnableTransformLanguages, true))
+                                        <flux:callout variant="warning" icon="exclamation-triangle">
+                                            <flux:callout.heading>
+                                                {{ $this->transformLanguageLabel($transform_language) }} is not supported by the
+                                                transform runner
+                                            </flux:callout.heading>
+                                            <flux:callout.text>
+                                                You can edit and save this transform, but it cannot run: the untransformed
+                                                data is stored. Supported here:
+                                                {{ collect($runnableTransformLanguages)->map(fn (string $language): string => $this->transformLanguageLabel($language))->join(', ') }}.
+                                            </flux:callout.text>
+                                        </flux:callout>
+                                    @endif
+
+                                    <flux:field>
+                                        <flux:label>Transform script</flux:label>
+                                        <flux:textarea wire:model="transform_code" id="{{ $transformTextareaId }}" rows="16" hidden />
+                                        <div
+                                            x-data="codeEditorFormComponent({
+                                                isDisabled: false,
+                                                language: @js($this->transformEditorLanguage()),
+                                                state: $wire.entangle('transform_code'),
+                                                textareaId: @js($transformTextareaId)
+                                            })"
+                                            wire:ignore
+                                            wire:key="transform-cm-{{ $plugin->id }}-{{ $transform_language }}"
+                                            class="h-[300px] min-h-[200px] resize-y overflow-hidden"
+                                        >
+                                            <div x-show="isLoading" class="flex h-full items-center justify-center">
+                                                <flux:icon.loading />
+                                            </div>
+                                            <div x-show="! isLoading" x-ref="editor" class="h-full"></div>
+                                        </div>
+                                        <flux:error name="transform_code" />
+                                        <flux:description>
+                                            @if ($data_strategy === 'static')
+                                                <code class="text-xs">run(input)</code> receives the static data
+                                            @else
+                                                <code class="text-xs">run(input)</code> receives the polled JSON (several URLs
+                                                arrive as <code class="text-xs">IDX_0</code>, <code class="text-xs">IDX_1</code>, …)
+                                            @endif
+                                            plus <code class="text-xs">input.trmnl</code> with <code class="text-xs">user</code> and
+                                            <code class="text-xs">plugin_settings.custom_fields_values</code>. The returned object
+                                            replaces the data payload.
+                                            @if ($data_strategy === 'static')
+                                                It runs when you save changed static data; the saved data is replaced by the output.
+                                            @else
+                                                Save to apply; if the transform fails, the untransformed data is stored.
+                                            @endif
+                                            See the
+                                            <a href="https://help.trmnl.com/en/articles/14130649-serverless" class="underline" target="_blank" rel="noopener noreferrer">TRMNL serverless documentation</a>.
+                                        </flux:description>
+                                    </flux:field>
+
+                                    <div class="flex items-center gap-3">
+                                        <flux:button
+                                            type="button"
+                                            icon="play"
+                                            size="sm"
+                                            wire:click="runTransform"
+                                            wire:target="runTransform"
+                                            :disabled="! in_array($transform_language, $runnableTransformLanguages, true)"
+                                        >
+                                            Run
+                                        </flux:button>
+                                        <flux:text class="text-sm">
+                                            {{ $data_strategy === 'static' ? 'Runs the code above on the static data without saving.' : 'Fetches the polling URLs and runs the code above without saving.' }}
+                                        </flux:text>
+                                    </div>
+
+                                    @if ($transform_run)
+                                        <div class="space-y-2" wire:key="transform-run-result">
+                                            <div class="flex items-center gap-2">
+                                                <flux:heading size="sm">Result</flux:heading>
+                                                @if ($transform_run['error'] === null)
+                                                    <flux:badge size="sm" color="green">OK</flux:badge>
+                                                    <flux:badge size="sm" icon="clock">{{ $transform_run['duration_ms'] }} ms</flux:badge>
+                                                @else
+                                                    <flux:badge size="sm" color="red">Failed</flux:badge>
+                                                @endif
+                                            </div>
+                                            @if ($transform_run['error'] !== null)
+                                                <flux:callout variant="danger" icon="x-circle">
+                                                    <flux:callout.text>{{ $transform_run['error'] }}</flux:callout.text>
+                                                </flux:callout>
+                                            @else
+                                                @php
+                                                    $transformResultId = 'transform-result-'.md5((string) $transform_run['output']);
+                                                @endphp
+                                                <textarea id="{{ $transformResultId }}" hidden>{{ $transform_run['output'] }}</textarea>
+                                                <div
+                                                    x-data="codeEditorFormComponent({
+                                                        isDisabled: true,
+                                                        language: 'json',
+                                                        state: @js($transform_run['output']),
+                                                        textareaId: @js($transformResultId)
+                                                    })"
+                                                    wire:ignore
+                                                    wire:key="cm-{{ $transformResultId }}"
+                                                    class="h-[300px] min-h-[150px] resize-y overflow-hidden"
+                                                >
+                                                    <div x-show="isLoading" class="flex h-full items-center justify-center">
+                                                        <flux:icon.loading />
+                                                    </div>
+                                                    <div x-show="! isLoading" x-ref="editor" class="h-full"></div>
+                                                </div>
+                                            @endif
+                                            @if (filled($transform_run['logs']))
+                                                <flux:text class="text-sm">Console output</flux:text>
+                                                <pre class="max-h-48 overflow-auto rounded-lg bg-zinc-50 p-3 font-mono text-xs whitespace-pre-wrap wrap-anywhere text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">{{ $transform_run['logs'] }}</pre>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
                             <flux:field>
                                 @php
                                     $textareaId = 'code-'.$plugin->id;
@@ -1599,6 +2074,7 @@ HTML;
                                     <div x-show="! isLoading" x-ref="editor" class="h-full"></div>
                                 </div>
                             </flux:field>
+                            @endif
                         </div>
                     </div>
                 </div>

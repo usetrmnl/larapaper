@@ -53,7 +53,41 @@ arch()
 |
 */
 
-// function something()
-// {
-//    // ..
-// }
+/**
+ * Enable transforms against a faked runner at `http://runner.test`. `$run` receives the
+ * request input and code and returns the output object, or a faked response (e.g. an error).
+ * `GET /manifest` reports `$languages` as `language_capabilities` (default: every language).
+ * Calling it again in the same test replaces the handler and languages.
+ *
+ * @param  list<string>|null  $languages
+ */
+function fakeTransformRunner(?Closure $run = null, ?array $languages = null): void
+{
+    config(['services.transform.provider' => 'http', 'services.transform.runner_url' => 'http://runner.test']);
+    Illuminate\Support\Facades\Cache::forget('transform:languages');
+
+    $registered = app()->bound('tests.transform-runner');
+
+    app()->instance('tests.transform-runner', [
+        'run' => $run ?? fn (array $input): array => $input,
+        'languages' => $languages,
+    ]);
+
+    // Every matching stub is evaluated, so the runner is only stubbed once per test.
+    if ($registered) {
+        return;
+    }
+
+    Illuminate\Support\Facades\Http::fake([
+        'runner.test/manifest' => fn () => Illuminate\Support\Facades\Http::response([
+            'name' => 'Fake Transform Runner',
+            'version' => 'test',
+            'language_capabilities' => app('tests.transform-runner')['languages'] ?? App\Services\Plugin\Transform\HttpTransformProvider::LANGUAGES,
+        ]),
+        'runner.test/run' => function (Illuminate\Http\Client\Request $request) {
+            $result = app('tests.transform-runner')['run']($request['input'], $request['code']);
+
+            return is_array($result) ? Illuminate\Support\Facades\Http::response(['output' => $result]) : $result;
+        },
+    ]);
+}
