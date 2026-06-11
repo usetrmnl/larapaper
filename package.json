@@ -24,7 +24,7 @@
         "@tailwindcss/vite": "^4.1.11",
         "autoprefixer": "^10.4.20",
         "codemirror": "^6.0.2",
-        "concurrently": "^9.0.1",
+        "concurrently": "^10.0.3",
         "laravel-vite-plugin": "^3.1",
         "puppeteer": "25.0.4",
         "tailwindcss": "^4.0.7",
