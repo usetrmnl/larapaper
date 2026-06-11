@@ -46,6 +46,15 @@ return [
         'liquid_path' => env('TRMNL_LIQUID_PATH', '/usr/local/bin/trmnl-liquid-cli'),
     ],
 
+    'transform' => [
+        'enabled' => env('TRANSFORM_ENABLED', false),
+        'timeout_seconds' => env('TRANSFORM_TIMEOUT_SECONDS', 5),
+        'memory_limit_mb' => env('TRANSFORM_MEMORY_LIMIT_MB', 128),
+        'binaries' => [
+            'php' => env('TRANSFORM_BIN_PHP', 'php'),
+        ],
+    ],
+
     'webhook' => [
         'notifications' => [
             'url' => env('WEBHOOK_NOTIFICATION_URL', null),

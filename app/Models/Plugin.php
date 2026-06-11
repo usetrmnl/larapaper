@@ -15,6 +15,7 @@ use App\Liquid\Tags\TemplateTag;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginImportService;
 use Carbon\Carbon;
 use Closure;
@@ -55,6 +56,7 @@ class Plugin extends Model
         'plugin_type' => 'string',
         'alias' => 'boolean',
         'current_image_metadata' => 'array',
+        'transform_language' => 'string',
     ];
 
     protected static function boot()
@@ -75,6 +77,8 @@ class Plugin extends Model
                 'render_markup_half_vertical',
                 'render_markup_quadrant',
                 'render_markup_shared',
+                'transform_code',
+                'transform_language',
             ])) {
                 $model->current_image = null;
                 $model->current_image_metadata = null;
@@ -356,6 +360,63 @@ class Plugin extends Model
         return ['error' => 'Data payload exceeds maximum allowed size'];
     }
 
+    /**
+     * Run the optional sandboxed transform script on the parsed polling response only
+     * (no render-time `trmnl` context). Returns the payload unchanged when disabled or unconfigured.
+     */
+    private function applyTransform(mixed $payload): mixed
+    {
+        if (! is_array($payload)) {
+            return $payload;
+        }
+
+        if (! config('services.transform.enabled', false)) {
+            return $payload;
+        }
+
+        $code = is_string($this->transform_code) ? mb_trim($this->transform_code) : '';
+        $language = is_string($this->transform_language) ? mb_strtolower(mb_trim($this->transform_language)) : '';
+
+        if ($code === '' || $language === '') {
+            return $payload;
+        }
+
+        /** @var array<int|string, mixed> $input */
+        $input = $payload;
+
+        try {
+            $result = app(TransformService::class)->execute($language, $code, $input);
+        } catch (Exception $e) {
+            Log::warning('Transform execution threw', [
+                'plugin_id' => $this->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['error' => 'Transform failed: '.$e->getMessage()];
+        }
+
+        if (! $result->succeeded()) {
+            $stderr = mb_trim($result->stderr);
+            $stdout = mb_trim($result->stdout);
+            $detail = implode(' ', array_filter([
+                mb_trim((string) $result->error),
+                $stderr !== '' ? $stderr : null,
+                $stderr === '' && $stdout !== '' ? $stdout : null,
+            ]));
+
+            Log::warning('Transform failed', [
+                'plugin_id' => $this->id,
+                'exit_code' => $result->exitCode,
+                'stderr' => $result->stderr,
+                'stdout' => $result->stdout,
+            ]);
+
+            return ['error' => $detail !== '' ? $detail : 'Transform failed'];
+        }
+
+        return $result->output;
+    }
+
     /** Supported TRMNL webhook merge strategies for recipe plugins. */
     public static function webhookMergeStrategies(): array
     {
@@ -509,6 +570,8 @@ class Plugin extends Model
 
         // unwrap IDX_0 if only one URL
         $finalPayload = (count($urls) === 1) ? reset($combinedResponse) : $combinedResponse;
+
+        $finalPayload = $this->applyTransform($finalPayload);
 
         if (! self::dataPayloadWithinWireLimit($finalPayload)) {
             Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");

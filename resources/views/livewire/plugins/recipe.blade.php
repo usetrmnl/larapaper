@@ -40,6 +40,12 @@ new class extends Component
 
     public ?string $polling_body;
 
+    public ?string $transform_code = null;
+
+    public string $transform_language = 'php';
+
+    public bool $transform_enabled = false;
+
     public $data_payload;
 
     public ?Carbon $data_payload_updated_at;
@@ -127,6 +133,7 @@ new class extends Component
 
         $this->fillformFields();
         $this->data_payload_updated_at = $this->plugin->data_payload_updated_at;
+        $this->transform_enabled = (bool) config('services.transform.enabled', false);
 
         // Set default preview device model
         if ($this->preview_device_model_id === null) {
@@ -146,6 +153,10 @@ new class extends Component
         $this->polling_verb = $this->plugin->polling_verb;
         $this->polling_header = $this->plugin->polling_header;
         $this->polling_body = $this->plugin->polling_body;
+        $this->transform_code = $this->plugin->transform_code;
+        $this->transform_language = $this->plugin->transform_language !== null && $this->plugin->transform_language !== ''
+            ? (string) $this->plugin->transform_language
+            : 'php';
         $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
     }
 
@@ -274,6 +285,8 @@ new class extends Component
         'device_active_until' => 'array',
         'no_bleed' => 'boolean',
         'dark_mode' => 'boolean',
+        'transform_code' => 'nullable|string|max:200000',
+        'transform_language' => 'nullable|string|in:php',
     ];
 
     public function editSettings()
@@ -513,6 +526,20 @@ HTML;
 HTML;
     }
 
+    public function renderTransformExample(): void
+    {
+        $this->transform_code = <<<'PHP'
+<?php
+
+function run($input)
+{
+    return [
+        'data' => $input,
+    ];
+}
+PHP;
+    }
+
     public function renderPreview($size = 'full'): void
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
@@ -694,6 +721,7 @@ HTML;
     {
         $this->plugin = $this->plugin->fresh();
         $this->configuration_template = $this->plugin->configuration_template ?? [];
+        $this->fillFormFields();
     }
 
     // Laravel Livewire computed property: access with $this->parsed_urls
@@ -1112,6 +1140,18 @@ HTML;
                                 <flux:icon.eye class="size-4" />
                                 Preview URL
                             </button>
+
+                            @if($transform_enabled)
+                            <button
+                                type="button"
+                                @click="subTab = 'transform'"
+                                class="tab-button"
+                                :class="subTab === 'transform' ? 'is-active' : ''"
+                            >
+                                <flux:icon.bolt class="size-4" />
+                                Transform
+                            </button>
+                            @endif
                         </div>
 
                         <div class="flex-col p-4 bg-transparent rounded-tl-none styled-container">
@@ -1141,6 +1181,56 @@ HTML;
                                     </flux:textarea>
                                 </flux:field>
                             </div>
+
+                            @if($transform_enabled)
+                            <div x-show="subTab === 'transform'" x-cloak class="space-y-4">
+                                <flux:field>
+                                    <flux:description>
+                                        Run sandboxed PHP to filter or reshape the parsed polling JSON before it is stored (same structure as the <code class="text-xs">data</code> payload in markup after fetch). Render-time variables such as <code class="text-xs">trmnl</code> are not available here. See the
+                                        <a href="https://help.trmnl.com/en/articles/14130649-serverless" class="underline" target="_blank" rel="noopener noreferrer">TRMNL serverless documentation</a>.
+                                        Implement <code class="text-xs">run($input)</code> (the legacy <code class="text-xs">transform($input)</code> name is also supported). Environment variables and the filesystem are not accessible.
+                                    </flux:description>
+                                </flux:field>
+
+                                <div>
+                                    <flux:button type="button" wire:click="renderTransformExample" size="sm" variant="ghost">
+                                        Insert example
+                                    </flux:button>
+                                </div>
+
+                                @php
+                                    $transformTextareaId = 'transform-code-'.$plugin->id;
+                                @endphp
+
+                                <flux:field>
+                                    <flux:label>Transform script</flux:label>
+                                    <flux:textarea
+                                        wire:model="transform_code"
+                                        id="{{ $transformTextareaId }}"
+                                        rows="16"
+                                        hidden
+                                    />
+                                    <div
+                                        x-data="codeEditorFormComponent({
+                                            isDisabled: false,
+                                            language: 'php',
+                                            state: $wire.entangle('transform_code'),
+                                            textareaId: @js($transformTextareaId)
+                                        })"
+                                        wire:ignore
+                                        wire:key="transform-cm-{{ $plugin->id }}"
+                                        class="min-h-[200px] h-[280px] overflow-hidden resize-y"
+                                    >
+                                        <div x-show="isLoading" class="flex items-center justify-center h-full">
+                                            <div class="flex items-center space-x-2 ">
+                                                <flux:icon.loading />
+                                            </div>
+                                        </div>
+                                        <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
+                                    </div>
+                                </flux:field>
+                            </div>
+                            @endif
 
                             <flux:button icon="cloud-arrow-down" wire:click="updateData" class="w-full mt-4">
                                 Fetch data now
