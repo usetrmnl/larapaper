@@ -131,6 +131,8 @@ class RunDeviceDisplayCycle
                         'plugin_id' => $plugin->id,
                     ]);
 
+                    $plugin->clearCurrentImage();
+
                     return false;
                 }
 
