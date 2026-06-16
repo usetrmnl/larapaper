@@ -1086,6 +1086,111 @@ test('display endpoint does not re-poll fresh skip payloads on later rotation pa
     Http::assertSentCount(1);
 });
 
+test('display endpoint does not reuse cached markup-skip images on later fresh rotation passes', function (): void {
+    Http::fake([
+        'https://example.com/markup-skip-refresh' => Http::response([
+            'headline' => 'Skip based on rendered markup',
+        ], 200),
+    ]);
+
+    $device = Device::factory()->create([
+        'mac_address' => '55:11:22:33:44:90',
+        'api_key' => 'markup-skip-fresh-cache-api-key',
+        'proxy_cloud' => false,
+    ]);
+
+    $imageMetadata = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $skipPlugin = Plugin::factory()->create([
+        'name' => 'Markup Skip Fresh Cache Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://example.com/markup-skip-refresh',
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 120,
+        'data_payload_updated_at' => null,
+        'current_image' => 'stale-markup-skip-image',
+        'current_image_metadata' => $imageMetadata,
+        'markup_language' => 'blade',
+        'render_markup' => <<<'BLADE'
+<div>Hidden</div>
+<script>
+window.TRMNL_SKIP_DISPLAY = true;
+</script>
+BLADE,
+    ]);
+
+    $visiblePlugin = Plugin::factory()->create([
+        'name' => 'Visible After Markup Skip Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'polling_verb' => 'get',
+        'data_stale_minutes' => 5,
+        'data_payload' => ['headline' => 'Visible item'],
+        'data_payload_updated_at' => now(),
+        'current_image' => 'visible-after-markup-skip-image',
+        'current_image_metadata' => $imageMetadata,
+    ]);
+
+    Storage::disk('public')->put('images/generated/stale-markup-skip-image.bmp', 'stale-skip');
+    Storage::disk('public')->put('images/generated/visible-after-markup-skip-image.bmp', 'visible-after-markup-skip');
+
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'name' => 'Markup Skip Fresh Cache Test',
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+
+    $skippedItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $skipPlugin->id,
+        'order' => 1,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $visibleItem = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $visiblePlugin->id,
+        'order' => 2,
+        'is_active' => true,
+        'last_displayed_at' => null,
+    ]);
+
+    $firstResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $firstResponse->assertOk();
+    expect($firstResponse['filename'])->toBe('visible-after-markup-skip-image.bmp')
+        ->and($skippedItem->fresh()->last_displayed_at)->toBeNull()
+        ->and($skipPlugin->fresh()->current_image)->toBeNull()
+        ->and($visibleItem->fresh()->last_displayed_at)->not->toBeNull();
+
+    $this->travel(1)->seconds();
+
+    $secondResponse = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $secondResponse->assertOk();
+    expect($secondResponse['filename'])->toBe('visible-after-markup-skip-image.bmp')
+        ->and($skippedItem->fresh()->last_displayed_at)->toBeNull()
+        ->and($skipPlugin->fresh()->current_image)->toBeNull();
+
+    Http::assertSentCount(1);
+});
+
 test('display endpoint updates last_refreshed_at timestamp', function (): void {
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
