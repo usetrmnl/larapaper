@@ -130,7 +130,9 @@ new class extends Component
 
         // Set default preview device model
         if ($this->preview_device_model_id === null) {
-            $defaultModel = DeviceModel::where('name', 'og_plus')->first() ?? DeviceModel::first();
+            $defaultModel = $this->getUserDeviceModels()->first()
+                ?? DeviceModel::where('name', 'og_plus')->first()
+                ?? DeviceModel::first();
             $this->preview_device_model_id = $defaultModel?->id;
         }
     }
@@ -607,8 +609,17 @@ HTML;
 
     public function getDeviceModels()
     {
+        $groups = [];
+        $userDeviceModels = $this->getUserDeviceModels();
 
-        return [
+        if ($userDeviceModels->isNotEmpty()) {
+            $groups['user_devices'] = [
+                'label' => 'Your Devices',
+                'models' => $userDeviceModels,
+            ];
+        }
+
+        return $groups + [
             'trmnl' => [
                 'label' => 'TRMNL',
                 'models' => DeviceModel::whereKind('trmnl')->orderBy('label')->get(),
@@ -622,6 +633,20 @@ HTML;
                 'models' => DeviceModel::whereKind('kindle')->orderBy('label')->get(),
             ],
         ];
+    }
+
+    private function getUserDeviceModels()
+    {
+        return auth()->user()
+            ->devices()
+            ->with('deviceModel')
+            ->whereNotNull('device_model_id')
+            ->orderBy('id')
+            ->get()
+            ->pluck('deviceModel')
+            ->filter()
+            ->unique('id')
+            ->values();
     }
 
     public function updatedPreviewDeviceModelId(): void

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Models\User;
@@ -9,6 +10,58 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+test('preview defaults to the first registered device model', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $customDeviceModel = DeviceModel::factory()->create([
+        'kind' => null,
+        'label' => 'Seeed E1001 Monochrome (2bit)',
+        'width' => 800,
+        'height' => 480,
+    ]);
+
+    Device::factory()->create([
+        'user_id' => $user->id,
+        'device_model_id' => $customDeviceModel->id,
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->assertSet('preview_device_model_id', $customDeviceModel->id)
+        ->assertSee('Your Devices')
+        ->assertSee('Seeed E1001 Monochrome (2bit)');
+});
+
+test('preview falls back to trmnl og when user has no device model', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $ogModel = DeviceModel::factory()->create([
+        'name' => 'og_plus',
+        'kind' => 'trmnl',
+        'label' => 'TRMNL OG (2-bit)',
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->assertSet('preview_device_model_id', $ogModel->id);
+});
 
 test('render preview dispatches screen dimensions from selected device model', function (): void {
     $user = User::factory()->create();
