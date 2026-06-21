@@ -45,11 +45,12 @@ test('preview falls back to trmnl og when user has no device model', function ()
     $user = User::factory()->create();
     $this->actingAs($user);
 
-    $ogModel = DeviceModel::factory()->create([
-        'name' => 'og_plus',
-        'kind' => 'trmnl',
-        'label' => 'TRMNL OG (2-bit)',
-    ]);
+    $ogModel = DeviceModel::query()->firstWhere('name', 'og_plus')
+        ?? DeviceModel::factory()->create([
+            'name' => 'og_plus',
+            'kind' => 'trmnl',
+            'label' => 'TRMNL OG (2-bit)',
+        ]);
 
     $plugin = Plugin::factory()->create([
         'user_id' => $user->id,
