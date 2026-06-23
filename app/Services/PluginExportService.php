@@ -54,8 +54,17 @@ class PluginExportService
 
         $extension = $plugin->markup_language === 'liquid' ? 'liquid' : 'blade.php';
 
-        // Export full template if it exists
-        if ($plugin->render_markup) {
+        // Export full template from view file or inline markup
+        if ($plugin->render_markup_view) {
+            $viewFile = $this->resolveRenderMarkupView($plugin->render_markup_view);
+            if ($viewFile) {
+                $fullTemplate = $viewFile['extension'] === 'liquid'
+                    ? $this->generateLayoutTemplate($viewFile['content'])
+                    : mb_trim($viewFile['content']);
+                File::put($tempDir.'/full.'.$viewFile['extension'], $fullTemplate);
+                $extension = $viewFile['extension'];
+            }
+        } elseif ($plugin->render_markup) {
             $fullTemplate = $this->generateLayoutTemplate($plugin->render_markup);
             File::put($tempDir.'/full.'.$extension, $fullTemplate);
         }
@@ -136,6 +145,31 @@ class PluginExportService
         }
 
         return $settings;
+    }
+
+    /**
+     * Resolve a render_markup_view reference to its file content and extension.
+     *
+     * @return array{content: string, extension: string}|null
+     */
+    private function resolveRenderMarkupView(string $renderMarkupView): ?array
+    {
+        $basePath = resource_path('views/'.str_replace('.', '/', $renderMarkupView));
+        $paths = [
+            'blade.php' => $basePath.'.blade.php',
+            'liquid' => $basePath.'.liquid',
+        ];
+
+        foreach ($paths as $extension => $path) {
+            if (File::exists($path)) {
+                return [
+                    'content' => File::get($path),
+                    'extension' => $extension,
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

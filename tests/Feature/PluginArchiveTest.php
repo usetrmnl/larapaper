@@ -218,6 +218,86 @@ it('api route returns 404 for plugin belonging to different user', function (): 
     $response->assertStatus(404);
 });
 
+it('exports render_markup_view blade file as full.blade.php', function (): void {
+    $user = User::factory()->create();
+    $testViewPath = resource_path('views/recipes/test-export-blade.blade.php');
+    $testContent = '<div class="test-view">Exported Blade Content</div>';
+
+    if (! is_dir(dirname($testViewPath))) {
+        mkdir(dirname($testViewPath), 0755, true);
+    }
+
+    file_put_contents($testViewPath, $testContent);
+
+    try {
+        $plugin = Plugin::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'View Export Plugin',
+            'trmnlp_id' => 'view-export-blade',
+            'render_markup' => null,
+            'render_markup_view' => 'recipes.test-export-blade',
+            'markup_language' => null,
+        ]);
+
+        $exporter = app(PluginExportService::class);
+        $response = $exporter->exportToZip($plugin, $user);
+
+        $zipPath = $response->getFile()->getPathname();
+        $zip = new ZipArchive();
+        $zip->open($zipPath);
+
+        expect($zip->locateName('full.blade.php'))->not->toBeFalse();
+        expect($zip->locateName('full.liquid'))->toBeFalse();
+        expect($zip->getFromName('full.blade.php'))->toBe($testContent);
+
+        $zip->close();
+    } finally {
+        if (file_exists($testViewPath)) {
+            unlink($testViewPath);
+        }
+    }
+});
+
+it('exports render_markup_view liquid file as full.liquid', function (): void {
+    $user = User::factory()->create();
+    $testViewPath = resource_path('views/recipes/test-export-liquid.liquid');
+    $testContent = '<div class="view view--{{ size }}"><div>Exported Liquid Content</div></div>';
+
+    if (! is_dir(dirname($testViewPath))) {
+        mkdir(dirname($testViewPath), 0755, true);
+    }
+
+    file_put_contents($testViewPath, $testContent);
+
+    try {
+        $plugin = Plugin::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'View Export Liquid Plugin',
+            'trmnlp_id' => 'view-export-liquid',
+            'render_markup' => null,
+            'render_markup_view' => 'recipes.test-export-liquid',
+            'markup_language' => null,
+        ]);
+
+        $exporter = app(PluginExportService::class);
+        $response = $exporter->exportToZip($plugin, $user);
+
+        $zipPath = $response->getFile()->getPathname();
+        $zip = new ZipArchive();
+        $zip->open($zipPath);
+
+        expect($zip->locateName('full.liquid'))->not->toBeFalse();
+        expect($zip->locateName('full.blade.php'))->toBeFalse();
+        expect($zip->getFromName('full.liquid'))->toBe('<div>Exported Liquid Content</div>');
+
+        $zip->close();
+    } finally {
+        if (file_exists($testViewPath)) {
+            unlink($testViewPath);
+        }
+    }
+});
+
 it('exports zip with files in root directory', function (): void {
     $user = User::factory()->create();
     $plugin = Plugin::factory()->create([
