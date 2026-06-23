@@ -611,6 +611,7 @@ HTML;
     {
         $groups = [];
         $userDeviceModels = $this->getUserDeviceModels();
+        $userDeviceModelIds = $userDeviceModels->pluck('id');
 
         if ($userDeviceModels->isNotEmpty()) {
             $groups['user_devices'] = [
@@ -622,15 +623,24 @@ HTML;
         return $groups + [
             'trmnl' => [
                 'label' => 'TRMNL',
-                'models' => DeviceModel::whereKind('trmnl')->orderBy('label')->get(),
+                'models' => DeviceModel::whereKind('trmnl')
+                    ->whereNotIn('id', $userDeviceModelIds)
+                    ->orderBy('label')
+                    ->get(),
             ],
             'byod' => [
                 'label' => 'BYOD',
-                'models' => DeviceModel::whereKind('byod')->orderBy('label')->get(),
+                'models' => DeviceModel::whereKind('byod')
+                    ->whereNotIn('id', $userDeviceModelIds)
+                    ->orderBy('label')
+                    ->get(),
             ],
             'readers' => [
                 'label' => 'eReaders',
-                'models' => DeviceModel::whereKind('kindle')->orderBy('label')->get(),
+                'models' => DeviceModel::whereKind('kindle')
+                    ->whereNotIn('id', $userDeviceModelIds)
+                    ->orderBy('label')
+                    ->get(),
             ],
         ];
     }
