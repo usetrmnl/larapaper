@@ -620,6 +620,83 @@ it('imports plugin with only shared.blade.php file', function (): void {
         ->and($plugin->render_markup)->toBeNull();
 });
 
+it('imports transform_code and transform_language from a ZIP with a Python transform', function (): void {
+    $user = User::factory()->create();
+    $transformCode = "def run(input):\n    return {'count': len(input.get('data', []))}";
+
+    $zip = makePluginZip([
+        'settings.yml' => "name: Test Plugin\nstrategy: polling\npolling_url: https://example.com\nserverless_language: python\n",
+        'full.liquid'  => '<div>{{ count }}</div>',
+        'transform.py' => $transformCode,
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBe($transformCode)
+        ->and($plugin->transform_language)->toBe('python');
+});
+
+it('imports transform_code and transform_language from a ZIP with a Node transform', function (): void {
+    $user = User::factory()->create();
+    $transformCode = 'function run(input) { return { count: input.data.length }; }';
+
+    $zip = makePluginZip([
+        'settings.yml' => "name: Test Plugin\nstrategy: polling\npolling_url: https://example.com\nserverless_language: node\n",
+        'full.liquid'  => '<div>{{ count }}</div>',
+        'transform.js' => $transformCode,
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBe($transformCode)
+        ->and($plugin->transform_language)->toBe('node');
+});
+
+it('imports transform_code and transform_language from a ZIP with a PHP transform', function (): void {
+    $user = User::factory()->create();
+    $transformCode = '<?php function run($input) { return ["count" => count($input["data"] ?? [])]; }';
+
+    $zip = makePluginZip([
+        'settings.yml'  => "name: Test Plugin\nstrategy: polling\npolling_url: https://example.com\nserverless_language: php\n",
+        'full.liquid'   => '<div>{{ count }}</div>',
+        'transform.php' => $transformCode,
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBe($transformCode)
+        ->and($plugin->transform_language)->toBe('php');
+});
+
+it('sets both transform fields to null when no transform file is present', function (): void {
+    $user = User::factory()->create();
+
+    $zip = makePluginZip([
+        'settings.yml' => "name: Test Plugin\nstrategy: static\n",
+        'full.liquid'  => '<div>hello</div>',
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBeNull()
+        ->and($plugin->transform_language)->toBeNull();
+});
+
+it('sets both transform fields to null when serverless_language is absent even if a transform file is present', function (): void {
+    $user = User::factory()->create();
+
+    $zip = makePluginZip([
+        'settings.yml' => "name: Test Plugin\nstrategy: static\n",
+        'full.liquid'  => '<div>hello</div>',
+        'transform.py' => 'def run(input): return input',
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBeNull()
+        ->and($plugin->transform_language)->toBeNull();
+});
+
 // Helper methods
 function createMockZipFile(array $files): string
 {
@@ -662,4 +739,17 @@ function getValidFullLiquid(): string
   <p>{{ data.description }}</p>
 </div>
 LIQUID;
+}
+
+function makePluginZip(array $srcFiles): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'plugin-test-').'.zip';
+    $zip = new ZipArchive();
+    $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    foreach ($srcFiles as $name => $content) {
+        $zip->addFromString('src/'.$name, $content);
+    }
+    $zip->close();
+
+    return new UploadedFile($path, 'plugin.zip', 'application/zip', null, true);
 }
