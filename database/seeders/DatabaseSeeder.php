@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
                 'mac_address' => '00:00:00:00:00:00',
                 'api_key' => 'test-api-key',
                 'proxy_cloud' => false,
+                'device_model_id' => 1,
             ]);
 
             Playlist::factory()->create([
