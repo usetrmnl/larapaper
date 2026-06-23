@@ -55,7 +55,7 @@ class PluginImportService
      *
      * @throws Exception If the ZIP file is invalid or required files are missing
      */
-    public function importFromZip(UploadedFile $zipFile, User $user, ?string $zipEntryPath = null): Plugin
+    public function importFromZip(UploadedFile $zipFile, User $user, ?string $zipEntryPath = null, ?string $trmnlpId = null): Plugin
     {
         $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
         $tempDir = $temporaryDirectory->path();
@@ -156,17 +156,16 @@ class PluginImportService
             'custom_fields' => $settings['custom_fields'],
         ];
 
-        $plugin_updated = isset($settings['id'])
-                        && Plugin::where('user_id', $user->id)->where('trmnlp_id', $settings['id'])->exists();
-        // Create a new plugin
+        $effectiveTrmnlpId = $trmnlpId ?? $settings['id'] ?? (string) Uuid::v7();
+        $plugin_updated = Plugin::where('user_id', $user->id)->where('trmnlp_id', $effectiveTrmnlpId)->exists();
         $plugin = Plugin::updateOrCreate(
             [
-                'user_id' => $user->id, 'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
+                'user_id' => $user->id, 'trmnlp_id' => $effectiveTrmnlpId,
             ],
             [
                 'user_id' => $user->id,
                 'name' => $settings['name'] ?? 'Imported Plugin',
-                'trmnlp_id' => $settings['id'] ?? Uuid::v7(),
+                'trmnlp_id' => $effectiveTrmnlpId,
                 'data_stale_minutes' => $settings['refresh_interval'] ?? 15,
                 'data_strategy' => $settings['strategy'] ?? 'static',
                 'polling_url' => $settings['polling_url'] ?? null,
