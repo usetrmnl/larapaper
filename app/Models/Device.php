@@ -116,7 +116,7 @@ class Device extends Model
             return true;
         }
 
-        return $this->proxy_cloud_response && $this->proxy_cloud_response['update_firmware'];
+        return (bool) ($this->proxy_cloud_response['update_firmware'] ?? false);
     }
 
     public function getFirmwareUrlAttribute(): ?string
@@ -132,8 +132,8 @@ class Device extends Model
             }
         }
 
-        if ($this->proxy_cloud_response && $this->proxy_cloud_response['firmware_url']) {
-            return $this->proxy_cloud_response['firmware_url'];
+        if ($firmwareUrl = $this->proxy_cloud_response['firmware_url'] ?? null) {
+            return $firmwareUrl;
         }
 
         return null;
