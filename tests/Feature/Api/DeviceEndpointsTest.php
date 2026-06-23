@@ -358,6 +358,31 @@ test('update_firmware flag is only returned once', function (): void {
     expect($device->proxy_cloud_response['update_firmware'])->toBeFalse();
 });
 
+test('display endpoint handles proxy cloud response without firmware keys', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:55',
+        'api_key' => 'test-api-key',
+        'proxy_cloud_response' => [
+            'image_url' => 'https://example.com/test-image.bmp',
+            'filename' => 'test-image',
+        ],
+    ]);
+
+    $response = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $response->assertOk()
+        ->assertJson([
+            'update_firmware' => false,
+            'firmware_url' => null,
+        ]);
+});
+
 test('authenticated user can fetch device status', function (): void {
     $user = User::factory()->create();
     $device = Device::factory()->create([

@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -46,11 +47,22 @@ class FetchProxyCloudResponses implements ShouldQueue
         });
     }
 
+    /**
+     * @throws ConnectionException
+     */
     private function fetchDisplayResponse(Device $device): Response
     {
         /** @var Response $response */
         $response = Http::withHeaders($this->getDeviceHeaders($device))
             ->get(config('services.trmnl.proxy_base_url').'/api/display');
+
+        if (! in_array($response->status(), [0, 200], true)) {
+            $error = $response->json('error');
+
+            if (is_string($error) && $error !== '') {
+                throw new Exception($error);
+            }
+        }
 
         return $response;
     }
