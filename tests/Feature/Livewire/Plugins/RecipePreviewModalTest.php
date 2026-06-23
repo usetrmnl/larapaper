@@ -41,6 +41,41 @@ test('preview defaults to the first registered device model', function (): void 
         ->assertSee('Seeed E1001 Monochrome (2bit)');
 });
 
+test('preview device selector does not duplicate user device models in other groups', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $trmnlDeviceModel = DeviceModel::factory()->create([
+        'kind' => 'trmnl',
+        'label' => 'TRMNL OG (2-bit)',
+    ]);
+
+    Device::factory()->create([
+        'user_id' => $user->id,
+        'device_model_id' => $trmnlDeviceModel->id,
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    $groups = Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->instance()
+        ->getDeviceModels();
+
+    $allModelIds = collect($groups)
+        ->flatMap(fn (array $group) => $group['models'])
+        ->pluck('id');
+
+    expect($allModelIds->duplicates()->isEmpty())->toBeTrue();
+    expect($groups['user_devices']['models']->pluck('id'))->toContain($trmnlDeviceModel->id);
+    expect($groups['trmnl']['models']->pluck('id'))->not->toContain($trmnlDeviceModel->id);
+});
+
 test('preview falls back to trmnl og when user has no device model', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user);
