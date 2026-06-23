@@ -1,4 +1,3 @@
-{{--@dump($data)--}}
 @props(['size' => 'full'])
 <x-trmnl::view size="{{ $size }}">
     <x-trmnl::layout class="layout--col">
@@ -11,7 +10,7 @@
     </x-trmnl::layout>
 
     <div class="title_bar">
-        <img class="image" src="https://img.icons8.com/books"/>
+        <flux:icon name="book-open" class="image" />
         <span class="title">Zen Quotes</span>
     </div>
 </x-trmnl::view>
