@@ -9,6 +9,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::redirect('settings/password', '/settings/security');
     Route::redirect('settings/two-factor', '/settings/security');
     Route::livewire('settings/support', 'pages::settings.support')->name('settings.support');
+    Route::livewire('settings/api-tokens', 'pages::settings.api-tokens')->name('settings.api-tokens');
     Route::livewire('settings/lab', 'pages::settings.lab')->name('settings.lab');
     Route::livewire('settings/update', 'pages::settings.update')->name('settings.update');
 });

@@ -7,6 +7,7 @@
             @if (auth()?->user()?->oidc_sub === null)
                 <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
             @endif
+            <flux:navlist.item :href="route('settings.api-tokens')" wire:navigate>{{ __('API Tokens') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support') }}</flux:navlist.item>
             <flux:navlist.item :href="route('settings.lab')" wire:navigate>{{ __('Lab') }}</flux:navlist.item>
             @if (config('app.version'))
