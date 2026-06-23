@@ -15,6 +15,7 @@ use App\Liquid\Tags\TemplateTag;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
+use App\Services\Plugin\ServerlessTransformService;
 use App\Services\PluginImportService;
 use Carbon\Carbon;
 use Closure;
@@ -55,6 +56,8 @@ class Plugin extends Model
         'plugin_type' => 'string',
         'alias' => 'boolean',
         'current_image_metadata' => 'array',
+        'transform_code'         => 'string',   // add this
+        'transform_language'     => 'string',   // add this
     ];
 
     protected static function boot()
@@ -513,6 +516,11 @@ class Plugin extends Model
         if (! self::dataPayloadWithinWireLimit($finalPayload)) {
             Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");
             $finalPayload = self::oversizedDataPayloadErrorPayload();
+        }
+
+        if ($this->transform_code && $this->transform_language) {
+            $finalPayload = app(ServerlessTransformService::class)
+                ->run($this->transform_code, $this->transform_language, $finalPayload);
         }
 
         $this->update([
