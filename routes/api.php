@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Firmware\ScreenController;
 use App\Http\Controllers\Api\Firmware\SetupController;
 use App\Http\Controllers\Api\PluginActionController;
 use App\Http\Controllers\Api\PluginArchiveController;
+use App\Http\Controllers\Api\PluginSettingsController;
 use App\Http\Controllers\Api\PluginWebhookController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'export']);
     Route::post('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'import']);
+
+    Route::get('/me', [PluginSettingsController::class, 'me']);
+    Route::get('/plugin_settings', [PluginSettingsController::class, 'index']);
+    Route::post('/plugin_settings', [PluginSettingsController::class, 'store']);
+    Route::delete('/plugin_settings/{trmnlp_id}', [PluginSettingsController::class, 'destroy']);
 });
 
 /*
