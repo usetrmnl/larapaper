@@ -117,7 +117,8 @@ new #[Title('API Tokens')] class extends Component {
 
             @if (count($tokens) > 0)
                 <section class="mt-8">
-                    <flux:heading>{{ __('Active tokens') }}</flux:heading>
+                    <flux:heading>{{ __('Manage tokens') }}</flux:heading>
+                    <flux:subheading>You may delete any of your existing tokens if they are no longer needed.</flux:subheading>
 
                     <div class="mt-4 border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
                         @foreach ($tokens as $token)

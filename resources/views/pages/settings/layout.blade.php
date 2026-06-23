@@ -5,14 +5,20 @@
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
             <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('Profile') }}</flux:navlist.item>
             @if (auth()?->user()?->oidc_sub === null)
-                <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
+                <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Password & 2FA') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('settings.api-tokens')" wire:navigate>{{ __('API Tokens') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('settings.lab')" wire:navigate>{{ __('Lab') }}</flux:navlist.item>
             @if (config('app.version'))
                 <flux:navlist.item :href="route('settings.update')" wire:navigate>{{ __('Updates') }}</flux:navlist.item>
             @endif
+
+            <flux:navlist.group :heading="__('Experimental')" class="mt-2">
+                <flux:navlist.item :href="route('settings.lab')" wire:navigate>{{ __('Lab') }}</flux:navlist.item>
+            </flux:navlist.group>
+
+            <flux:navlist.group :heading="__('Support')" class="mt-2">
+                 <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support & Referral') }}</flux:navlist.item>
+            </flux:navlist.group>
         </flux:navlist>
     </div>
 

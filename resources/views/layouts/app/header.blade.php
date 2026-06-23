@@ -69,7 +69,7 @@
 
             <flux:menu.radio.group>
                 <flux:menu.item href="{{ route('settings.preferences') }}" wire:navigate icon="cog">Settings</flux:menu.item>
-                <flux:menu.item href="{{ route('settings.support') }}" wire:navigate icon="heart">Support</flux:menu.item>
+                <flux:menu.item href="{{ route('settings.api-tokens') }}" wire:navigate icon="key">API Tokens</flux:menu.item>
                 <flux:menu.item href="{{ route('settings.lab') }}" wire:navigate icon="beaker">Lab</flux:menu.item>
                 @if(config('app.version'))
                     <flux:menu.item href="{{ route('settings.update') }}" wire:navigate icon="arrow-down-circle">
@@ -81,6 +81,8 @@
                 @endif
             </flux:menu.radio.group>
 
+            <flux:menu.separator/>
+            <flux:menu.item href="{{ route('settings.support') }}" wire:navigate icon="heart">Support</flux:menu.item>
             <flux:menu.separator/>
 
             <form method="POST" action="{{ route('logout') }}" class="w-full">
