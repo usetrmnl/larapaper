@@ -34,7 +34,7 @@ class PluginSettingsController extends Controller
                 'plugin_id' => null,
             ]);
 
-        return response()->json($plugins);
+        return response()->json(['data' => $plugins]);
     }
 
     public function store(Request $request): JsonResponse
