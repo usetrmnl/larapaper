@@ -29,7 +29,7 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('playlists', 'playlists.index')->name('playlists.index');
 
     // trmnlp redirects to /account after login
-    Route::redirect('/account', view('pages.settings.api-tokens'));
+    Route::redirect('/account', '/settings/api-tokens');
 
     Route::get('plugin_settings/{trmnlp_id}/edit', function (Request $request, string $trmnlp_id) {
         $plugin = Plugin::query()
