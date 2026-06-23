@@ -103,6 +103,23 @@ test('it handles API errors gracefully', function (): void {
     expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(Exception::class);
 });
 
+test('it handles proxy cloud 500 errors with error message gracefully', function (): void {
+    $device = createTestDevice();
+
+    Http::fake([
+        config('services.trmnl.proxy_base_url').'/api/display' => Http::response([
+            'status' => 500,
+            'error' => 'Device not found',
+            'reset_firmware' => true,
+        ], 500),
+    ]);
+
+    expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(Exception::class);
+
+    $device->refresh();
+    expect($device->proxy_cloud_response)->toBeNull();
+});
+
 test('it only processes proxy cloud enabled devices', function (): void {
     Http::fake();
     $enabledDevice = Device::factory()->create(['proxy_cloud' => true]);
