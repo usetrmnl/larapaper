@@ -32,12 +32,17 @@ class PluginArchiveController extends Controller
 
     public function import(ImportPluginArchiveRequest $request, string $trmnlp_id): JsonResponse
     {
-        $plugin = $this->importer->importFromZip($request->file('file'), auth()->user());
+        $plugin = $this->importer->importFromZip($request->file('file'), auth()->user(), null, $trmnlp_id);
+
+        $settingsYaml = $plugin['trmnlp_yaml'];
+        if (! preg_match('/^id:/m', $settingsYaml)) {
+            $settingsYaml = "id: {$plugin->trmnlp_id}\n" . $settingsYaml;
+        }
 
         return response()->json([
             'message' => 'Plugin settings archive processed successfully',
             'data' => [
-                'settings_yaml' => $plugin['trmnlp_yaml'],
+                'settings_yaml' => $settingsYaml,
             ],
         ]);
     }
