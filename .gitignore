@@ -45,3 +45,6 @@ yarn-error.log
 /.github/skills
 /docs/site
 /docs/node_modules
+/.envrc
+/.direnv
+

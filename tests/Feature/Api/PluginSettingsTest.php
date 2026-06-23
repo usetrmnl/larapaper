@@ -33,7 +33,7 @@ it('GET /api/plugin_settings returns all user plugins with null plugin_id', func
     $response = $this->getJson('/api/plugin_settings');
 
     $response->assertOk();
-    $data = $response->json();
+    $data = $response->json('data');
     expect($data)->toHaveCount(2);
     expect($data[0])->toMatchArray(['id' => 'uuid-1', 'name' => 'Alpha', 'plugin_id' => null]);
     expect($data[1])->toMatchArray(['id' => 'uuid-2', 'name' => 'Beta', 'plugin_id' => null]);
