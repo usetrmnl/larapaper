@@ -85,7 +85,9 @@ class PluginImportService
 
         // Parse settings.yml
         $settingsYaml = File::get($filePaths['settingsYamlPath']);
-        $settings = Yaml::parse(preg_replace('/\A(?:#[^\n]*\n|\s*\n)*---[ \t]*\n/', '', $settingsYaml) ?? $settingsYaml);
+        // Split on the document-start marker so Symfony doesn't see two documents.
+        $yamlParts = preg_split('/^---[ \t]*\r?\n/m', $settingsYaml, 2);
+        $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
 
         // Determine markup language from the first available file
@@ -253,7 +255,9 @@ class PluginImportService
 
         // Parse settings.yml
         $settingsYaml = File::get($filePaths['settingsYamlPath']);
-        $settings = Yaml::parse(preg_replace('/\A(?:#[^\n]*\n|\s*\n)*---[ \t]*\n/', '', $settingsYaml) ?? $settingsYaml);
+        // Split on the document-start marker so Symfony doesn't see two documents.
+        $yamlParts = preg_split('/^---[ \t]*\r?\n/m', $settingsYaml, 2);
+        $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
 
         // Determine markup language from the first available file
