@@ -173,25 +173,12 @@ new #[Title('API Tokens')] class extends Component {
                     </flux:text>
                 </div>
 
-                <div
-                    x-data="{ copied: false }"
-                    class="flex items-center gap-2"
-                >
-                    <flux:input
-                        value="{{ $newTokenValue }}"
-                        readonly
-                        class="font-mono text-sm"
-                        x-ref="tokenInput"
-                    />
-                    <flux:button
-                        variant="outline"
-                        size="sm"
-                        x-on:click="navigator.clipboard.writeText($refs.tokenInput.value); copied = true; setTimeout(() => copied = false, 2000)"
-                    >
-                        <span x-show="!copied">{{ __('Copy') }}</span>
-                        <span x-show="copied">{{ __('Copied!') }}</span>
-                    </flux:button>
-                </div>
+                <flux:input
+                    value="{{ $newTokenValue }}"
+                    readonly
+                    copyable
+                    class="font-mono text-sm"
+                />
 
                 <div class="flex justify-end">
                     <flux:button variant="primary" wire:click="closeNewTokenModal">
