@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\DeviceModel;
+use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Bnussbau\EpaperPipeline\Stages\BrowserStage;
 use Bnussbau\EpaperPipeline\Stages\ImageStage;
-use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;

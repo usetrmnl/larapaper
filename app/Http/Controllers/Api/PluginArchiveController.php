@@ -40,7 +40,7 @@ class PluginArchiveController extends Controller
             if (preg_match('/^---\s*$/m', $settingsYaml)) {
                 $settingsYaml = preg_replace('/^(---\s*\n)/m', "$1id: {$plugin->trmnlp_id}\n", $settingsYaml, 1);
             } else {
-                $settingsYaml = "id: {$plugin->trmnlp_id}\n" . $settingsYaml;
+                $settingsYaml = "id: {$plugin->trmnlp_id}\n".$settingsYaml;
             }
         }
 
