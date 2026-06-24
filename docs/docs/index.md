@@ -30,8 +30,8 @@ A device calls `/api/display`. LaraPaper renders the selected screen with Puppet
 
 ::: card "Get started"
 Deploy LaraPaper with Docker or run it locally for development.
-::: button "Installation" /getting-started/installation
-::: button "Local development" /development/local-setup
+::: button "Installation" getting-started/installation
+::: button "Local development" development/local-setup
 :::
 
 ## Related projects

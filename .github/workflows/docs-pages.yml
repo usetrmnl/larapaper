@@ -18,36 +18,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-24.04
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     environment:
       name: github-pages
-
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: docmd-io/deploy@v1.1
+        id: build
+      - uses: actions/upload-pages-artifact@v5
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
-
-      - name: Install and build docmd site
-        working-directory: docs
-        run: |
-          npm ci
-          npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs/site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          path: ${{ steps.build.outputs.site-dir }}
+      - uses: actions/deploy-pages@v5
+        id: deploy
