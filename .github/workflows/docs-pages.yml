@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: docmd-io/deploy@v1.1
-        id: build
+        id: build --cwd docs
       - uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ steps.build.outputs.site-dir }}
