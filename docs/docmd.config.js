@@ -2,6 +2,7 @@
 export default defineConfig({
   title: 'LaraPaper',
   url: 'https://usetrmnl.github.io/larapaper',
+  base: '/larapaper/',
 
   logo: {
     light: 'assets/images/logo-light.svg',
