@@ -17,7 +17,7 @@ For production, generate an application key and set it in your environment:
 php artisan key:generate --show
 ```
 
-Set `APP_KEY=` in your environment. For personal use you can disable registration (see [Environment variables](/getting-started/environment-variables)).
+Set `APP_KEY=` in your environment. For personal use you can disable registration (see [Environment variables](./environment-variables)).
 
 ### Backup database
 

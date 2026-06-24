@@ -5,10 +5,16 @@ on:
     branches:
       - develop
       - main
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
   pull_request:
     branches:
       - develop
       - main
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
 
 jobs:
   ci:
