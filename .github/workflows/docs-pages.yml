@@ -31,7 +31,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: docmd-io/deploy@v1.1
         id: build
-        run: npx @docmd/core build --cwd docs
       - uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ steps.build.outputs.site-dir }}
