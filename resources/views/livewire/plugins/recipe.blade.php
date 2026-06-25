@@ -93,7 +93,6 @@ new class extends Component
         Flux::toast(variant: 'success', text: 'Plugin ownership updated.');
     }
 
-
     public function mount(): void
     {
         abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
