@@ -2,6 +2,7 @@
 
 use App\Models\Device;
 use App\Models\DeviceModel;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 new class extends Component
@@ -32,7 +33,7 @@ new class extends Component
 
     protected $rules = [
         'mac_address' => 'required',
-        'api_key' => 'required',
+        'api_key' => 'nullable',
         'default_refresh_interval' => 'required|integer',
         'device_model_id' => 'nullable|exists:device_models,id',
         'mirror_device_id' => 'required_if:is_mirror,true',
@@ -73,12 +74,14 @@ new class extends Component
         // Convert empty string to null for custom selection
         $deviceModelId = empty($this->device_model_id) ? null : $this->device_model_id;
 
+        // Generate the credentials the firmware expects from /api/setup so a user
+        // only needs the MAC address to claim their own device (multi-user setup).
         Device::create([
             'name' => $this->name,
-            'mac_address' => $this->mac_address,
-            'api_key' => $this->api_key,
+            'mac_address' => mb_strtoupper($this->mac_address),
+            'api_key' => $this->api_key ?: Str::random(22),
             'default_refresh_interval' => $this->default_refresh_interval,
-            'friendly_id' => $this->friendly_id,
+            'friendly_id' => $this->friendly_id ?: Str::random(6),
             'user_id' => auth()->id(),
             'device_model_id' => $deviceModelId,
             'mirror_device_id' => $this->is_mirror ? $this->mirror_device_id : null,
@@ -150,15 +153,15 @@ new class extends Component
                         </div>
 
                         <div class="mb-4">
-                            <flux:input label="API Key" wire:model="api_key" id="api_key" class="block mt-1 w-full"
+                            <flux:input label="API Key" description="Leave blank to auto-generate. The device receives this from /api/setup using its MAC address." wire:model="api_key" id="api_key" class="block mt-1 w-full"
                                         type="text"
-                                        name="api_key" autofocus/>
+                                        name="api_key"/>
                         </div>
 
                         <div class="mb-4">
-                            <flux:input label="Friendly Id" wire:model="friendly_id" id="friendly_id"
+                            <flux:input label="Friendly Id" description="Leave blank to auto-generate." wire:model="friendly_id" id="friendly_id"
                                         class="block mt-1 w-full"
-                                        type="text" name="friendly_id" autofocus/>
+                                        type="text" name="friendly_id"/>
                         </div>
 
                         <div class="mb-4">

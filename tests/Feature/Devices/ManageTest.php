@@ -61,9 +61,57 @@ test('device creation requires required fields', function (): void {
 
     $response->assertHasErrors([
         'mac_address',
-        'api_key',
         'default_refresh_interval',
     ]);
+});
+
+test('api key and friendly id are auto-generated when left blank', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $response = Livewire::test('devices.manage')
+        ->set('name', 'My TRMNL')
+        ->set('mac_address', 'aa:bb:cc:dd:ee:ff')
+        ->set('api_key', '')
+        ->set('friendly_id', '')
+        ->set('default_refresh_interval', 900)
+        ->call('createDevice');
+
+    $response->assertHasNoErrors();
+
+    $device = Device::first();
+    expect($device->api_key)->not->toBeEmpty();
+    expect($device->friendly_id)->not->toBeEmpty();
+    // MAC is normalised to uppercase so /api/setup (which upper-cases the header) resolves it.
+    expect($device->mac_address)->toBe('AA:BB:CC:DD:EE:FF');
+    expect($device->user_id)->toBe($user->id);
+});
+
+// Multi-user claim flow: a non-first user pre-registers their own device by MAC,
+// and /api/setup returns *their* device's generated key — not the main user's.
+test('a second user can claim their own device via setup without auto-join', function (): void {
+    $mainUser = User::factory()->create(); // id 1 — would win any auto-join race
+    $secondUser = User::factory()->create();
+
+    $this->actingAs($secondUser);
+    Livewire::test('devices.manage')
+        ->set('name', "Second User's TRMNL")
+        ->set('mac_address', '11:22:33:44:55:66')
+        ->set('default_refresh_interval', 900)
+        ->call('createDevice')
+        ->assertHasNoErrors();
+
+    $device = Device::where('mac_address', '11:22:33:44:55:66')->first();
+    expect($device->user_id)->toBe($secondUser->id);
+
+    $response = $this->getJson('/api/setup', ['id' => '11:22:33:44:55:66']);
+
+    $response->assertOk()
+        ->assertJson([
+            'status' => 200,
+            'api_key' => $device->api_key,
+            'friendly_id' => $device->friendly_id,
+        ]);
 });
 
 test('user can toggle proxy cloud for their device', function (): void {
