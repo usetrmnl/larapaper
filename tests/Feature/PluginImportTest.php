@@ -697,6 +697,22 @@ it('sets both transform fields to null when serverless_language is absent even i
         ->and($plugin->transform_language)->toBeNull();
 });
 
+it('imports transform code from a flat-root ZIP (no src/ prefix, as trmnlp push produces)', function (): void {
+    $user = User::factory()->create();
+    $transformCode = "def run(input):\n    return {'count': len(input.get('data', []))}";
+
+    $zip = makeRootPluginZip([
+        'settings.yml' => "name: Test Plugin\nstrategy: polling\npolling_url: https://example.com\nserverless_language: python\n",
+        'full.liquid'  => '<div>{{ count }}</div>',
+        'transform.py' => $transformCode,
+    ]);
+
+    $plugin = (new PluginImportService())->importFromZip($zip, $user);
+
+    expect($plugin->transform_code)->toBe($transformCode)
+        ->and($plugin->transform_language)->toBe('python');
+});
+
 // Helper methods
 function createMockZipFile(array $files): string
 {
@@ -748,6 +764,19 @@ function makePluginZip(array $srcFiles): UploadedFile
     $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
     foreach ($srcFiles as $name => $content) {
         $zip->addFromString('src/'.$name, $content);
+    }
+    $zip->close();
+
+    return new UploadedFile($path, 'plugin.zip', 'application/zip', null, true);
+}
+
+function makeRootPluginZip(array $files): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'plugin-test-').'.zip';
+    $zip = new ZipArchive();
+    $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    foreach ($files as $name => $content) {
+        $zip->addFromString($name, $content);
     }
     $zip->close();
 

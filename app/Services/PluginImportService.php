@@ -644,6 +644,13 @@ class PluginImportService
                         $quadrantLiquidPath = $newSrcDir.'/quadrant.'.$extension;
                     }
 
+                    foreach (['py', 'js', 'php'] as $transformExt) {
+                        $origTransformPath = $srcDir.'/transform.'.$transformExt;
+                        if (File::exists($origTransformPath)) {
+                            File::copy($origTransformPath, $newSrcDir.'/transform.'.$transformExt);
+                        }
+                    }
+
                     // Update the paths
                     $settingsYamlPath = $newSrcDir.'/settings.yml';
                 }

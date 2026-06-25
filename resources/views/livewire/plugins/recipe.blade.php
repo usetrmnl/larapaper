@@ -1466,9 +1466,6 @@ HTML;
             </form>
         @endif
     </div>
-</div>
-
-
 
         <flux:separator class="my-5"/>
         <div>
@@ -1545,6 +1542,8 @@ HTML;
                 </div>
             @endif
         </div>
+    </div>
+</div>
 
 @script
 <script>
