@@ -6,7 +6,11 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     public $devices;
+
+    public bool $showAllDevices = false;
 
     public $showDeviceForm = false;
 
@@ -40,7 +44,7 @@ new class extends Component
 
     public function mount()
     {
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         $this->deviceModels = DeviceModel::orderBy('label')->get()->sortBy(function ($deviceModel) {
             // Put TRMNL models at the top, then sort alphabetically within each group
             $isTrmnl = str_starts_with($deviceModel->label, 'TRMNL');
@@ -49,6 +53,40 @@ new class extends Component
         });
 
         return view('livewire.devices.manage');
+    }
+
+    public function loadDevices(): void
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin() && $this->showAllDevices) {
+            $this->devices = Device::all();
+        } else {
+            $this->devices = Device::where('user_id', $user->id)
+                ->orWhereNull('user_id')
+                ->get();
+        }
+    }
+
+    public function updatedShowAllDevices(): void
+    {
+        $this->loadDevices();
+    }
+
+    public function reassignDevice(int $deviceId, ?int $newOwnerId): void
+    {
+        $device = Device::findOrFail($deviceId);
+        $this->authorize('reassign', $device);
+
+        $device->update(['user_id' => $newOwnerId]);
+        $this->loadDevices();
+
+        Flux::toast(variant: 'success', text: 'Device ownership updated.');
+    }
+
+    public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
     }
 
     public function updatedDeviceModelId(): void
@@ -87,7 +125,7 @@ new class extends Component
         $this->reset();
         Flux::modal('create-device')->close();
 
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         Flux::toast(variant: 'success', text: 'Device created successfully.');
     }
 
@@ -113,7 +151,7 @@ new class extends Component
         $device->update(['pause_until' => $pauseUntil]);
         $this->reset('pause_duration');
         Flux::modal('pause-device-'.$deviceId)->close();
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->format('H:i'));
     }
 }
@@ -130,6 +168,11 @@ new class extends Component
                     <flux:button icon="plus" variant="primary">Add Device</flux:button>
                 </flux:modal.trigger>
             </div>
+            @if (auth()->user()->isAdmin())
+                <div class="mb-4">
+                    <flux:switch wire:model.live="showAllDevices" label="Show all users' devices"/>
+                </div>
+            @endif
             <flux:modal name="create-device" class="md:w-96">
                 <div class="space-y-6">
                     <div>
@@ -241,6 +284,9 @@ new class extends Component
                         <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap  text-zinc-500 dark:text-zinc-300"
                         >
                             {{ $device->name }}
+                            @if ($device->user_id === null)
+                                <flux:badge color="zinc" size="sm" class="ml-1">Shared</flux:badge>
+                            @endif
                         </td>
                         <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap  text-zinc-500 dark:text-zinc-300"
                         >
@@ -284,6 +330,17 @@ new class extends Component
                                                  :disabled="$device->mirror_device_id !== null"
                                                  label="☁️ Proxy"/>
                                 </flux:tooltip>
+                                @if (auth()->user()->isAdmin())
+                                    <flux:select wire:change="reassignDevice({{ $device->id }}, $event.target.value ? Number($event.target.value) : null)"
+                                                 class="text-xs">
+                                        <flux:select.option value="">Nobody</flux:select.option>
+                                        @foreach ($this->availableUsers as $u)
+                                            <flux:select.option value="{{ $u->id }}" :selected="$device->user_id === $u->id">
+                                                {{ $u->name }}
+                                            </flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+                                @endif
                             </div>
                         </td>
                     </tr>
