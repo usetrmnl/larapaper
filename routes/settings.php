@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function (): void {
+Route::middleware(['auth', 'confirmed'])->group(function (): void {
     Route::redirect('settings', 'settings/profile');
     Route::livewire('settings/preferences', 'pages::settings.preferences')->name('settings.preferences');
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
@@ -14,7 +14,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::livewire('settings/update', 'pages::settings.update')->name('settings.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function (): void {
+Route::middleware(['auth', 'confirmed', 'verified'])->group(function (): void {
     Route::livewire('settings/appearance', 'pages::settings.appearance')->name('appearance.edit');
 
     Route::livewire('settings/security', 'pages::settings.security')
