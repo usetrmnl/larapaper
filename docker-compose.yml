@@ -10,12 +10,22 @@ services:
             - PHP_OPCACHE_ENABLE=1
             - TRMNL_PROXY_REFRESH_MINUTES=15
             - DB_DATABASE=database/storage/database.sqlite
+            - TRANSFORM_RUNNER_URL=http://transform-runner:3000
         volumes:
            - database:/var/www/html/database/storage
            - storage:/var/www/html/storage/app/public/images/generated
         restart: unless-stopped
+        depends_on:
+            - transform-runner
         #platform: "linux/arm64/v8"
+
+    transform-runner:
+        build:
+            context: ./runner
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        #platform: "linux/arm64/v8"
+
 volumes:
     database:
     storage:
-
