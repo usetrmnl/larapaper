@@ -204,7 +204,8 @@ it('api route returns 401 for unauthenticated user', function (): void {
     $response->assertStatus(401);
 });
 
-it('api route returns 404 for plugin belonging to different user', function (): void {
+it('api route returns 403 for plugin belonging to different user', function (): void {
+    User::factory()->create(); // consume id=1 (auto-admin)
     $user1 = User::factory()->create();
     $user2 = User::factory()->create();
     $plugin = Plugin::factory()->create([
@@ -215,7 +216,7 @@ it('api route returns 404 for plugin belonging to different user', function (): 
     $response = $this->actingAs($user2)
         ->getJson("/api/plugin_settings/{$plugin->trmnlp_id}/archive");
 
-    $response->assertStatus(404);
+    $response->assertStatus(403);
 });
 
 it('exports render_markup_view blade file as full.blade.php', function (): void {

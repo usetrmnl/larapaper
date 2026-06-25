@@ -10,6 +10,7 @@ it('isAdmin returns true when is_admin is true', function (): void {
 });
 
 it('isAdmin returns false by default', function (): void {
+    User::factory()->confirmed()->create(); // consume id=1 (auto-admin)
     $user = User::factory()->confirmed()->create();
     expect($user->isAdmin())->toBeFalse();
 });
