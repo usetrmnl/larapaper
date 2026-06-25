@@ -8,7 +8,7 @@
                 <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Password & 2FA') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('settings.api-tokens')" wire:navigate>{{ __('API Tokens') }}</flux:navlist.item>
-            @if (config('app.version'))
+            @if (config('app.version') && !config('app.docker'))
                 <flux:navlist.item :href="route('settings.update')" wire:navigate>{{ __('Updates') }}</flux:navlist.item>
             @endif
 
