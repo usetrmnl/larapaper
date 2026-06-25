@@ -65,4 +65,9 @@ return [
         'scopes' => explode(',', env('OIDC_SCOPES', 'openid,profile,email')),
     ],
 
+    'transform_runner' => [
+        'url'     => env('TRANSFORM_RUNNER_URL'),
+        'timeout' => (int) env('TRANSFORM_TIMEOUT_SECONDS', 30),
+    ],
+
 ];
