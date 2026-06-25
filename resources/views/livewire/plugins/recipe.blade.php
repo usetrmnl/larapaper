@@ -733,6 +733,7 @@ HTML;
                 $this->transform_code ?? '',
                 $this->transform_language ?? 'python',
                 $this->plugin->data_payload,
+                strict: true,
             );
             $this->transform_run_output = json_encode($result, JSON_PRETTY_PRINT);
         } catch (\Throwable $e) {
@@ -1501,7 +1502,7 @@ HTML;
                             textareaId: @js($transformTextareaId)
                         })"
                         wire:ignore
-                        wire:key="cm-{{ $transformTextareaId }}"
+                        wire:key="cm-transform-{{ $plugin->id }}-{{ $transform_language }}"
                         class="min-h-[300px] h-[300px] overflow-hidden resize-y mb-4"
                     >
                         <div x-show="isLoading" class="flex items-center justify-center h-full">

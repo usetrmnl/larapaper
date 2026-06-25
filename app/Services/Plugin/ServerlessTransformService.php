@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 class ServerlessTransformService
 {
-    public function run(string $code, string $language, array $input): array
+    public function run(string $code, string $language, array $input, bool $strict = false): array
     {
         $url = config('services.transform_runner.url');
         if (! $url) {
@@ -25,24 +25,32 @@ class ServerlessTransformService
             ]);
 
             if (! $response->successful()) {
-                Log::warning('ServerlessTransformService: runner returned '.$response->status().': '.$response->json('error', ''));
-
-                return $input;
+                return $this->fail(
+                    'ServerlessTransformService: runner returned '.$response->status().': '.$response->json('error', ''),
+                    $input,
+                    $strict
+                );
             }
 
             $output = $response->json('output');
             if (! is_array($output)) {
-                Log::warning('ServerlessTransformService: runner output is not a JSON object');
-
-                return $input;
+                return $this->fail('ServerlessTransformService: runner output is not a JSON object', $input, $strict);
             }
 
             return $output;
         } catch (\Throwable $e) {
-            Log::warning('ServerlessTransformService: '.$e->getMessage());
-
-            return $input;
+            return $this->fail('ServerlessTransformService: '.$e->getMessage(), $input, $strict);
         }
+    }
+
+    private function fail(string $message, array $input, bool $strict): array
+    {
+        if ($strict) {
+            throw new \RuntimeException($message);
+        }
+        Log::warning($message);
+
+        return $input;
     }
 
     public function isEnabled(): bool

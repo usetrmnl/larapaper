@@ -65,6 +65,16 @@ it('returns input unchanged when connection fails', function (): void {
     expect($result)->toBe($input);
 });
 
+it('returns input unchanged when runner returns 400 for unsupported language', function (): void {
+    config(['services.transform_runner.url' => 'http://runner:3000']);
+    Http::fake(['*/run' => Http::response(['error' => 'unsupported language'], 400)]);
+
+    $input = ['key' => 'value'];
+    $result = (new ServerlessTransformService())->run('<?php echo "x";', 'php', $input);
+
+    expect($result)->toBe($input);
+});
+
 it('isEnabled returns true when runner URL is configured', function (): void {
     config(['services.transform_runner.url' => 'http://runner:3000']);
     expect((new ServerlessTransformService())->isEnabled())->toBeTrue();
