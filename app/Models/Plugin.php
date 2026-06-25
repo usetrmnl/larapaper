@@ -19,6 +19,7 @@ use App\Services\PluginImportService;
 use Carbon\Carbon;
 use Closure;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\Pool;
@@ -45,6 +46,7 @@ class Plugin extends Model
         'data_payload' => 'json',
         'data_payload_updated_at' => 'datetime',
         'is_native' => 'boolean',
+        'is_shared' => 'boolean',
         'markup_language' => 'string',
         'configuration' => 'json',
         'configuration_template' => 'json',
@@ -98,6 +100,18 @@ class Plugin extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($user): void {
+            $q->where('user_id', $user->id)
+              ->orWhere('is_shared', true);
+        });
     }
 
     /**

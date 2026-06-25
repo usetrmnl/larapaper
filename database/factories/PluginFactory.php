@@ -30,6 +30,7 @@ class PluginFactory extends Factory
             'flux_icon_name' => null,
             'author_name' => $this->faker->name(),
             'plugin_type' => 'recipe',
+            'is_shared' => false,
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ];
