@@ -40,8 +40,8 @@ it('admin can reassign a device', function (): void {
     $device = Device::factory()->create(['user_id' => null]);
 
     $this->actingAs($admin);
-    Livewire::test('devices.manage')
-        ->call('reassignDevice', $device->id, $user->id)
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('reassignDevice', $user->id)
         ->assertHasNoErrors();
 
     expect($device->fresh()->user_id)->toBe($user->id);
@@ -49,10 +49,11 @@ it('admin can reassign a device', function (): void {
 
 it('regular user cannot reassign a device', function (): void {
     $user = User::factory()->confirmed()->create();
-    $device = Device::factory()->create(['user_id' => null]);
+    $otherUser = User::factory()->confirmed()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
 
     $this->actingAs($user);
-    Livewire::test('devices.manage')
-        ->call('reassignDevice', $device->id, $user->id)
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('reassignDevice', $otherUser->id)
         ->assertForbidden();
 });

@@ -73,22 +73,6 @@ new class extends Component
         $this->loadDevices();
     }
 
-    public function reassignDevice(int $deviceId, ?int $newOwnerId): void
-    {
-        $device = Device::findOrFail($deviceId);
-        $this->authorize('reassign', $device);
-
-        $device->update(['user_id' => $newOwnerId]);
-        $this->loadDevices();
-
-        Flux::toast(variant: 'success', text: 'Device ownership updated.');
-    }
-
-    public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
-    {
-        return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
-    }
-
     public function updatedDeviceModelId(): void
     {
         // Convert empty string to null for custom selection
@@ -169,8 +153,9 @@ new class extends Component
                 </flux:modal.trigger>
             </div>
             @if (auth()->user()->isAdmin())
-                <div class="mb-4">
-                    <flux:switch wire:model.live="showAllDevices" label="Show all users' devices"/>
+                <div class="mb-4 flex items-center gap-2">
+                    <flux:switch wire:model.live="showAllDevices" />
+                    <span class="text-sm font-medium dark:text-zinc-200">Show all users' devices</span>
                 </div>
             @endif
             <flux:modal name="create-device" class="md:w-96">
@@ -330,17 +315,6 @@ new class extends Component
                                                  :disabled="$device->mirror_device_id !== null"
                                                  label="☁️ Proxy"/>
                                 </flux:tooltip>
-                                @if (auth()->user()->isAdmin())
-                                    <flux:select wire:change="reassignDevice({{ $device->id }}, $event.target.value ? Number($event.target.value) : null)"
-                                                 class="text-xs">
-                                        <flux:select.option value="">Nobody</flux:select.option>
-                                        @foreach ($this->availableUsers as $u)
-                                            <flux:select.option value="{{ $u->id }}" :selected="$device->user_id === $u->id">
-                                                {{ $u->name }}
-                                            </flux:select.option>
-                                        @endforeach
-                                    </flux:select>
-                                @endif
                             </div>
                         </td>
                     </tr>

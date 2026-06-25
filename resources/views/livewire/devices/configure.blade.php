@@ -10,6 +10,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     private const DEFAULT_SLEEP_MODE_FROM = '22:00';
 
     private const DEFAULT_SLEEP_MODE_TO = '06:00';
@@ -74,6 +76,18 @@ new class extends Component
     public $selected_firmware_id;
 
     public $download_firmware;
+
+    public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
+    }
+
+    public function reassignDevice(?int $newOwnerId): void
+    {
+        $this->authorize('reassign', $this->device);
+        $this->device->update(['user_id' => $newOwnerId]);
+        Flux::toast(variant: 'success', text: 'Device ownership updated.');
+    }
 
     public function mount(App\Models\Device $device)
     {
@@ -541,6 +555,19 @@ new class extends Component
                                 <flux:input type="time" label="From" wire:model.fill="sleep_mode_from"/>
                                 <flux:input type="time" label="To" wire:model.fill="sleep_mode_to" />
                             </div>
+                        @endif
+
+                        @if(auth()->user()->isAdmin())
+                            <flux:separator class="my-4" text="Admin" />
+                            <flux:select label="Owner"
+                                         wire:change="reassignDevice($event.target.value ? Number($event.target.value) : null)">
+                                <flux:select.option value="">Nobody (Unowned)</flux:select.option>
+                                @foreach ($this->availableUsers as $u)
+                                    <flux:select.option value="{{ $u->id }}" :selected="$device->user_id === $u->id">
+                                        {{ $u->name }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
                         @endif
 
                         <div class="flex">
