@@ -12,6 +12,7 @@ Route::middleware(['auth', 'confirmed'])->group(function (): void {
     Route::livewire('settings/api-tokens', 'pages::settings.api-tokens')->name('settings.api-tokens');
     Route::livewire('settings/lab', 'pages::settings.lab')->name('settings.lab');
     Route::livewire('settings/update', 'pages::settings.update')->name('settings.update');
+    Route::livewire('settings/admin/users', 'pages::settings.admin.users')->name('settings.admin.users');
 });
 
 Route::middleware(['auth', 'confirmed', 'verified'])->group(function (): void {
