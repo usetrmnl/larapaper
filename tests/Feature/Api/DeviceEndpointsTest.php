@@ -418,6 +418,7 @@ test('authenticated user can fetch device status', function (): void {
 });
 
 test('user cannot fetch status for devices they do not own', function (): void {
+    User::factory()->create(); // consume id=1 (auto-admin slot)
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
     $device = Device::factory()->create(['user_id' => $otherUser->id]);
