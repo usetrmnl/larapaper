@@ -44,8 +44,8 @@ class ResolveDeviceByMacAddress
         return Device::create([
             'mac_address' => mb_strtoupper($macAddress),
             'api_key' => Str::random(22),
-            'user_id' => $autoAssignUser->id,
-            'name' => "{$autoAssignUser->name}'s TRMNL",
+            'user_id' => null,
+            'name' => 'Auto-Joined TRMNL',
             'friendly_id' => Str::random(6),
             'default_refresh_interval' => 900,
             'mirror_device_id' => $autoAssignUser->assign_new_device_id,
