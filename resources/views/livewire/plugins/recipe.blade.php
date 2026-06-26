@@ -1093,8 +1093,17 @@ HTML;
                     @if($data_strategy === 'polling')
                     <flux:label>Polling URL</flux:label>
 
-                    <div x-data="{ subTab: 'settings' }" class="mt-2 mb-4">
+                    <div x-data="{ subTab: 'urls' }" class="mt-2 mb-4">
                         <div class="flex">
+                            <button
+                                @click="subTab = 'urls'"
+                                class="tab-button"
+                                :class="subTab === 'urls' ? 'is-active' : ''"
+                            >
+                                <flux:icon.link class="size-4"/>
+                                URLs
+                            </button>
+
                             <button
                                 @click="subTab = 'settings'"
                                 class="tab-button"
@@ -1103,19 +1112,11 @@ HTML;
                                 <flux:icon.cog-6-tooth class="size-4"/>
                                 Settings
                             </button>
-
-                            <button
-                                @click="subTab = 'preview'"
-                                class="tab-button"
-                                :class="subTab === 'preview' ? 'is-active' : ''"
-                            >
-                                <flux:icon.eye class="size-4" />
-                                Preview URL
-                            </button>
                         </div>
 
                         <div class="flex-col p-4 bg-transparent rounded-tl-none styled-container">
-                            <div x-show="subTab === 'settings'">
+                            {{-- URLs tab --}}
+                            <div x-show="subTab === 'urls'">
                                 <flux:field>
                                     <flux:description>Enter the URL(s) to poll for data:</flux:description>
                                     <flux:textarea
@@ -1127,63 +1128,67 @@ HTML;
                                         {!! 'Hint: Supports multiple requests via line break separation. You can also use configuration variables with <a href="https://help.usetrmnl.com/en/articles/12689499-dynamic-polling-urls">Liquid syntax</a>. ' !!}
                                     </flux:description>
                                 </flux:field>
+
+                                <div class="mt-3">
+                                    <flux:field>
+                                        <flux:description>Preview computed URLs here (readonly):</flux:description>
+                                        <flux:textarea
+                                            readonly
+                                            placeholder="Nothing to show..."
+                                            rows="3"
+                                        >
+                                            {{ $this->parsed_urls }}
+                                        </flux:textarea>
+                                    </flux:field>
+                                </div>
+
+                                <flux:button icon="cloud-arrow-down" wire:click="updateData" class="w-full mt-4">
+                                    Fetch data now
+                                </flux:button>
                             </div>
 
-                            <div x-show="subTab === 'preview'" x-cloak>
-                                <flux:field>
-                                    <flux:description>Preview computed URLs here (readonly):</flux:description>
+                            {{-- Settings tab --}}
+                            <div x-show="subTab === 'settings'" x-cloak>
+                                <div class="mb-4">
+                                    <flux:radio.group wire:model.live="polling_verb" label="Polling Verb" variant="segmented">
+                                        <flux:radio value="get" label="GET"/>
+                                        <flux:radio value="post" label="POST"/>
+                                    </flux:radio.group>
+                                </div>
+
+                                <div class="mb-4">
                                     <flux:textarea
-                                        readonly
-                                        placeholder="Nothing to show..."
-                                        rows="5"
-                                    >
-                                        {{ $this->parsed_urls }}
-                                    </flux:textarea>
-                                </flux:field>
-                            </div>
+                                        label="Polling Headers (one per line, format: Header: Value)"
+                                        wire:model="polling_header"
+                                        id="polling_header"
+                                        class="block mt-1 w-full font-mono"
+                                        name="polling_header"
+                                        rows="3"
+                                        placeholder="Authorization: Bearer ey.*******&#10;Content-Type: application/json"
+                                    />
+                                </div>
 
-                            <flux:button icon="cloud-arrow-down" wire:click="updateData" class="w-full mt-4">
-                                Fetch data now
-                            </flux:button>
+                                @if($polling_verb === 'post')
+                                <div class="mb-4">
+                                    <flux:textarea
+                                        label="Polling Body (e.g. for GraphQL queries)"
+                                        wire:model="polling_body"
+                                        id="polling_body"
+                                        class="block mt-1 w-full font-mono"
+                                        name="polling_body"
+                                        rows="6"
+                                    />
+                                </div>
+                                @endif
+
+                                <div class="mb-4">
+                                    <flux:input label="Data is stale after minutes" wire:model="data_stale_minutes"
+                                                id="data_stale_minutes"
+                                                class="block mt-1 w-full" type="number" name="data_stale_minutes"/>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                        <div class="mb-4">
-                            <flux:radio.group wire:model.live="polling_verb" label="Polling Verb" variant="segmented">
-                                <flux:radio value="get" label="GET"/>
-                                <flux:radio value="post" label="POST"/>
-                            </flux:radio.group>
-                        </div>
-
-                        <div class="mb-4">
-                            <flux:textarea
-                                label="Polling Headers (one per line, format: Header: Value)"
-                                wire:model="polling_header"
-                                id="polling_header"
-                                class="block mt-1 w-full font-mono"
-                                name="polling_header"
-                                rows="3"
-                                placeholder="Authorization: Bearer ey.*******&#10;Content-Type: application/json"
-                            />
-                        </div>
-
-                        @if($polling_verb === 'post')
-                        <div class="mb-4">
-                            <flux:textarea
-                                label="Polling Body (e.g. for GraphQL queries)"
-                                wire:model="polling_body"
-                                id="polling_body"
-                                class="block mt-1 w-full font-mono"
-                                name="polling_body"
-                                rows="6"
-                            />
-                        </div>
-                        @endif
-                        <div class="mb-4">
-                            <flux:input label="Data is stale after minutes" wire:model="data_stale_minutes"
-                                        id="data_stale_minutes"
-                                        class="block mt-1 w-full" type="number" name="data_stale_minutes" autofocus/>
-                        </div>
                     @elseif($data_strategy === 'webhook')
                         <div class="mb-4">
                             <flux:field>
