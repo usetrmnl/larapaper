@@ -1316,20 +1316,6 @@ HTML;
 
                 </div>
             @else
-            <div class="flex items-center gap-6 mb-4 mt-4">
-                <div class="flex-1 flex items-center">
-                    <span class="pr-2">Template language</span>
-                    <flux:radio.group wire:model.live="markup_language" variant="segmented">
-                        <flux:radio value="blade" label="Blade"/>
-                        <flux:radio value="liquid" label="Liquid"/>
-                    </flux:radio.group>
-                </div>
-                <div class="text-accent flex items-center gap-2">
-                    <span class="pr-2">Getting started</span>
-                    <flux:button wire:click="renderExample('layoutTitle')" class="text-xl">Responsive Layout with Title Bar</flux:button>
-                    <flux:button wire:click="renderExample('layout')" class="text-xl">Responsive Layout</flux:button>
-                </div>
-            </div>
             @endif
         </div>
         @if(!$plugin->render_markup_view)
@@ -1410,6 +1396,21 @@ HTML;
                     <flux:button type="submit" variant="primary">
                         Save
                     </flux:button>
+                </div>
+
+                <div class="flex items-center gap-3 mt-4">
+                    <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Template language</span>
+                    <flux:select wire:model.live="markup_language" class="max-w-xs">
+                        <flux:select.option value="blade">Blade</flux:select.option>
+                        <flux:select.option value="liquid">Liquid</flux:select.option>
+                    </flux:select>
+                </div>
+
+                <div class="flex items-center gap-3 mt-3">
+                    <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Getting started</span>
+                    <flux:button size="sm" wire:click="renderExample('layoutTitle')">Responsive Layout with Title Bar</flux:button>
+                    <flux:button size="sm" wire:click="renderExample('layout')">Responsive Layout</flux:button>
+                    <span class="text-xs text-zinc-400 dark:text-zinc-500">These will replace the current template.</span>
                 </div>
             </form>
         @endif
