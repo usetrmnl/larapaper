@@ -1,8 +1,9 @@
 name: Build and Push Docker Images
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - '*'
 
 env:
   REGISTRY: ghcr.io
@@ -22,9 +23,6 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -40,16 +38,16 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/usetrmnl/byos_laravel
-            ${{ env.REGISTRY }}/usetrmnl/larapaper
+            ${{ env.REGISTRY }}/spark-hpi/larapaper
           tags: |
             type=semver,pattern={{version}}
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

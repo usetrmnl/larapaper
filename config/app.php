@@ -146,6 +146,7 @@ return [
 
     'force_https' => env('FORCE_HTTPS', false),
     'puppeteer_docker' => env('PUPPETEER_DOCKER', false),
+    'docker' => env('APP_DOCKER', file_exists('/.dockerenv')),
     'puppeteer_mode' => env('PUPPETEER_MODE', 'local'),
     'puppeteer_wait_for_network_idle' => env('PUPPETEER_WAIT_FOR_NETWORK_IDLE', true),
     'puppeteer_window_size_strategy' => env('PUPPETEER_WINDOW_SIZE_STRATEGY', 'v2'),

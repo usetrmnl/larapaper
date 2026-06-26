@@ -71,7 +71,7 @@
                 <flux:menu.item href="{{ route('settings.preferences') }}" wire:navigate icon="cog">Settings</flux:menu.item>
                 <flux:menu.item href="{{ route('settings.api-tokens') }}" wire:navigate icon="key">API Tokens</flux:menu.item>
                 <flux:menu.item href="{{ route('settings.lab') }}" wire:navigate icon="beaker">Lab</flux:menu.item>
-                @if(config('app.version'))
+                @if(config('app.version') && !config('app.docker'))
                     <flux:menu.item href="{{ route('settings.update') }}" wire:navigate icon="arrow-down-circle">
                         <div class="flex items-center gap-2">
                             <span>Updates</span>
