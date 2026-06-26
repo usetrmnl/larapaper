@@ -557,7 +557,7 @@ new class extends Component
                             </div>
                         @endif
 
-                        @if(auth()->user()->isAdmin())
+                        @if(config('app.multi_user_mode') && auth()->user()->isAdmin())
                             <flux:separator class="my-4" text="Admin" />
                             <flux:select label="Owner"
                                          wire:change="reassignDevice($event.target.value ? Number($event.target.value) : null)">

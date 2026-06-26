@@ -127,6 +127,8 @@ return [
         'enabled' => env('REGISTRATION_ENABLED', true),
     ],
 
+    'multi_user_mode' => env('MULTI_USER_MODE', env('REGISTRATION_ENABLED', true)),
+
     /*
     |--------------------------------------------------------------------------
     | Passkeys (PASSKEYS_ENABLED)

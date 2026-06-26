@@ -8,7 +8,7 @@ new class extends Component
 {
     public function mount(): void
     {
-        abort_unless(auth()->user()->isAdmin(), 403);
+        abort_unless(config('app.multi_user_mode') && auth()->user()->isAdmin(), 403);
     }
 
     public function confirmUser(int $userId): void

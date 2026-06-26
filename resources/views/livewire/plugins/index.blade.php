@@ -297,13 +297,15 @@ new class extends Component
                          wire:click="$set('activeTab', 'mine')">
                 My Plugins
             </flux:button>
-            <flux:button variant="{{ $activeTab === 'shared' ? 'primary' : 'ghost' }}"
-                         wire:click="$set('activeTab', 'shared')">
-                Shared Plugins
-            </flux:button>
+            @if (config('app.multi_user_mode'))
+                <flux:button variant="{{ $activeTab === 'shared' ? 'primary' : 'ghost' }}"
+                             wire:click="$set('activeTab', 'shared')">
+                    Shared Plugins
+                </flux:button>
+            @endif
         </div>
 
-        @if (auth()->user()->isAdmin() && $activeTab === 'mine')
+        @if (config('app.multi_user_mode') && auth()->user()->isAdmin() && $activeTab === 'mine')
             <div class="mb-4 flex items-center gap-2">
                 <flux:switch wire:model.live="showAllPlugins" />
                 <span class="text-sm font-medium dark:text-zinc-200">Show all users' plugins</span>
@@ -525,18 +527,20 @@ new class extends Component
 
                     @if (isset($plugin['id']))
                         <div class="px-4 pb-4 flex flex-wrap items-center gap-2">
-                            {{-- Share toggle (owner or admin only) --}}
-                            @if (($plugin['user_id'] ?? null) === auth()->id() || auth()->user()->isAdmin())
-                                <flux:switch wire:click="toggleShared({{ $plugin['id'] }})"
-                                             :checked="$plugin['is_shared'] ?? false"
-                                             label="Shared"/>
-                            @endif
+                            @if (config('app.multi_user_mode'))
+                                {{-- Share toggle (owner or admin only) --}}
+                                @if (($plugin['user_id'] ?? null) === auth()->id() || auth()->user()->isAdmin())
+                                    <flux:switch wire:click="toggleShared({{ $plugin['id'] }})"
+                                                 :checked="$plugin['is_shared'] ?? false"
+                                                 label="Shared"/>
+                                @endif
 
-                            {{-- Copy button: visible to non-owners when plugin is shared --}}
-                            @if (($plugin['is_shared'] ?? false) && ($plugin['user_id'] ?? null) !== auth()->id())
-                                <flux:button size="sm" wire:click="copyPlugin({{ $plugin['id'] }})">
-                                    Install Copy
-                                </flux:button>
+                                {{-- Copy button: visible to non-owners when plugin is shared --}}
+                                @if (($plugin['is_shared'] ?? false) && ($plugin['user_id'] ?? null) !== auth()->id())
+                                    <flux:button size="sm" wire:click="copyPlugin({{ $plugin['id'] }})">
+                                        Install Copy
+                                    </flux:button>
+                                @endif
                             @endif
 
                         </div>

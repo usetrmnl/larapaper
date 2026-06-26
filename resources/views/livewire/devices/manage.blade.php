@@ -152,7 +152,7 @@ new class extends Component
                     <flux:button icon="plus" variant="primary">Add Device</flux:button>
                 </flux:modal.trigger>
             </div>
-            @if (auth()->user()->isAdmin())
+            @if (config('app.multi_user_mode') && auth()->user()->isAdmin())
                 <div class="mb-4 flex items-center gap-2">
                     <flux:switch wire:model.live="showAllDevices" />
                     <span class="text-sm font-medium dark:text-zinc-200">Show all users' devices</span>

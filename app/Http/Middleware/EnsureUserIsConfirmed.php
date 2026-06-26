@@ -13,7 +13,7 @@ class EnsureUserIsConfirmed
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && ! $request->user()->isConfirmed()) {
+        if (config('app.multi_user_mode') && $request->user() && ! $request->user()->isConfirmed()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

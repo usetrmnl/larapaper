@@ -20,7 +20,7 @@
                  <flux:navlist.item :href="route('settings.support')" wire:navigate>{{ __('Support & Referral') }}</flux:navlist.item>
             </flux:navlist.group>
 
-            @if (auth()?->user()?->isAdmin())
+            @if (config('app.multi_user_mode') && auth()?->user()?->isAdmin())
                 <flux:navlist.group :heading="__('Admin')" class="mt-2">
                     <flux:navlist.item :href="route('settings.admin.users')" wire:navigate>{{ __('Users') }}</flux:navlist.item>
                 </flux:navlist.group>

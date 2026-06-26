@@ -804,7 +804,7 @@ HTML;
             </flux:button.group>
         </div>
 
-        @if(auth()->user()->isAdmin())
+        @if(config('app.multi_user_mode') && auth()->user()->isAdmin())
             <div class="flex items-center gap-3 mb-6">
                 <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Owner</span>
                 <flux:select wire:change="reassignPlugin($event.target.value)" class="max-w-xs">
