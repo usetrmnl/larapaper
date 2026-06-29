@@ -81,8 +81,6 @@ new class extends Component
 
     public ?string $transform_language = 'python';
 
-    public ?string $transform_run_output = null;
-
     public bool $is_shared = false;
 
     public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
@@ -759,7 +757,6 @@ HTML;
     {
         abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
         $this->transform_code = null;
-        $this->transform_run_output = null;
         $this->plugin->update(['transform_code' => null, 'transform_language' => null]);
         if ($this->active_tab === 'transform') {
             $this->active_tab = 'full';
@@ -785,29 +782,6 @@ HTML;
         ]);
 
         Flux::toast(variant: 'success', text: 'Transform saved.');
-    }
-
-    public function runTransform(): void
-    {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
-
-        if (! $this->plugin->data_payload) {
-            $this->dispatch('transform-error', message: 'Fetch data first before running the transform.');
-
-            return;
-        }
-
-        try {
-            $result = app(ServerlessTransformService::class)->run(
-                $this->transform_code ?? '',
-                $this->transform_language ?? 'python',
-                $this->plugin->data_payload,
-                strict: true,
-            );
-            $this->transform_run_output = json_encode($result, JSON_PRETTY_PRINT);
-        } catch (\Throwable $e) {
-            $this->dispatch('transform-error', message: $e->getMessage());
-        }
     }
 
     #[On('config-updated')]
@@ -1578,35 +1552,7 @@ HTML;
                                 <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
                             </div>
 
-                            @if($transform_run_output !== null)
-                                <div class="mt-2 mb-4">
-                                    <flux:label>Transform Output</flux:label>
-                                    @php $outputTextareaId = 'transform-output-' . $plugin->id; @endphp
-                                    <flux:textarea wire:model="transform_run_output" id="{{ $outputTextareaId }}" rows="10" hidden/>
-                                    <div
-                                        x-data="codeEditorFormComponent({
-                                            isDisabled: true,
-                                            language: 'json',
-                                            state: $wire.entangle('transform_run_output'),
-                                            textareaId: @js($outputTextareaId)
-                                        })"
-                                        wire:ignore
-                                        wire:key="cm-{{ $outputTextareaId }}"
-                                        class="min-h-[200px] h-[200px] overflow-hidden resize-y"
-                                    >
-                                        <div x-show="isLoading" class="flex items-center justify-center h-full">
-                                            <flux:icon.loading />
-                                        </div>
-                                        <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
-                                    </div>
-                                </div>
-                            @endif
-
                             <div class="flex gap-2">
-                                <flux:button icon="play" wire:click="runTransform" wire:loading.attr="disabled" wire:target="runTransform">
-                                    <span wire:loading.remove wire:target="runTransform">Run</span>
-                                    <span wire:loading wire:target="runTransform">Running...</span>
-                                </flux:button>
                                 <flux:button variant="primary" wire:click="saveTransform">Save</flux:button>
                             </div>
                         @else
@@ -1784,10 +1730,6 @@ HTML;
 
     $wire.on('data-update-error', ({message}) => {
         alert('Data Update Error: ' + message);
-    });
-
-    $wire.on('transform-error', ({message}) => {
-        alert('Transform Error: ' + message);
     });
 </script>
 @endscript
