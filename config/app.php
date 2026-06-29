@@ -129,6 +129,8 @@ return [
 
     'multi_user_mode' => env('MULTI_USER_MODE', env('REGISTRATION_ENABLED', true)),
 
+    'dangerously_allow_blade_for_non_admins' => env('MULTI_USER_DANGEROUSLY_ALLOW_BLADE_TEMPLATES_FOR_NON_ADMINS', false),
+
     /*
     |--------------------------------------------------------------------------
     | Passkeys (PASSKEYS_ENABLED)

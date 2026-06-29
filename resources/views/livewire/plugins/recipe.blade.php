@@ -137,7 +137,8 @@ new class extends Component
             }
 
             $this->markup_code = $this->markup_layouts['full'];
-            $this->markup_language = $this->plugin->markup_language ?? 'blade';
+            $canUseBlade = auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
+            $this->markup_language = $this->plugin->markup_language ?? ($canUseBlade ? 'blade' : 'liquid');
         }
 
         // Initialize screen settings from the model
@@ -284,7 +285,15 @@ new class extends Component
         'polling_body' => 'nullable|string',
         'data_payload' => 'required_if:data_strategy,static|nullable|json',
         'markup_code' => 'nullable|string',
-        'markup_language' => 'nullable|string|in:blade,liquid',
+        'markup_language' => ['nullable', 'string', function ($attribute, $value, $fail) {
+            $allowed = ['liquid'];
+            if (auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins')) {
+                $allowed[] = 'blade';
+            }
+            if (! in_array($value, $allowed)) {
+                $fail('Blade templates are restricted to administrators.');
+            }
+        }],
         'checked_devices' => 'array',
         'device_playlist_names' => 'array',
         'device_playlists' => 'array',
@@ -1352,7 +1361,9 @@ HTML;
                 <div class="flex-1 flex items-center">
                     <span class="pr-2">Template language</span>
                     <flux:radio.group wire:model.live="markup_language" variant="segmented">
+                        @if(auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins'))
                         <flux:radio value="blade" label="Blade"/>
+                        @endif
                         <flux:radio value="liquid" label="Liquid"/>
                     </flux:radio.group>
                 </div>
