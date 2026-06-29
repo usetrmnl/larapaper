@@ -10,6 +10,8 @@ description: LaraPaper environment configuration reference.
 | `TRMNL_PROXY_BASE_URL` | Base URL of the native TRMNL service | `https://trmnl.app` |
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often to fetch new images from the cloud service | `15` |
 | `REGISTRATION_ENABLED` | Allow registration via the web UI | `1` |
+| `MULTI_USER_MODE` | Enable multi-user mode (account confirmation, per-user ownership) | `REGISTRATION_ENABLED` |
+| `MULTI_USER_DANGEROUSLY_ALLOW_BLADE_TEMPLATES_FOR_NON_ADMINS` | Allow non-admin users to use Blade templates (arbitrary PHP) | `false` |
 | `PASSKEYS_ENABLED` | Enable passkeys (requires HTTPS) | `0` |
 | `SSL_MODE` | SSL mode when not behind a reverse proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off` |
 | `FORCE_HTTPS` | Enforce HTTPS when the server terminates SSL | `0` |
