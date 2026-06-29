@@ -10,6 +10,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     private const DEFAULT_SLEEP_MODE_FROM = '22:00';
 
     private const DEFAULT_SLEEP_MODE_TO = '06:00';
@@ -75,9 +77,21 @@ new class extends Component
 
     public $download_firmware;
 
+    public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
+    }
+
+    public function reassignDevice(?int $newOwnerId): void
+    {
+        $this->authorize('reassign', $this->device);
+        $this->device->update(['user_id' => $newOwnerId]);
+        Flux::toast(variant: 'success', text: 'Device ownership updated.');
+    }
+
     public function mount(App\Models\Device $device)
     {
-        abort_unless(auth()->user()->devices->contains($device), 403);
+        $this->authorize('update', $device);
 
         $current_image_uuid = $device->current_screen_image;
         $current_image_path = 'images/generated/'.$current_image_uuid.'.png';
@@ -138,7 +152,7 @@ new class extends Component
 
     public function deleteDevice(App\Models\Device $device)
     {
-        abort_unless(auth()->user()->devices->contains($device), 403);
+        $this->authorize('delete', $device);
         $device->delete();
 
         redirect()->route('devices');
@@ -165,7 +179,7 @@ new class extends Component
 
     public function updateDevice()
     {
-        abort_unless(auth()->user()->devices->contains($this->device), 403);
+        $this->authorize('update', $this->device);
 
         $this->validate([
             'name' => 'required|string|max:255',
@@ -260,7 +274,7 @@ new class extends Component
     public function sortPlaylistItem(int $id, int $position): void
     {
         $item = PlaylistItem::query()->with('playlist.device')->findOrFail($id);
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        $this->authorize('update', $item->playlist->device);
 
         $items = $item->playlist->items()->orderBy('order')->orderBy('id')->get();
         $ids = $items->pluck('id')->all();
@@ -288,7 +302,7 @@ new class extends Component
 
     public function deletePlaylist(Playlist $playlist)
     {
-        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+        $this->authorize('update', $playlist->device);
         $playlist->delete();
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
         Flux::modal('delete-playlist-'.$playlist->id)->close();
@@ -296,7 +310,7 @@ new class extends Component
 
     public function deletePlaylistItem(PlaylistItem $item)
     {
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        $this->authorize('update', $item->playlist->device);
         $item->delete();
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
         Flux::modal('delete-playlist-item-'.$item->id)->close();
@@ -306,7 +320,7 @@ new class extends Component
     {
         $item->loadMissing(['playlist.device', 'plugin']);
 
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        $this->authorize('update', $item->playlist->device);
 
         if ($item->isMashup()) {
             return;
@@ -373,7 +387,7 @@ new class extends Component
 
     public function updateFirmware()
     {
-        abort_unless(auth()->user()->devices->contains($this->device), 403);
+        $this->authorize('update', $this->device);
 
         $this->validate([
             'selected_firmware_id' => 'required|exists:firmware,id',
@@ -541,6 +555,19 @@ new class extends Component
                                 <flux:input type="time" label="From" wire:model.fill="sleep_mode_from"/>
                                 <flux:input type="time" label="To" wire:model.fill="sleep_mode_to" />
                             </div>
+                        @endif
+
+                        @if(config('app.multi_user_mode') && auth()->user()->isAdmin())
+                            <flux:separator class="my-4" text="Admin" />
+                            <flux:select label="Owner"
+                                         wire:change="reassignDevice($event.target.value ? Number($event.target.value) : null)">
+                                <flux:select.option value="">Nobody (Unowned)</flux:select.option>
+                                @foreach ($this->availableUsers as $u)
+                                    <flux:select.option value="{{ $u->id }}" :selected="$device->user_id === $u->id">
+                                        {{ $u->name }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
                         @endif
 
                         <div class="flex">

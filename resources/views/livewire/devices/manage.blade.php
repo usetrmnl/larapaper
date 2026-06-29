@@ -6,7 +6,11 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     public $devices;
+
+    public bool $showAllDevices = false;
 
     public $showDeviceForm = false;
 
@@ -40,7 +44,7 @@ new class extends Component
 
     public function mount()
     {
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         $this->deviceModels = DeviceModel::orderBy('label')->get()->sortBy(function ($deviceModel) {
             // Put TRMNL models at the top, then sort alphabetically within each group
             $isTrmnl = str_starts_with($deviceModel->label, 'TRMNL');
@@ -49,6 +53,24 @@ new class extends Component
         });
 
         return view('livewire.devices.manage');
+    }
+
+    public function loadDevices(): void
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin() && $this->showAllDevices) {
+            $this->devices = Device::all();
+        } else {
+            $this->devices = Device::where('user_id', $user->id)
+                ->orWhereNull('user_id')
+                ->get();
+        }
+    }
+
+    public function updatedShowAllDevices(): void
+    {
+        $this->loadDevices();
     }
 
     public function updatedDeviceModelId(): void
@@ -87,7 +109,7 @@ new class extends Component
         $this->reset();
         Flux::modal('create-device')->close();
 
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         Flux::toast(variant: 'success', text: 'Device created successfully.');
     }
 
@@ -113,7 +135,7 @@ new class extends Component
         $device->update(['pause_until' => $pauseUntil]);
         $this->reset('pause_duration');
         Flux::modal('pause-device-'.$deviceId)->close();
-        $this->devices = auth()->user()->devices;
+        $this->loadDevices();
         Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->format('H:i'));
     }
 }
@@ -130,6 +152,12 @@ new class extends Component
                     <flux:button icon="plus" variant="primary">Add Device</flux:button>
                 </flux:modal.trigger>
             </div>
+            @if (config('app.multi_user_mode') && auth()->user()->isAdmin())
+                <div class="mb-4 flex items-center gap-2">
+                    <flux:switch wire:model.live="showAllDevices" />
+                    <span class="text-sm font-medium dark:text-zinc-200">Show all users' devices</span>
+                </div>
+            @endif
             <flux:modal name="create-device" class="md:w-96">
                 <div class="space-y-6">
                     <div>
@@ -241,6 +269,9 @@ new class extends Component
                         <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap  text-zinc-500 dark:text-zinc-300"
                         >
                             {{ $device->name }}
+                            @if ($device->user_id === null)
+                                <flux:badge color="zinc" size="sm" class="ml-1">Shared</flux:badge>
+                            @endif
                         </td>
                         <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap  text-zinc-500 dark:text-zinc-300"
                         >

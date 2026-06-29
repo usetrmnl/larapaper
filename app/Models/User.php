@@ -31,6 +31,8 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
         'assign_new_device_id',
         'oidc_sub',
         'timezone',
+        'is_admin',
+        'confirmed_at',
     ];
 
     /**
@@ -56,6 +58,8 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'assign_new_devices' => 'boolean',
+            'is_admin' => 'boolean',
+            'confirmed_at' => 'datetime',
         ];
     }
 
@@ -83,5 +87,39 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
     public function routeNotificationForWebhook(): ?string
     {
         return config('services.webhook.notifications.url');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->id === 1 || $this->is_admin;
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->confirmed_at !== null;
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            if ($user->id === 1) {
+                $user->is_admin = true;
+                if ($user->confirmed_at === null) {
+                    $user->confirmed_at = now();
+                }
+            }
+        });
+
+        static::created(function (User $user): void {
+            if ($user->id === 1) {
+                $updates = ['is_admin' => true];
+                if ($user->confirmed_at === null) {
+                    $updates['confirmed_at'] = now()->toDateTimeString();
+                }
+                \Illuminate\Support\Facades\DB::table('users')
+                    ->where('id', 1)
+                    ->update($updates);
+            }
+        });
     }
 }

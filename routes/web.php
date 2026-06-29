@@ -8,7 +8,7 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'confirmed'])->group(function () {
 
     Route::livewire('/dashboard', 'device-dashboard')->name('dashboard');
 

@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 new class extends Component
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     public Plugin $plugin;
 
     public ?string $markup_code;
@@ -74,9 +76,26 @@ new class extends Component
 
     public string $active_tab = 'full';
 
+
+    public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
+    }
+
+    public function reassignPlugin(int $newOwnerId): void
+    {
+        $this->authorize('reassign', $this->plugin);
+
+        $newOwner = \App\Models\User::findOrFail($newOwnerId);
+        $this->plugin->update(['user_id' => $newOwner->id]);
+        $this->plugin = $this->plugin->fresh();
+
+        Flux::toast(variant: 'success', text: 'Plugin ownership updated.');
+    }
+
     public function mount(): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
         $this->blade_code = $this->plugin->render_markup;
         // required to render some stuff
         $this->configuration_template = $this->plugin->configuration_template ?? [];
@@ -118,7 +137,8 @@ new class extends Component
             }
 
             $this->markup_code = $this->markup_layouts['full'];
-            $this->markup_language = $this->plugin->markup_language ?? 'blade';
+            $canUseBlade = auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
+            $this->markup_language = $this->plugin->markup_language ?? ($canUseBlade ? 'blade' : 'liquid');
         }
 
         // Initialize screen settings from the model
@@ -265,7 +285,15 @@ new class extends Component
         'polling_body' => 'nullable|string',
         'data_payload' => 'required_if:data_strategy,static|nullable|json',
         'markup_code' => 'nullable|string',
-        'markup_language' => 'nullable|string|in:blade,liquid',
+        'markup_language' => ['nullable', 'string', function ($attribute, $value, $fail) {
+            $allowed = ['liquid'];
+            if (auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins')) {
+                $allowed[] = 'blade';
+            }
+            if (! in_array($value, $allowed)) {
+                $fail('Blade templates are restricted to administrators.');
+            }
+        }],
         'checked_devices' => 'array',
         'device_playlist_names' => 'array',
         'device_playlists' => 'array',
@@ -733,7 +761,7 @@ HTML;
     "
 >
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex justify-between items-center mb-3">
             <h2 class="text-2xl font-semibold dark:text-gray-100">{{$plugin->name}}
                 <flux:badge size="sm" class="ml-2">Recipe</flux:badge>
             </h2>
@@ -783,6 +811,19 @@ HTML;
                 </flux:dropdown>
             </flux:button.group>
         </div>
+
+        @if(config('app.multi_user_mode') && auth()->user()->isAdmin())
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Owner</span>
+                <flux:select wire:change="reassignPlugin($event.target.value)" class="max-w-xs">
+                    @foreach ($this->availableUsers as $u)
+                        <flux:select.option value="{{ $u->id }}" :selected="$plugin->user_id === $u->id">
+                            {{ $u->name }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
 
         <flux:modal name="add-to-playlist" class="min-w-2xl">
             <div class="space-y-6">

@@ -85,6 +85,7 @@ export default defineConfig({
       collapsible: true,
       children: [
         { title: 'Generating screens', path: '/usage/generating-screens', icon: 'image' },
+        { title: 'Multi-user mode', path: '/usage/multi-user', icon: 'users' },
         { title: 'Cloud proxy', path: '/usage/cloud-proxy', icon: 'cloud' },
         { title: 'Demo plugins', path: '/usage/demo-plugins', icon: 'puzzle' },
       ],

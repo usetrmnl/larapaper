@@ -7,11 +7,13 @@ use App\Http\Requests\Api\ImportPluginArchiveRequest;
 use App\Models\Plugin;
 use App\Services\PluginExportService;
 use App\Services\PluginImportService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PluginArchiveController extends Controller
 {
+    use AuthorizesRequests;
     public function __construct(
         private PluginExportService $exporter,
         private PluginImportService $importer,
@@ -23,9 +25,9 @@ class PluginArchiveController extends Controller
             abort(400, 'trmnlp_id is required');
         }
 
-        $plugin = Plugin::where('trmnlp_id', $trmnlp_id)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
+        $plugin = Plugin::where('trmnlp_id', $trmnlp_id)->firstOrFail();
+
+        $this->authorize('view', $plugin);
 
         return $this->exporter->exportToZip($plugin, auth()->user());
     }
