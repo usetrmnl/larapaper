@@ -90,6 +90,23 @@ class PluginImportService
         $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
 
+        $transformCode = null;
+        $transformLanguage = null;
+        $serverlessLanguage = ! empty($settings['serverless_language'])
+            ? strtolower((string) $settings['serverless_language'])
+            : null;
+
+        if ($serverlessLanguage) {
+            $extMap = ['python' => 'py', 'node' => 'js', 'php' => 'php'];
+            $ext = $extMap[$serverlessLanguage] ?? null;
+            $srcDir = dirname((string) $filePaths['settingsYamlPath']);
+
+            if ($ext && File::exists($srcDir.'/transform.'.$ext)) {
+                $transformCode = File::get($srcDir.'/transform.'.$ext);
+                $transformLanguage = $serverlessLanguage;
+            }
+        }
+
         // Determine markup language from the first available file
         $markupLanguage = 'blade';
         $firstTemplatePath = $filePaths['fullLiquidPath']
@@ -185,6 +202,8 @@ class PluginImportService
                 'configuration_template' => $configurationTemplate,
                 'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
                 'framework_version' => $settings['framework_version'] ?? null,
+                'transform_code'     => $transformCode,
+                'transform_language' => $transformLanguage,
             ]);
 
         if (! $plugin_updated) {
@@ -259,6 +278,23 @@ class PluginImportService
         $yamlParts = preg_split('/^---[ \t]*\r?\n/m', $settingsYaml, 2);
         $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
+
+        $transformCode = null;
+        $transformLanguage = null;
+        $serverlessLanguage = ! empty($settings['serverless_language'])
+            ? strtolower((string) $settings['serverless_language'])
+            : null;
+
+        if ($serverlessLanguage) {
+            $extMap = ['python' => 'py', 'node' => 'js', 'php' => 'php'];
+            $ext = $extMap[$serverlessLanguage] ?? null;
+            $srcDir = dirname((string) $filePaths['settingsYamlPath']);
+
+            if ($ext && File::exists($srcDir.'/transform.'.$ext)) {
+                $transformCode = File::get($srcDir.'/transform.'.$ext);
+                $transformLanguage = $serverlessLanguage;
+            }
+        }
 
         // Determine markup language from the first available file
         $markupLanguage = 'blade';
@@ -367,6 +403,8 @@ class PluginImportService
                 'preferred_renderer' => $preferredRenderer,
                 'framework_version' => $settings['framework_version'] ?? null,
                 'icon_url' => $iconUrl,
+                'transform_code'     => $transformCode,
+                'transform_language' => $transformLanguage,
             ]);
 
         if (! $plugin_updated) {
@@ -604,6 +642,13 @@ class PluginImportService
                         $extension = pathinfo((string) $quadrantLiquidPath, PATHINFO_EXTENSION);
                         File::copy($quadrantLiquidPath, $newSrcDir.'/quadrant.'.$extension);
                         $quadrantLiquidPath = $newSrcDir.'/quadrant.'.$extension;
+                    }
+
+                    foreach (['py', 'js', 'php'] as $transformExt) {
+                        $origTransformPath = $srcDir.'/transform.'.$transformExt;
+                        if (File::exists($origTransformPath)) {
+                            File::copy($origTransformPath, $newSrcDir.'/transform.'.$transformExt);
+                        }
                     }
 
                     // Update the paths
