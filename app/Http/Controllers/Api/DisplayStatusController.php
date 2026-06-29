@@ -7,9 +7,12 @@ use App\Http\Requests\Api\DisplayStatusRequest;
 use App\Http\Requests\Api\UpdateDisplayStatusRequest;
 use App\Http\Resources\DeviceStatusResource;
 use App\Models\Device;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class DisplayStatusController extends Controller
 {
+    use AuthorizesRequests;
+
     public function show(DisplayStatusRequest $request): DeviceStatusResource
     {
         return new DeviceStatusResource($this->authorizedDevice($request));
@@ -26,8 +29,10 @@ class DisplayStatusController extends Controller
     private function authorizedDevice(DisplayStatusRequest|UpdateDisplayStatusRequest $request): Device
     {
         $deviceId = $request->integer('device_id');
-        abort_unless($request->user()->devices->contains($deviceId), 403);
+        $device = Device::findOrFail($deviceId);
 
-        return Device::findOrFail($deviceId);
+        $this->authorize('view', $device);
+
+        return $device;
     }
 }

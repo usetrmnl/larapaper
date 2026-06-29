@@ -1,6 +1,8 @@
 <?php
 
 use App\Console\Commands\ExampleRecipesSeederCommand;
+use App\Models\Plugin;
+use App\Models\User;
 use App\Plugins\PluginRegistry;
 use App\Services\PluginImportService;
 use Illuminate\Support\Str;
@@ -10,6 +12,7 @@ use Livewire\WithFileUploads;
 new class extends Component
 {
     use WithFileUploads;
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
     public string $name;
 
@@ -30,6 +33,10 @@ new class extends Component
     public $zipFile;
 
     public string $sortBy = 'date_asc';
+
+    public bool $showAllPlugins = false;
+
+    public string $activeTab = 'mine'; // 'mine' | 'shared'
 
     public array $native_plugins = [];
 
@@ -68,16 +75,35 @@ new class extends Component
 
     public function refreshPlugins(): void
     {
-        // Only show recipe plugins in the main list (image_webhook has its own management page)
-        $userPlugins = auth()->user()?->plugins()
-            ->where('plugin_type', 'recipe')
-            ->get()
-            ->makeHidden(['render_markup', 'data_payload'])
-            ->toArray();
-        $allPlugins = array_merge($this->nativePlugins(), $userPlugins ?? []);
-        $allPlugins = array_values($allPlugins);
-        $allPlugins = $this->sortPlugins($allPlugins);
-        $this->plugins = $allPlugins;
+        $user = auth()->user();
+
+        if ($this->activeTab === 'shared') {
+            $userPlugins = Plugin::where('is_shared', true)
+                ->where('plugin_type', 'recipe')
+                ->with('user')
+                ->get()
+                ->makeHidden(['render_markup', 'data_payload'])
+                ->toArray();
+        } elseif ($user->isAdmin() && $this->showAllPlugins) {
+            $userPlugins = Plugin::where('plugin_type', 'recipe')
+                ->with('user')
+                ->get()
+                ->makeHidden(['render_markup', 'data_payload'])
+                ->toArray();
+        } else {
+            // Only show recipe plugins in the main list (image_webhook has its own management page)
+            $userPlugins = $user->plugins()
+                ->where('plugin_type', 'recipe')
+                ->get()
+                ->makeHidden(['render_markup', 'data_payload'])
+                ->toArray();
+        }
+
+        $allPlugins = $this->activeTab === 'mine'
+            ? array_merge($this->nativePlugins(), $userPlugins ?? [])
+            : $userPlugins ?? [];
+
+        $this->plugins = $this->sortPlugins(array_values($allPlugins));
     }
 
     protected function sortPlugins(array $plugins): array
@@ -127,6 +153,43 @@ new class extends Component
     public function updatedSortBy(): void
     {
         $this->refreshPlugins();
+    }
+
+    public function updatedActiveTab(): void
+    {
+        $this->refreshPlugins();
+    }
+
+    public function updatedShowAllPlugins(): void
+    {
+        $this->refreshPlugins();
+    }
+
+    public function toggleShared(int $pluginId): void
+    {
+        $plugin = Plugin::findOrFail($pluginId);
+        $this->authorize('share', $plugin);
+
+        $plugin->update(['is_shared' => ! $plugin->is_shared]);
+        $this->refreshPlugins();
+
+        Flux::toast(variant: 'success', text: $plugin->fresh()->is_shared ? 'Plugin shared.' : 'Plugin unshared.');
+    }
+
+    public function copyPlugin(int $pluginId): void
+    {
+        $plugin = Plugin::findOrFail($pluginId);
+        $this->authorize('copy', $plugin);
+
+        $copy = $plugin->replicate(['id', 'uuid', 'trmnlp_id']);
+        $copy->user_id = auth()->id();
+        $copy->is_shared = false;
+        $copy->trmnlp_id = (string) \Symfony\Component\Uid\Uuid::v7();
+        $copy->uuid = (string) \Symfony\Component\Uid\Uuid::v4();
+        $copy->save();
+
+        $this->refreshPlugins();
+        Flux::toast(variant: 'success', text: "'{$plugin->name}' copied to your plugins.");
     }
 
     public function getListeners(): array
@@ -228,6 +291,26 @@ new class extends Component
                 </flux:button.group>
             </div>
         </div>
+
+        <div class="flex gap-4 mb-4">
+            <flux:button variant="{{ $activeTab === 'mine' ? 'primary' : 'ghost' }}"
+                         wire:click="$set('activeTab', 'mine')">
+                My Plugins
+            </flux:button>
+            @if (config('app.multi_user_mode'))
+                <flux:button variant="{{ $activeTab === 'shared' ? 'primary' : 'ghost' }}"
+                             wire:click="$set('activeTab', 'shared')">
+                    Shared Plugins
+                </flux:button>
+            @endif
+        </div>
+
+        @if (config('app.multi_user_mode') && auth()->user()->isAdmin() && $activeTab === 'mine')
+            <div class="mb-4 flex items-center gap-2">
+                <flux:switch wire:model.live="showAllPlugins" />
+                <span class="text-sm font-medium dark:text-zinc-200">Show all users' plugins</span>
+            </div>
+        @endif
 
         <div x-show="showFilters" class="mb-6 flex flex-col sm:flex-row gap-4" style="display: none;">
             <div class="flex-1">
@@ -419,10 +502,15 @@ new class extends Component
                     wire:key="plugin-{{ $plugin['id'] ?? $plugin['name'] ?? $index }}"
                     x-data="{ pluginName: {{ json_encode(strtolower($plugin['name'] ?? '')) }} }"
                     x-show="searchTerm.length <= 1 || pluginName.includes(searchTerm.toLowerCase())"
-                    class="styled-container">
-                    <a href="{{ $plugin['detail_view_url'] ?? route('plugins.recipe', ['plugin' => $plugin['id']]) }}"
-                       class="block h-full">
-                        <div class="flex items-center space-x-4 px-10 py-8 h-full">
+                    class="styled-container flex flex-col">
+                    @php $isOtherUsersShared = ($plugin['is_shared'] ?? false) && ($plugin['user_id'] ?? null) !== auth()->id(); @endphp
+                    @if ($isOtherUsersShared)
+                        <div class="block flex-1">
+                    @else
+                        <a href="{{ $plugin['detail_view_url'] ?? route('plugins.recipe', ['plugin' => $plugin['id']]) }}"
+                           class="block flex-1">
+                    @endif
+                        <div class="flex items-center space-x-4 px-10 py-8">
                             @isset($plugin['icon_url'])
                                 <img src="{{ $plugin['icon_url'] }}" class="h-6"/>
                             @else
@@ -431,7 +519,19 @@ new class extends Component
                             @endif
                             <h3 class="text-lg font-medium dark:text-zinc-200">{{$plugin['name']}}</h3>
                         </div>
-                    </a>
+                    @if ($isOtherUsersShared)
+                        </div>
+                    @else
+                        </a>
+                    @endif
+
+                    @if (isset($plugin['id']) && $isOtherUsersShared)
+                        <div class="px-4 pb-4">
+                            <flux:button size="sm" wire:click="copyPlugin({{ $plugin['id'] }})">
+                                Install Copy
+                            </flux:button>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>

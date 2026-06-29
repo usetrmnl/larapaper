@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Plugin;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,6 +12,7 @@ use Symfony\Component\Uid\Uuid;
 
 class PluginSettingsController extends Controller
 {
+    use AuthorizesRequests;
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -54,10 +56,11 @@ class PluginSettingsController extends Controller
 
     public function destroy(Request $request, string $trmnlp_id): Response
     {
-        Plugin::where('trmnlp_id', $trmnlp_id)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail()
-            ->delete();
+        $plugin = Plugin::where('trmnlp_id', $trmnlp_id)->firstOrFail();
+
+        $this->authorize('delete', $plugin);
+
+        $plugin->delete();
 
         return response()->noContent();
     }

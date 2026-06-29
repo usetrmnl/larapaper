@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
+            'confirmed' => \App\Http\Middleware\EnsureUserIsConfirmed::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
