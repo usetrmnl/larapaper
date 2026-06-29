@@ -25,21 +25,38 @@ class ServerlessTransformService
             ]);
 
             if (! $response->successful()) {
-                return $this->fail(
-                    'ServerlessTransformService: runner returned '.$response->status().': '.$response->json('error', ''),
-                    $input,
-                    $strict
-                );
+                $msg = 'runner returned '.$response->status().': '.$response->json('error', $response->body());
+                if ($strict) {
+                    throw new \RuntimeException($msg);
+                }
+                Log::warning('ServerlessTransformService: '.$msg);
+
+                return ['error' => $msg];
             }
 
             $output = $response->json('output');
-            if (! is_array($output)) {
-                return $this->fail('ServerlessTransformService: runner output is not a JSON object', $input, $strict);
+            if (is_array($output)) {
+                return $output;
             }
 
-            return $output;
+            // Runner returned an error body (e.g. {"error": "..."}) — store it as the payload.
+            $runnerBody = $response->json();
+            if (is_array($runnerBody)) {
+                if ($strict) {
+                    throw new \RuntimeException($runnerBody['error'] ?? 'transform runner returned no output');
+                }
+
+                return $runnerBody;
+            }
+
+            return $this->fail('ServerlessTransformService: runner returned no output', $input, $strict);
         } catch (\Throwable $e) {
-            return $this->fail('ServerlessTransformService: '.$e->getMessage(), $input, $strict);
+            if ($strict) {
+                throw new \RuntimeException('ServerlessTransformService: '.$e->getMessage(), previous: $e);
+            }
+            Log::warning('ServerlessTransformService: '.$e->getMessage());
+
+            return ['error' => $e->getMessage()];
         }
     }
 

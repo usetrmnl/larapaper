@@ -81,6 +81,8 @@ new class extends Component
 
     public ?string $transform_language = 'python';
 
+    public ?string $transform_error = null;
+
     public bool $is_shared = false;
 
     public function getAvailableUsersProperty(): \Illuminate\Database\Eloquent\Collection
@@ -386,6 +388,12 @@ new class extends Component
                 $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
                 $this->data_payload_updated_at = $this->plugin->data_payload_updated_at;
 
+                $payload = $this->plugin->data_payload;
+                if ($this->transform_code !== null && is_array($payload) && array_key_exists('error', $payload)) {
+                    $this->transform_error = (string) ($payload['error'] ?? 'Unknown transform error');
+                } else {
+                    $this->transform_error = null;
+                }
             } catch (Exception $e) {
                 $this->dispatch('data-update-error', message: $e->getMessage().$e->getPrevious()?->getMessage());
             }
@@ -1383,6 +1391,9 @@ HTML;
                     @isset($this->data_payload_updated_at)
                         <flux:badge icon="clock" size="sm" variant="pill" class="ml-2">{{ $this->data_payload_updated_at?->diffForHumans() ?? 'Never' }}</flux:badge>
                     @endisset
+                    @if($transform_error !== null)
+                        <flux:badge icon="exclamation-triangle" size="sm" variant="pill" color="red" class="ml-2" :title="$transform_error">Transform error</flux:badge>
+                    @endif
                 </div>
                 <flux:error name="data_payload"/>
                 <flux:field>
