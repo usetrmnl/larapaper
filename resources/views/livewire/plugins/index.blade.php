@@ -540,7 +540,7 @@ new class extends Component
                     x-data="{ pluginName: {{ json_encode(strtolower($plugin['name'] ?? '')) }} }"
                     x-show="searchTerm.length <= 1 || pluginName.includes(searchTerm.toLowerCase())"
                     class="styled-container flex flex-col">
-                    @php $isOtherUsersShared = ($plugin['is_shared'] ?? false) && ($plugin['user_id'] ?? null) !== auth()->id(); @endphp
+                    @php $isOtherUsersShared = $activeTab === 'shared' && ($plugin['is_shared'] ?? false) && ($plugin['user_id'] ?? null) !== auth()->id(); @endphp
                     @if ($isOtherUsersShared)
                         <div class="block flex-1">
                     @else
