@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Device;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use Livewire\Component;
@@ -9,6 +10,8 @@ new class extends Component
     public $devices;
 
     public $playlists;
+
+    public bool $showAllPlaylists = false;
 
     // Playlist form properties
     public $playlist_name;
@@ -23,22 +26,45 @@ new class extends Component
 
     public function mount()
     {
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
 
         return view('livewire.playlists.index');
     }
 
+    public function loadDevices(): void
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin() && $this->showAllPlaylists) {
+            $this->devices = Device::with(['playlists.items.plugin', 'user'])->get();
+        } else {
+            $this->devices = $user->devices()->with(['playlists.items.plugin'])->get();
+        }
+    }
+
+    public function updatedShowAllPlaylists(): void
+    {
+        $this->loadDevices();
+    }
+
+    protected function canManageDevice(Device $device): bool
+    {
+        $user = auth()->user();
+
+        return $user->isAdmin() || $user->devices->contains($device);
+    }
+
     public function togglePlaylistActive(Playlist $playlist)
     {
-        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+        abort_unless($this->canManageDevice($playlist->device), 403);
         $playlist->update(['is_active' => ! $playlist->is_active]);
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
     }
 
     public function sortPlaylistItem(int $id, int $position): void
     {
         $item = PlaylistItem::query()->with('playlist.device')->findOrFail($id);
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        abort_unless($this->canManageDevice($item->playlist->device), 403);
 
         $items = $item->playlist->items()->orderBy('order')->orderBy('id')->get();
         $ids = $items->pluck('id')->all();
@@ -55,29 +81,29 @@ new class extends Component
             PlaylistItem::query()->whereKey($itemId)->update(['order' => $index]);
         }
 
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
     }
 
     public function togglePlaylistItemActive(PlaylistItem $item)
     {
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        abort_unless($this->canManageDevice($item->playlist->device), 403);
         $item->update(['is_active' => ! $item->is_active]);
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
     }
 
     public function deletePlaylist(Playlist $playlist)
     {
-        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+        abort_unless($this->canManageDevice($playlist->device), 403);
         $playlist->delete();
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
         Flux::modal('delete-playlist-'.$playlist->id)->close();
     }
 
     public function deletePlaylistItem(PlaylistItem $item)
     {
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        abort_unless($this->canManageDevice($item->playlist->device), 403);
         $item->delete();
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
         Flux::modal('delete-playlist-item-'.$item->id)->close();
     }
 
@@ -85,7 +111,7 @@ new class extends Component
     {
         $item->loadMissing(['playlist.device', 'plugin']);
 
-        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+        abort_unless($this->canManageDevice($item->playlist->device), 403);
 
         if ($item->isMashup()) {
             return;
@@ -95,18 +121,19 @@ new class extends Component
             return;
         }
 
-        abort_unless($item->plugin->user_id === auth()->id(), 403);
+        $user = auth()->user();
+        abort_unless($user->isAdmin() || $item->plugin->user_id === $user->id, 403);
 
         $item->plugin->clearCurrentImage();
 
         Flux::toast(variant: 'success', text: 'Image cache cleared.');
 
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
     }
 
     public function editPlaylist(Playlist $playlist)
     {
-        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+        abort_unless($this->canManageDevice($playlist->device), 403);
 
         $this->validate([
             'playlist_name' => 'required|string|max:255',
@@ -138,7 +165,7 @@ new class extends Component
             'refresh_time' => $this->refresh_time,
         ]);
 
-        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->loadDevices();
         $this->reset(['playlist_name', 'selected_weekdays', 'active_from', 'active_until', 'refresh_time']);
         Flux::modal('edit-playlist-'.$playlist->id)->close();
     }
@@ -160,11 +187,27 @@ new class extends Component
                 <h2 class="text-2xl font-semibold dark:text-gray-100">Playlists</h2>
             </div>
 
+            @if (config('app.multi_user_mode') && auth()->user()->isAdmin())
+                <div class="mb-4 flex items-center gap-2">
+                    <flux:switch wire:model.live="showAllPlaylists" />
+                    <span class="text-sm font-medium dark:text-zinc-200">Show all users' playlists</span>
+                </div>
+            @endif
+
             @foreach($devices as $device)
                 @if($device->playlists->isNotEmpty())
                     <div class="mb-8">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium dark:text-zinc-200">{{ $device->name }}</h3>
+                            <h3 class="text-lg font-medium dark:text-zinc-200">
+                                {{ $device->name }}
+                                @if (config('app.multi_user_mode') && auth()->user()->isAdmin() && $showAllPlaylists)
+                                    @if ($device->user_id === null)
+                                        <flux:badge color="zinc" size="sm" class="ml-1">Shared</flux:badge>
+                                    @elseif ($device->user_id !== auth()->id())
+                                        <flux:badge color="zinc" size="sm" class="ml-1">{{ $device->user?->name ?? 'User #'.$device->user_id }}</flux:badge>
+                                    @endif
+                                @endif
+                            </h3>
                             <flux:button href="{{ route('devices.configure', $device) }}" wire:navigate icon="eye">
                             </flux:button>
                         </div>

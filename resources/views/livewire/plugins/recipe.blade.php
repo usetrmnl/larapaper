@@ -906,20 +906,6 @@ HTML;
             </div>
         </div>
 
-        @if(config('app.multi_user_mode') && auth()->user()->isAdmin())
-            <div class="flex items-center gap-3 mb-6">
-                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Owner</span>
-                <flux:select wire:change="reassignPlugin($event.target.value)" class="max-w-xs">
-                    <flux:select.option value="" :selected="$plugin->user_id === null">— Unowned —</flux:select.option>
-                    @foreach ($this->availableUsers as $u)
-                        <flux:select.option value="{{ $u->id }}" :selected="$plugin->user_id === $u->id">
-                            {{ $u->name }}
-                        </flux:select.option>
-                    @endforeach
-                </flux:select>
-            </div>
-        @endif
-
         <flux:modal name="add-to-playlist" class="min-w-2xl">
             <div class="space-y-6">
                 <div>
