@@ -73,12 +73,13 @@ new class extends Component
         $this->loadDevices();
     }
 
-    public function reassignDevice(int $deviceId, ?int $newOwnerId): void
+    public function reassignDevice(int $deviceId, $newOwnerId = null): void
     {
         $device = Device::findOrFail($deviceId);
         $this->authorize('reassign', $device);
 
-        $device->update(['user_id' => $newOwnerId]);
+        $ownerId = ($newOwnerId === '' || $newOwnerId === null) ? null : (int) $newOwnerId;
+        $device->update(['user_id' => $ownerId]);
         $this->loadDevices();
 
         Flux::toast(variant: 'success', text: 'Device ownership updated.');
@@ -298,7 +299,7 @@ new class extends Component
                         @if (config('app.multi_user_mode') && auth()->user()->isAdmin())
                             <td class="py-3 px-3 first:pl-0 last:pr-0 text-sm whitespace-nowrap text-zinc-500 dark:text-zinc-300">
                                 <flux:select
-                                    wire:change="reassignDevice({{ $device->id }}, $event.target.value ? Number($event.target.value) : null)"
+                                    wire:change="reassignDevice({{ $device->id }}, $event.target.value)"
                                     class="text-xs"
                                 >
                                     <flux:select.option value="" :selected="$device->user_id === null">
