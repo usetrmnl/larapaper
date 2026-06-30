@@ -1,11 +1,14 @@
 <?php
 
 use App\Console\Commands\ExampleRecipesSeederCommand;
+use App\Models\Device;
+use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Models\User;
 use App\Plugins\PluginRegistry;
 use App\Services\PluginImportService;
 use Illuminate\Support\Str;
+use Keepsuit\Liquid\Exceptions\LiquidException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -190,6 +193,40 @@ new class extends Component
 
         $this->refreshPlugins();
         Flux::toast(variant: 'success', text: "'{$plugin->name}' copied to your plugins.");
+    }
+
+    public ?int $preview_plugin_id = null;
+
+    public ?string $preview_plugin_name = null;
+
+    public function previewPlugin(int $pluginId): void
+    {
+        $plugin = Plugin::findOrFail($pluginId);
+        $this->authorize('copy', $plugin);
+
+        $this->preview_plugin_id = $plugin->id;
+        $this->preview_plugin_name = $plugin->name;
+
+        try {
+            $device = new Device();
+            $deviceModel = DeviceModel::with(['palette'])->first();
+            $device->setRelation('deviceModel', $deviceModel);
+            $previewMarkup = $plugin->render('full', true, $device);
+            $width = (int) ($deviceModel?->width ?? 800);
+            $height = (int) ($deviceModel?->height ?? 480);
+            $this->dispatch(
+                'shared-preview-updated',
+                preview: $previewMarkup,
+                screenWidth: $width,
+                screenHeight: $height,
+            );
+        } catch (LiquidException $e) {
+            $this->dispatch('shared-preview-error', message: $e->toLiquidErrorMessage());
+        } catch (Exception $e) {
+            $this->dispatch('shared-preview-error', message: $e->getMessage());
+        }
+
+        Flux::modal('preview-shared-plugin')->show();
     }
 
     public function getListeners(): array
@@ -526,7 +563,10 @@ new class extends Component
                     @endif
 
                     @if (isset($plugin['id']) && $isOtherUsersShared)
-                        <div class="px-4 pb-4">
+                        <div class="px-4 pb-4 flex gap-2">
+                            <flux:button size="sm" icon="eye" wire:click="previewPlugin({{ $plugin['id'] }})">
+                                Preview
+                            </flux:button>
                             <flux:button size="sm" wire:click="copyPlugin({{ $plugin['id'] }})">
                                 Install Copy
                             </flux:button>
@@ -536,4 +576,74 @@ new class extends Component
             @endforeach
         </div>
     </div>
+
+    <flux:modal name="preview-shared-plugin" class="min-w-[850px] max-h-[90vh]">
+        <div class="flex min-h-0 max-h-[90vh] flex-col gap-4">
+            <flux:heading size="lg">Preview {{ $preview_plugin_name }}</flux:heading>
+            <div
+                id="shared-preview-stage"
+                class="flex w-full flex-1 min-h-[50vh] items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-zinc-900"
+            >
+                <div id="shared-preview-layout" class="overflow-hidden">
+                    <div id="shared-preview-scaler" class="origin-top-left">
+                        <iframe id="shared-preview-frame" class="block border-0"></iframe>
+                    </div>
+                </div>
+            </div>
+            <p id="shared-preview-error" class="text-sm text-red-600 dark:text-red-400" x-cloak style="display:none"></p>
+        </div>
+    </flux:modal>
+
+    @script
+    <script>
+        let sharedPreviewNativeWidth = 800;
+        let sharedPreviewNativeHeight = 480;
+
+        function fitSharedPreview() {
+            const stage = document.getElementById('shared-preview-stage');
+            const layout = document.getElementById('shared-preview-layout');
+            const scaler = document.getElementById('shared-preview-scaler');
+            const frame = document.getElementById('shared-preview-frame');
+            if (!stage || !layout || !scaler || !frame) return;
+
+            const w = sharedPreviewNativeWidth;
+            const h = sharedPreviewNativeHeight;
+            if (w <= 0 || h <= 0) return;
+
+            const stageW = stage.clientWidth;
+            const stageH = stage.clientHeight;
+            if (stageW <= 0 || stageH <= 0) return;
+
+            const scale = Math.min(1, stageW / w, stageH / h);
+            layout.style.width = `${w * scale}px`;
+            layout.style.height = `${h * scale}px`;
+            scaler.style.width = `${w}px`;
+            scaler.style.height = `${h}px`;
+            scaler.style.transform = `scale(${scale})`;
+            frame.style.width = `${w}px`;
+            frame.style.height = `${h}px`;
+        }
+
+        $wire.on('shared-preview-updated', ({ preview, screenWidth, screenHeight }) => {
+            sharedPreviewNativeWidth = Number(screenWidth) || 800;
+            sharedPreviewNativeHeight = Number(screenHeight) || 480;
+            const errEl = document.getElementById('shared-preview-error');
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+            const frame = document.getElementById('shared-preview-frame');
+            if (frame) {
+                frame.srcdoc = preview;
+            }
+            setTimeout(fitSharedPreview, 50);
+        });
+
+        $wire.on('shared-preview-error', ({ message }) => {
+            const errEl = document.getElementById('shared-preview-error');
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = message; }
+            const frame = document.getElementById('shared-preview-frame');
+            if (frame) frame.srcdoc = '';
+        });
+
+        window.addEventListener('resize', fitSharedPreview);
+    </script>
+    @endscript
 </div>
