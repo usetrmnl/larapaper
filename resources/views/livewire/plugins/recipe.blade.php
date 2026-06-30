@@ -1116,6 +1116,7 @@ HTML;
                     @if(auth()->user()->isAdmin())
                         <div class="mb-4">
                             <flux:select label="Owner" wire:change="reassignPlugin($event.target.value)">
+                                <flux:select.option value="" :selected="$plugin->user_id === null">— Unowned —</flux:select.option>
                                 @foreach ($this->availableUsers as $u)
                                     <flux:select.option value="{{ $u->id }}" :selected="$plugin->user_id === $u->id">
                                         {{ $u->name }}
