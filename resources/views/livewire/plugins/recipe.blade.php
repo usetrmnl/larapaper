@@ -82,12 +82,12 @@ new class extends Component
         return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
     }
 
-    public function reassignPlugin(int $newOwnerId): void
+    public function reassignPlugin(?int $newOwnerId): void
     {
         $this->authorize('reassign', $this->plugin);
 
-        $newOwner = \App\Models\User::findOrFail($newOwnerId);
-        $this->plugin->update(['user_id' => $newOwner->id]);
+        $newOwner = $newOwnerId ? \App\Models\User::findOrFail($newOwnerId) : null;
+        $this->plugin->update(['user_id' => $newOwner?->id]);
         $this->plugin = $this->plugin->fresh();
 
         Flux::toast(variant: 'success', text: 'Plugin ownership updated.');
@@ -137,7 +137,7 @@ new class extends Component
             }
 
             $this->markup_code = $this->markup_layouts['full'];
-            $canUseBlade = auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
+            $canUseBlade = ! config('app.multi_user_mode') || auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
             $this->markup_language = $this->plugin->markup_language ?? ($canUseBlade ? 'blade' : 'liquid');
         }
 
@@ -171,7 +171,7 @@ new class extends Component
 
     public function saveMarkup(): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
         $this->validate();
 
         // Update markup_code for the active tab
@@ -275,38 +275,41 @@ new class extends Component
         return 'Responsive';
     }
 
-    protected array $rules = [
-        'name' => 'required|string|max:255',
-        'data_stale_minutes' => 'required|integer|min:1',
-        'data_strategy' => 'required|string|in:polling,webhook,static',
-        'polling_url' => 'required_if:data_strategy,polling|nullable',
-        'polling_verb' => 'required|string|in:get,post',
-        'polling_header' => 'nullable|string|max:10240',
-        'polling_body' => 'nullable|string',
-        'data_payload' => 'required_if:data_strategy,static|nullable|json',
-        'markup_code' => 'nullable|string',
-        'markup_language' => ['nullable', 'string', function ($attribute, $value, $fail) {
-            $allowed = ['liquid'];
-            if (auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins')) {
-                $allowed[] = 'blade';
-            }
-            if (! in_array($value, $allowed)) {
-                $fail('Blade templates are restricted to administrators.');
-            }
-        }],
-        'checked_devices' => 'array',
-        'device_playlist_names' => 'array',
-        'device_playlists' => 'array',
-        'device_weekdays' => 'array',
-        'device_active_from' => 'array',
-        'device_active_until' => 'array',
-        'no_bleed' => 'boolean',
-        'dark_mode' => 'boolean',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'data_stale_minutes' => 'required|integer|min:1',
+            'data_strategy' => 'required|string|in:polling,webhook,static',
+            'polling_url' => 'required_if:data_strategy,polling|nullable',
+            'polling_verb' => 'required|string|in:get,post',
+            'polling_header' => 'nullable|string|max:10240',
+            'polling_body' => 'nullable|string',
+            'data_payload' => 'required_if:data_strategy,static|nullable|json',
+            'markup_code' => 'nullable|string',
+            'markup_language' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                $allowed = ['liquid'];
+                if (! config('app.multi_user_mode') || auth()->user()?->isAdmin() || config('app.dangerously_allow_blade_for_non_admins')) {
+                    $allowed[] = 'blade';
+                }
+                if (! in_array($value, $allowed)) {
+                    $fail('Blade templates are restricted to administrators.');
+                }
+            }],
+            'checked_devices' => 'array',
+            'device_playlist_names' => 'array',
+            'device_playlists' => 'array',
+            'device_weekdays' => 'array',
+            'device_active_from' => 'array',
+            'device_active_until' => 'array',
+            'no_bleed' => 'boolean',
+            'dark_mode' => 'boolean',
+        ];
+    }
 
     public function editSettings()
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
 
         // Custom validation for polling_url with Liquid variable resolution
         $this->validatePollingUrl();
@@ -543,7 +546,7 @@ HTML;
 
     public function renderPreview($size = 'full'): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
 
         $this->preview_size = $size;
 
@@ -604,7 +607,7 @@ HTML;
 
     public function renderImage(): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
 
         if ($this->plugin->data_strategy === 'polling' && $this->plugin->data_payload === null) {
             $this->updateData();
@@ -694,7 +697,7 @@ HTML;
 
     public function duplicatePlugin(): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
 
         // Use the model's duplicate method
         $newPlugin = $this->plugin->duplicate(auth()->id());
@@ -705,14 +708,14 @@ HTML;
 
     public function exportPluginArchive(PluginExportService $exporter): BinaryFileResponse
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
 
         return $exporter->exportToZip($this->plugin, auth()->user());
     }
 
     public function deletePlugin(): void
     {
-        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(auth()->user()->isAdmin() || auth()->user()->plugins->contains($this->plugin), 403);
         $this->plugin->delete();
         $this->redirect(route('plugins.index'));
     }
@@ -816,6 +819,7 @@ HTML;
             <div class="flex items-center gap-3 mb-6">
                 <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Owner</span>
                 <flux:select wire:change="reassignPlugin($event.target.value)" class="max-w-xs">
+                    <flux:select.option value="" :selected="$plugin->user_id === null">— Unowned —</flux:select.option>
                     @foreach ($this->availableUsers as $u)
                         <flux:select.option value="{{ $u->id }}" :selected="$plugin->user_id === $u->id">
                             {{ $u->name }}

@@ -31,7 +31,7 @@ new class extends Component
         // only devices that are owned by the user
         $this->checked_devices = array_intersect($this->checked_devices, auth()->user()->devices->pluck('id')->toArray());
 
-        $isAdminOrAllowed = auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
+        $isAdminOrAllowed = ! config('app.multi_user_mode') || auth()->user()->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
         abort_unless($isAdminOrAllowed, 403, 'Blade rendering is restricted to administrators.');
 
         try {

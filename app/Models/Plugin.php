@@ -823,9 +823,11 @@ class Plugin extends Model
                     $renderedContent = $template->render($liquidContext);
                 }
             } else {
-                $isAdminOrAllowed = $this->user?->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
-                if (! $isAdminOrAllowed) {
-                    throw new \RuntimeException('Blade rendering is restricted to administrators. Switch the plugin to Liquid or contact an admin.');
+                if (config('app.multi_user_mode') && $this->user !== null) {
+                    $isAdminOrAllowed = $this->user->isAdmin() || config('app.dangerously_allow_blade_for_non_admins');
+                    if (! $isAdminOrAllowed) {
+                        throw new \RuntimeException('Blade rendering is restricted to administrators. Switch the plugin to Liquid or contact an admin.');
+                    }
                 }
 
                 // Get timezone from user or fall back to app timezone
