@@ -90,6 +90,16 @@ new class extends Component
         return \App\Models\User::whereNotNull('confirmed_at')->orderBy('name')->get();
     }
 
+    public function getManageableDevicesProperty()
+    {
+        $user = auth()->user();
+
+        return Device::where('user_id', $user->id)
+            ->orWhereNull('user_id')
+            ->orderBy('name')
+            ->get();
+    }
+
     public function reassignPlugin(?int $newOwnerId): void
     {
         $this->authorize('reassign', $this->plugin);
@@ -441,6 +451,11 @@ new class extends Component
             'mashup_layout' => 'required|string',
             'mashup_plugins' => 'required_if:mashup_layout,1Lx1R,1Lx2R,2Lx1R,1Tx1B,2Tx1B,1Tx2B,2x2|array',
         ]);
+
+        $manageableIds = $this->manageableDevices->pluck('id')->all();
+        foreach ($this->checked_devices as $deviceId) {
+            abort_unless(in_array((int) $deviceId, $manageableIds, true), 403);
+        }
 
         // Validate that each checked device has a playlist selected
         foreach ($this->checked_devices as $deviceId) {
@@ -916,8 +931,11 @@ HTML;
                     <flux:separator text="Device(s)" />
                     <div class="mt-4 mb-4">
                         <flux:checkbox.group wire:model.live="checked_devices">
-                            @foreach(auth()->user()->devices as $device)
-                                <flux:checkbox label="{{ $device->name }}" value="{{ $device->id }}"/>
+                            @foreach($this->manageableDevices as $device)
+                                <flux:checkbox
+                                    label="{{ $device->name }}{{ $device->user_id === null ? ' (shared)' : '' }}"
+                                    value="{{ $device->id }}"
+                                />
                             @endforeach
                         </flux:checkbox.group>
                     </div>
@@ -927,7 +945,7 @@ HTML;
                         <div class="mt-4 mb-4 space-y-6">
                             @foreach($checked_devices as $deviceId)
                                 @php
-                                    $device = auth()->user()->devices->find($deviceId);
+                                    $device = $this->manageableDevices->find($deviceId);
                                 @endphp
                                 <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
                                     <div class="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">

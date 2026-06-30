@@ -38,7 +38,11 @@ new class extends Component
         if ($user->isAdmin() && $this->showAllPlaylists) {
             $this->devices = Device::with(['playlists.items.plugin', 'user'])->get();
         } else {
-            $this->devices = $user->devices()->with(['playlists.items.plugin'])->get();
+            $this->devices = Device::with(['playlists.items.plugin'])
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->orWhereNull('user_id');
+                })
+                ->get();
         }
     }
 
@@ -51,7 +55,9 @@ new class extends Component
     {
         $user = auth()->user();
 
-        return $user->isAdmin() || $user->devices->contains($device);
+        return $user->isAdmin()
+            || $device->user_id === null
+            || $device->user_id === $user->id;
     }
 
     public function togglePlaylistActive(Playlist $playlist)
