@@ -1575,13 +1575,9 @@ HTML;
                                 </div>
                                 <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
                             </div>
-
-                            <div class="flex gap-2">
-                                <flux:button variant="primary" wire:click="saveTransform">Save</flux:button>
-                            </div>
                         @else
                             {{-- Markup code editor --}}
-                            <form wire:submit="saveMarkup">
+                            <div>
                                 <flux:field>
                                     @php
                                         $textareaId = 'code-' . $plugin->id;
@@ -1613,19 +1609,16 @@ HTML;
                                         <div x-show="!isLoading" x-ref="editor" class="h-full"></div>
                                     </div>
                                 </flux:field>
-
-                                <div class="flex mt-4">
-                                    <flux:button type="submit" variant="primary">
-                                        Save
-                                    </flux:button>
-                                </div>
-                            </form>
+                            </div>
                         @endif
                     </div>
                 </div>
 
-                <div class="flex">
-                    <flux:button type="submit" variant="primary">
+                <div class="flex mt-4">
+                    <flux:button
+                        variant="primary"
+                        wire:click="{{ $active_tab === 'transform' ? 'saveTransform' : 'saveMarkup' }}"
+                    >
                         Save
                     </flux:button>
                 </div>
@@ -1644,7 +1637,6 @@ HTML;
                     <flux:button size="sm" wire:click="renderExample('layout')">Responsive Layout</flux:button>
                     <span class="text-xs text-zinc-400 dark:text-zinc-500">These will replace the current template.</span>
                 </div>
-            </form>
         @endif
     </div>
     </div>
