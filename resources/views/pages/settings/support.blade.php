@@ -24,6 +24,23 @@ new class extends Component {}
             </div>
 
             <div class="relative mt-10">
+                <flux:heading>{{ __('Star & Survey') }}</flux:heading>
+                <flux:subheading>{{ __('Star the GitHub Repo and fill out the community survey.') }}</flux:subheading>
+
+                <div class="mt-3 flex items-center justify-start gap-2">
+                    <flux:button class="w-42"
+                                 href="https://github.com/{{ config('app.github_repo') }}"
+                                 target="_blank"
+                                 icon:trailing="star">{{ __('Star') }}</flux:button>
+                    <flux:button class="w-42"
+                                 href="https://github.com/{{ config('app.github_repo') }}/issues/47"
+                                 target="_blank"
+                                 icon:trailing="arrow-up-right">{{ __('Community Survey') }}</flux:button>
+                </div>
+
+            </div>
+
+            <div class="relative mt-10">
                 <flux:heading>{{ __('Referral Code') }}</flux:heading>
                 <flux:subheading>{{ __('Use the code to receive a $15 discount on your TRMNL device purchase.') }}</flux:subheading>
 
