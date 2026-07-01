@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ImageGenerationService;
 use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -1269,6 +1270,120 @@ test('display endpoint accepts Percent-Charged header and updates device', funct
 
     $device->refresh();
     expect($device->battery_percent)->toEqual(51);
+});
+
+test('display endpoint accepts Battery-Charging header and updates device', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:58',
+        'api_key' => 'test-api-key-battery-charging',
+        'last_battery_voltage' => null,
+        'last_battery_charging' => null,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'battery-percent' => '67',
+        'Battery-Charging' => '1',
+    ])->get('/api/display')->assertOk();
+
+    $device->refresh();
+    expect($device->battery_percent)->toEqual(67)
+        ->and($device->last_battery_charging)->toBeTrue();
+});
+
+test('display endpoint accepts Battery-Charging header when not charging', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:59',
+        'api_key' => 'test-api-key-not-charging',
+        'last_battery_charging' => true,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'Battery-Charging' => '0',
+    ])->get('/api/display')->assertOk();
+
+    $device->refresh();
+    expect($device->last_battery_charging)->toBeFalse();
+});
+
+test('display endpoint accepts USB-Connected header and updates device', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:60',
+        'api_key' => 'test-api-key-usb',
+        'last_usb_connected' => null,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'USB-Connected' => 'true',
+    ])->get('/api/display')->assertOk();
+
+    $device->refresh();
+    expect($device->last_usb_connected)->toBeTrue();
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'USB-Connected' => 'false',
+    ])->get('/api/display')->assertOk();
+
+    $device->refresh();
+    expect($device->last_usb_connected)->toBeFalse();
+});
+
+test('display endpoint preserves battery charging status when header is omitted', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:61',
+        'api_key' => 'test-api-key-charging-preserved',
+        'last_battery_charging' => true,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+    ])->get('/api/display')->assertOk();
+
+    $device->refresh();
+    expect($device->last_battery_charging)->toBeTrue();
+});
+
+test('display endpoint logs telemetry data on update', function (): void {
+    Log::spy();
+
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:62',
+        'api_key' => 'test-api-key-telemetry-log',
+        'last_rssi_level' => null,
+        'last_battery_voltage' => null,
+        'last_firmware_version' => null,
+        'last_battery_charging' => null,
+        'last_usb_connected' => null,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery-percent' => '67',
+        'fw-version' => '1.0.0',
+        'Battery-Charging' => '1',
+        'USB-Connected' => 'true',
+    ])->get('/api/display')->assertOk();
+
+    Log::shouldHaveReceived('debug')
+        ->once()
+        ->with('Device telemetry update', Mockery::on(function (array $context) use ($device): bool {
+            return $context['device_id'] === $device->id
+                && ($context['last_rssi_level'] ?? null) == -70
+                && ($context['last_firmware_version'] ?? null) === '1.0.0'
+                && ($context['last_battery_charging'] ?? null) === true
+                && ($context['last_usb_connected'] ?? null) === true
+                && isset($context['last_refreshed_at']);
+        }));
 });
 
 test('display endpoint updates last_refreshed_at timestamp for mirrored devices', function (): void {

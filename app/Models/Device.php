@@ -29,6 +29,8 @@ class Device extends Model
     }
 
     protected $casts = [
+        'last_battery_charging' => 'boolean',
+        'last_usb_connected' => 'boolean',
         'battery_notification_sent' => 'boolean',
         'proxy_cloud' => 'boolean',
         'last_log_request' => 'json',

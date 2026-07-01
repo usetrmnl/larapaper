@@ -432,7 +432,13 @@ new class extends Component
                         @endif
                         @if($device->batteryPercent)
                             <flux:separator vertical/>
-                            <x-responsive-icons.battery :percent="$device->batteryPercent"/>
+                            @if($device->last_battery_charging)
+                                <flux:tooltip content="{{ $device->batteryPercent }}%" position="bottom">
+                                    <flux:icon.battery-charging class="dark:text-zinc-200"/>
+                                </flux:tooltip>
+                            @else
+                                <x-responsive-icons.battery :percent="$device->batteryPercent"/>
+                            @endif
                         @endif
                         @if($device->isPauseActive())
                             <flux:separator vertical/>
