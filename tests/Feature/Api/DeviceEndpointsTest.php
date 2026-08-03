@@ -1565,13 +1565,15 @@ test('display status update requires sleep mode times when sleep mode is enabled
 
 test('paused device returns the sleep image with the expected capped refresh interval', function (int $remainingSeconds, int $expectedRefresh): void {
     Carbon\Carbon::setTestNow('2026-01-15 12:00:00 UTC');
-    expect(file_exists(storage_path('app/public/images/sleep.bmp')))->toBeTrue();
+    $sleepImagePath = storage_path('app/public/images/sleep.bmp');
+    expect(is_file($sleepImagePath))->toBeTrue();
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
         'api_key' => 'test-api-key',
         'pause_until' => now()->addSeconds($remainingSeconds),
     ]);
-    Storage::disk('public')->put('images/sleep.bmp', 'sleep');
+    Storage::disk('public')->put('images/sleep.bmp', file_get_contents($sleepImagePath));
+    Storage::disk('public')->assertExists('images/sleep.bmp');
 
     $response = $this->withHeaders([
         'id' => $device->mac_address,

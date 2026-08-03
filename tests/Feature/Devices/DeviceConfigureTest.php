@@ -7,12 +7,20 @@ use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 use function Pest\Laravel\actingAs;
 
 uses(RefreshDatabase::class);
+
+$originalPhpTimezone = date_default_timezone_get();
+
+afterEach(function () use ($originalPhpTimezone): void {
+    Carbon::setTestNow();
+    date_default_timezone_set($originalPhpTimezone);
+});
 
 test('configure view displays last_refreshed_at timestamp', function (): void {
     $user = User::factory()->create();
@@ -27,6 +35,26 @@ test('configure view displays last_refreshed_at timestamp', function (): void {
     $response->assertOk()
         ->assertSee('5 minutes ago');
 });
+
+test('configure view displays an active pause deadline with a complete date in the effective timezone', function (?string $timezone, string $expectedDeadline): void {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+    Carbon::setTestNow('2026-01-01 00:00:00 UTC');
+    $user = User::factory()->create(['timezone' => $timezone]);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'pause_until' => Carbon::parse('2026-09-01 12:00:00 UTC'),
+    ]);
+
+    actingAs($user)
+        ->get(route('devices.configure', $device))
+        ->assertOk()
+        ->assertSee('Pause active until '.$expectedDeadline)
+        ->assertDontSee('Pause active until 12:00');
+})->with([
+    'owner timezone' => ['Europe/Amsterdam', '2026-09-01 14:00'],
+    'invalid legacy timezone falls back to app timezone' => ['Not/AZone', '2026-09-01 12:00'],
+]);
 
 test('configure edit modal shows mirror checkbox and allows unchecking mirror', function (): void {
     $user = User::factory()->create();

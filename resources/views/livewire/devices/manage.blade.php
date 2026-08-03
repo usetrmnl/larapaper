@@ -146,7 +146,7 @@ new class extends Component
                             return;
                         }
 
-                        if ($pauseUntil->format('Y-m-d\\TH:i') !== $value) {
+                        if ($pauseUntil?->format('Y-m-d\\TH:i') !== $value) {
                             $fail('The pause until value must be a valid local date and time.');
 
                             return;

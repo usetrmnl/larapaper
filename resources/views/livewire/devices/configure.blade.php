@@ -75,6 +75,15 @@ new class extends Component
 
     public $download_firmware;
 
+    public function effectiveTimezone(): string
+    {
+        $timezone = auth()->user()->timezone;
+
+        return is_string($timezone) && in_array($timezone, timezone_identifiers_list(), true)
+            ? $timezone
+            : config('app.timezone');
+    }
+
     public function mount(App\Models\Device $device)
     {
         abort_unless(auth()->user()->devices->contains($device), 403);
@@ -442,7 +451,7 @@ new class extends Component
                         @endif
                         @if($device->isPauseActive())
                             <flux:separator vertical/>
-                            <flux:tooltip content="Pause active until {{$device->pause_until?->format('H:i')}}"
+                            <flux:tooltip content="Pause active until {{$device->pause_until?->copy()->timezone($this->effectiveTimezone())->format('Y-m-d H:i')}}"
                                           position="bottom">
                                 <flux:icon name="pause-circle" variant="solid"/>
                             </flux:tooltip>

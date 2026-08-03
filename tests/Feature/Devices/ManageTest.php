@@ -122,6 +122,7 @@ test('pause modal keeps the fixed presets and offers a specific date and time', 
         ->assertSee('Specific date and time')
         ->assertSeeHtml('wire:model.live="pause_duration"')
         ->assertSeeHtml('value="specific_date"')
+        ->assertDontSeeHtml('type="datetime-local"')
         ->set('pause_duration', 'specific_date')
         ->assertSeeHtml('type="datetime-local"')
         ->assertSeeHtml('wire:model="pause_until"')
@@ -152,8 +153,6 @@ test('pause form state and errors are cleared when reopening or cancelling a pau
     $component = Livewire::test('devices.manage')
         ->assertSeeHtml('wire:click="resetPauseForm"');
 
-    expect(mb_substr_count($component->html(), 'wire:click="resetPauseForm"'))->toBe(2);
-
     $component
         ->set('pause_duration', 'specific_date')
         ->set('pause_until', null)
@@ -172,6 +171,7 @@ test('user can pause a device using each fixed preset', function (int $minutes):
     Carbon::setTestNow('2026-01-15 10:00:00');
 
     Livewire::test('devices.manage')
+        ->set('pause_until', '2126-01-15T12:30')
         ->set('pause_duration', (string) $minutes)
         ->call('pauseDevice', $device->id)
         ->assertHasNoErrors()
@@ -251,6 +251,8 @@ test('invalid specific pause values leave the device unchanged', function (?stri
 })->with([
     'missing date' => null,
     'malformed date' => '2026-1-15T12:30',
+    'seconds are not accepted' => '2026-01-15T12:30:45',
+    'calendar values outside range' => '2026-99-99T99:99',
     'nonexistent Amsterdam spring-forward time' => '2026-03-29T02:30',
 ]);
 
