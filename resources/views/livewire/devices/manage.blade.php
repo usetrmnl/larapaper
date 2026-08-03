@@ -2,6 +2,8 @@
 
 use App\Models\Device;
 use App\Models\DeviceModel;
+use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 new class extends Component
@@ -28,7 +30,9 @@ new class extends Component
 
     public $deviceModels;
 
-    public ?int $pause_duration;
+    public ?string $pause_duration = null;
+
+    public ?string $pause_until = null;
 
     protected $rules = [
         'mac_address' => 'required',
@@ -106,15 +110,51 @@ new class extends Component
     public function pauseDevice($deviceId): void
     {
         $this->validate([
-            'pause_duration' => 'required|integer',
+            'pause_duration' => ['required', Rule::in(['30', '60', '120', '240', '480', 'specific_date'])],
         ]);
+
         $device = auth()->user()->devices()->findOrFail($deviceId);
-        $pauseUntil = now()->addMinutes($this->pause_duration);
+        $timezone = auth()->user()->timezone ?: config('app.timezone');
+
+        if ($this->pause_duration === 'specific_date') {
+            $this->validate([
+                'pause_until' => [
+                    'required',
+                    'string',
+                    'regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/',
+                    function (string $attribute, mixed $value, Closure $fail) use ($timezone): void {
+                        try {
+                            $pauseUntil = Carbon::createFromFormat('!Y-m-d\\TH:i', $value, $timezone);
+                        } catch (Throwable) {
+                            $fail('The pause until value must be a valid local date and time.');
+
+                            return;
+                        }
+
+                        if ($pauseUntil->format('Y-m-d\\TH:i') !== $value) {
+                            $fail('The pause until value must be a valid local date and time.');
+
+                            return;
+                        }
+
+                        if (! $pauseUntil->isAfter(now())) {
+                            $fail('The pause until value must be in the future.');
+                        }
+                    },
+                ],
+            ]);
+
+            $pauseUntil = Carbon::createFromFormat('!Y-m-d\\TH:i', $this->pause_until, $timezone)
+                ->timezone(config('app.timezone'));
+        } else {
+            $pauseUntil = now()->addMinutes((int) $this->pause_duration);
+        }
+
         $device->update(['pause_until' => $pauseUntil]);
-        $this->reset('pause_duration');
+        $this->reset('pause_duration', 'pause_until');
         Flux::modal('pause-device-'.$deviceId)->close();
         $this->devices = auth()->user()->devices;
-        Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->format('H:i'));
+        Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->copy()->timezone($timezone)->format('H:i'));
     }
 }
 
@@ -312,8 +352,17 @@ new class extends Component
                             <flux:radio value="120" label="120 min"/>
                             <flux:radio value="240" label="240 min"/>
                             <flux:radio value="480" label="480 min"/>
+                            <flux:radio value="specific_date" label="Specific date and time"/>
                         </flux:radio.group>
                     </div>
+                    @if ($pause_duration === 'specific_date')
+                        <div class="mb-4">
+                            <flux:input wire:model="pause_until" label="Pause until" type="datetime-local"/>
+                            <p class="mt-2 text-sm text-zinc-500">
+                                Times are interpreted in {{ auth()->user()->timezone ?: config('app.timezone') }}.
+                            </p>
+                        </div>
+                    @endif
                     <div class="flex">
                         <flux:spacer/>
                         <flux:modal.close>
