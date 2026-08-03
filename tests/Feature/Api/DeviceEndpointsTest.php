@@ -17,6 +17,13 @@ use Laravel\Sanctum\Sanctum;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
+$originalPhpTimezone = date_default_timezone_get();
+
+afterEach(function () use ($originalPhpTimezone): void {
+    Carbon\Carbon::setTestNow();
+    date_default_timezone_set($originalPhpTimezone);
+});
+
 beforeEach(function (): void {
     EpaperPipeline::fake();
     Storage::fake('public');
@@ -1558,12 +1565,13 @@ test('display status update requires sleep mode times when sleep mode is enabled
 
 test('paused device returns the sleep image with the expected capped refresh interval', function (int $remainingSeconds, int $expectedRefresh): void {
     Carbon\Carbon::setTestNow('2026-01-15 12:00:00 UTC');
+    expect(file_exists(storage_path('app/public/images/sleep.bmp')))->toBeTrue();
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
         'api_key' => 'test-api-key',
         'pause_until' => now()->addSeconds($remainingSeconds),
     ]);
-    Storage::disk('public')->put('images/sleep.png', 'sleep');
+    Storage::disk('public')->put('images/sleep.bmp', 'sleep');
 
     $response = $this->withHeaders([
         'id' => $device->mac_address,
@@ -1576,8 +1584,8 @@ test('paused device returns the sleep image with the expected capped refresh int
     $response->assertOk();
     $json = $response->json();
 
-    expect($json['filename'])->toBe('sleep.png');
-    expect($json['image_url'])->toContain('images/sleep.png');
+    expect($json['filename'])->toBe('sleep.bmp');
+    expect($json['image_url'])->toContain('images/sleep.bmp');
     expect($json['refresh_rate'])->toBe($expectedRefresh);
 
     Carbon\Carbon::setTestNow();

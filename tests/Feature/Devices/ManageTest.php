@@ -6,6 +6,13 @@ use Carbon\Carbon;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
+$originalPhpTimezone = date_default_timezone_get();
+
+afterEach(function () use ($originalPhpTimezone): void {
+    Carbon::setTestNow();
+    date_default_timezone_set($originalPhpTimezone);
+});
+
 test('device management page can be rendered', function (): void {
     $user = User::factory()->create();
 
@@ -113,9 +120,49 @@ test('pause modal keeps the fixed presets and offers a specific date and time', 
     Livewire::test('devices.manage')
         ->assertSee(['30 min', '60 min', '120 min', '240 min', '480 min'])
         ->assertSee('Specific date and time')
+        ->assertSeeHtml('wire:model.live="pause_duration"')
+        ->assertSeeHtml('value="specific_date"')
         ->set('pause_duration', 'specific_date')
         ->assertSeeHtml('type="datetime-local"')
+        ->assertSeeHtml('wire:model="pause_until"')
         ->assertSee('Europe/Amsterdam');
+});
+
+test('active pause deadline is shown in the owners timezone with a complete local date', function (): void {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+    Carbon::setTestNow('2026-01-01 00:00:00 UTC');
+    $user = User::factory()->create(['timezone' => 'Europe/Amsterdam']);
+    Device::factory()->create([
+        'user_id' => $user->id,
+        'pause_until' => Carbon::parse('2026-01-15 11:30:00 UTC'),
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->assertSee('Device paused until: 2026-01-15 12:30')
+        ->assertDontSee('Device paused until: 2026-01-15 11:30');
+});
+
+test('pause form state and errors are cleared when reopening or cancelling a pause modal', function (): void {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $this->actingAs($user);
+
+    $component = Livewire::test('devices.manage')
+        ->assertSeeHtml('wire:click="resetPauseForm"');
+
+    expect(mb_substr_count($component->html(), 'wire:click="resetPauseForm"'))->toBe(2);
+
+    $component
+        ->set('pause_duration', 'specific_date')
+        ->set('pause_until', null)
+        ->call('pauseDevice', $device->id)
+        ->assertHasErrors(['pause_until'])
+        ->call('resetPauseForm')
+        ->assertSet('pause_duration', null)
+        ->assertSet('pause_until', null)
+        ->assertHasNoErrors();
 });
 
 test('user can pause a device using each fixed preset', function (int $minutes): void {
@@ -206,6 +253,23 @@ test('invalid specific pause values leave the device unchanged', function (?stri
     'malformed date' => '2026-1-15T12:30',
     'nonexistent Amsterdam spring-forward time' => '2026-03-29T02:30',
 ]);
+
+test('an invalid stored user timezone rejects a custom pause without mutation', function (): void {
+    config(['app.timezone' => 'UTC']);
+    Carbon::setTestNow('2026-01-01 00:00:00 UTC');
+    $user = User::factory()->create(['timezone' => 'Not/AZone']);
+    $sentinel = Carbon::parse('2025-12-01 00:00:00 UTC');
+    $device = Device::factory()->create(['user_id' => $user->id, 'pause_until' => $sentinel]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->set('pause_duration', 'specific_date')
+        ->set('pause_until', '2026-01-15T12:30')
+        ->call('pauseDevice', $device->id)
+        ->assertHasErrors(['pause_until']);
+
+    expect($device->fresh()->pause_until->equalTo($sentinel))->toBeTrue();
+});
 
 test('past and equal specific pause instants leave the device unchanged', function (string $pauseUntil): void {
     config(['app.timezone' => 'UTC']);

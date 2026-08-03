@@ -107,6 +107,12 @@ new class extends Component
         // }
     }
 
+    public function resetPauseForm(): void
+    {
+        $this->reset('pause_duration', 'pause_until');
+        $this->resetErrorBag(['pause_duration', 'pause_until']);
+    }
+
     public function pauseDevice($deviceId): void
     {
         $this->validate([
@@ -154,7 +160,7 @@ new class extends Component
         $this->reset('pause_duration', 'pause_until');
         Flux::modal('pause-device-'.$deviceId)->close();
         $this->devices = auth()->user()->devices;
-        Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->copy()->timezone($timezone)->format('H:i'));
+        Flux::toast(variant: 'success', text: 'Device paused until '.$pauseUntil->copy()->timezone($timezone)->format('Y-m-d H:i'));
     }
 }
 
@@ -305,11 +311,11 @@ new class extends Component
                                 <flux:button href="{{ route('devices.configure', $device) }}" wire:navigate icon="eye" iconVariant="outline">
                                 </flux:button>
                                 @if($device->isPauseActive())
-                                    <flux:tooltip content="Device paused until: {{ $device->pause_until?->format('H:i') }}">
+                                    <flux:tooltip content="Device paused until: {{ $device->pause_until?->copy()->timezone(auth()->user()->timezone ?: config('app.timezone'))->format('Y-m-d H:i') }}">
                                         <flux:button icon="pause-circle"/>
                                     </flux:tooltip>
                                 @else
-                                    <flux:modal.trigger name="pause-device-{{ $device->id }}">
+                                    <flux:modal.trigger name="pause-device-{{ $device->id }}" wire:click="resetPauseForm">
                                         <flux:button icon="pause-circle" iconVariant="outline">
                                         </flux:button>
                                     </flux:modal.trigger>
@@ -366,7 +372,7 @@ new class extends Component
                     <div class="flex">
                         <flux:spacer/>
                         <flux:modal.close>
-                            <flux:button variant="ghost">Cancel</flux:button>
+                            <flux:button wire:click="resetPauseForm" variant="ghost">Cancel</flux:button>
                         </flux:modal.close>
                         <flux:button type="submit" variant="primary">Save</flux:button>
                     </div>
