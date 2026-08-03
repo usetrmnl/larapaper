@@ -1556,12 +1556,14 @@ test('display status update requires sleep mode times when sleep mode is enabled
         ->assertJsonValidationErrors(['sleep_mode_from']);
 });
 
-test('device returns sleep.png and correct refresh time when paused', function (): void {
+test('paused device returns the sleep image with the expected capped refresh interval', function (int $remainingSeconds, int $expectedRefresh): void {
+    Carbon\Carbon::setTestNow('2026-01-15 12:00:00 UTC');
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',
         'api_key' => 'test-api-key',
-        'pause_until' => now()->addMinutes(60),
+        'pause_until' => now()->addSeconds($remainingSeconds),
     ]);
+    Storage::disk('public')->put('images/sleep.png', 'sleep');
 
     $response = $this->withHeaders([
         'id' => $device->mac_address,
@@ -1574,11 +1576,46 @@ test('device returns sleep.png and correct refresh time when paused', function (
     $response->assertOk();
     $json = $response->json();
 
-    // The filename should be a UUID-based PNG file since we're generating from template
-    expect($json['filename'])->toMatch('/^[a-f0-9-]+\.png$/');
-    expect($json['image_url'])->toContain('images/generated/');
-    expect($json['refresh_rate'])->toBeLessThanOrEqual(3600); // ~60 min
-});
+    expect($json['filename'])->toBe('sleep.png');
+    expect($json['image_url'])->toContain('images/sleep.png');
+    expect($json['refresh_rate'])->toBe($expectedRefresh);
+
+    Carbon\Carbon::setTestNow();
+})->with([
+    'more than 24 hours remaining' => [172800, 86400],
+    'exactly 24 hours remaining' => [86400, 86400],
+    'less than 24 hours remaining' => [3600, 3600],
+]);
+
+test('equal and expired pauses use the normal display refresh interval', function (int $remainingSeconds): void {
+    Carbon\Carbon::setTestNow('2026-01-15 12:00:00 UTC');
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:55',
+        'api_key' => 'test-api-key',
+        'current_screen_image' => 'current-image',
+        'default_refresh_interval' => 1234,
+        'pause_until' => now()->addSeconds($remainingSeconds),
+    ]);
+
+    $response = $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display');
+
+    $response->assertOk()
+        ->assertJson([
+            'filename' => 'current-image.bmp',
+            'refresh_rate' => 1234,
+        ]);
+
+    Carbon\Carbon::setTestNow();
+})->with([
+    'equal to now' => 0,
+    'expired' => -60,
+]);
 
 test('screens endpoint accepts nullable file_name', function (): void {
     Queue::fake();

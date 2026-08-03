@@ -28,7 +28,7 @@ class RunDeviceDisplayCycle
         if ($device->isPauseActive()) {
             return [
                 'image_path' => $this->defaultImagePath($device, 'sleep'),
-                'refresh_time_override' => (int) now()->diffInSeconds($device->pause_until),
+                'refresh_time_override' => min((int) now()->diffInSeconds($device->pause_until), 86400),
             ];
         }
 
