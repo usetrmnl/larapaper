@@ -113,6 +113,15 @@ new class extends Component
         $this->resetErrorBag(['pause_duration', 'pause_until']);
     }
 
+    public function effectiveTimezone(): string
+    {
+        $timezone = auth()->user()->timezone;
+
+        return is_string($timezone) && in_array($timezone, timezone_identifiers_list(), true)
+            ? $timezone
+            : config('app.timezone');
+    }
+
     public function pauseDevice($deviceId): void
     {
         $this->validate([
@@ -120,7 +129,7 @@ new class extends Component
         ]);
 
         $device = auth()->user()->devices()->findOrFail($deviceId);
-        $timezone = auth()->user()->timezone ?: config('app.timezone');
+        $timezone = $this->effectiveTimezone();
 
         if ($this->pause_duration === 'specific_date') {
             $this->validate([
@@ -311,7 +320,7 @@ new class extends Component
                                 <flux:button href="{{ route('devices.configure', $device) }}" wire:navigate icon="eye" iconVariant="outline">
                                 </flux:button>
                                 @if($device->isPauseActive())
-                                    <flux:tooltip content="Device paused until: {{ $device->pause_until?->copy()->timezone(auth()->user()->timezone ?: config('app.timezone'))->format('Y-m-d H:i') }}">
+                                    <flux:tooltip content="Device paused until: {{ $device->pause_until?->copy()->timezone($this->effectiveTimezone())->format('Y-m-d H:i') }}">
                                         <flux:button icon="pause-circle"/>
                                     </flux:tooltip>
                                 @else
@@ -365,7 +374,7 @@ new class extends Component
                         <div class="mb-4">
                             <flux:input wire:model="pause_until" label="Pause until" type="datetime-local"/>
                             <p class="mt-2 text-sm text-zinc-500">
-                                Times are interpreted in {{ auth()->user()->timezone ?: config('app.timezone') }}.
+                                Times are interpreted in {{ $this->effectiveTimezone() }}.
                             </p>
                         </div>
                     @endif

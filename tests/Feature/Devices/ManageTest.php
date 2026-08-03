@@ -254,21 +254,26 @@ test('invalid specific pause values leave the device unchanged', function (?stri
     'nonexistent Amsterdam spring-forward time' => '2026-03-29T02:30',
 ]);
 
-test('an invalid stored user timezone rejects a custom pause without mutation', function (): void {
+test('an invalid stored user timezone falls back to the app timezone for active pauses and custom inputs', function (): void {
     config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
     Carbon::setTestNow('2026-01-01 00:00:00 UTC');
     $user = User::factory()->create(['timezone' => 'Not/AZone']);
-    $sentinel = Carbon::parse('2025-12-01 00:00:00 UTC');
-    $device = Device::factory()->create(['user_id' => $user->id, 'pause_until' => $sentinel]);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'pause_until' => Carbon::parse('2026-01-15 12:30:00 UTC'),
+    ]);
     $this->actingAs($user);
 
     Livewire::test('devices.manage')
+        ->assertSee('Device paused until: 2026-01-15 12:30')
         ->set('pause_duration', 'specific_date')
-        ->set('pause_until', '2026-01-15T12:30')
+        ->assertSee('Times are interpreted in UTC.')
+        ->set('pause_until', '2026-01-16T14:30')
         ->call('pauseDevice', $device->id)
-        ->assertHasErrors(['pause_until']);
+        ->assertHasNoErrors();
 
-    expect($device->fresh()->pause_until->equalTo($sentinel))->toBeTrue();
+    expect($device->fresh()->pause_until->utc()->format('Y-m-d H:i:s'))->toBe('2026-01-16 14:30:00');
 });
 
 test('past and equal specific pause instants leave the device unchanged', function (string $pauseUntil): void {
