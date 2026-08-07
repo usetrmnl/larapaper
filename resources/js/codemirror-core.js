@@ -10,6 +10,8 @@ import { json } from '@codemirror/lang-json';
 import { css } from '@codemirror/lang-css';
 import { liquid } from '@codemirror/lang-liquid';
 import { yaml } from '@codemirror/lang-yaml';
+import { python } from '@codemirror/lang-python';
+import { php } from '@codemirror/lang-php';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { githubLight } from '@fsegurai/codemirror-theme-github-light';
 
@@ -23,6 +25,9 @@ const LANGUAGE_MAP = {
     'html': html,
     'yaml': yaml,
     'yml': yaml,
+    'python': python,
+    'py': python,
+    'php': php,
 };
 
 // Theme support mapping
