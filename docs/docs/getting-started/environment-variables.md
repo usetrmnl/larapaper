@@ -17,3 +17,5 @@ description: LaraPaper environment configuration reference.
 | `PHP_OPCACHE_ENABLE` | Enable PHP OPcache | `0` |
 | `TRMNL_IMAGE_URL_TIMEOUT` | Display endpoint response timeout (seconds) | `30` |
 | `APP_TIMEZONE` | PHP timezone (UTC recommended) | `UTC` |
+| `TRANSFORM_RUNNER_URL` | Base URL of the transform runner microservice (e.g. `http://localhost:3000`). When set, enables the Transform tab on plugin recipe pages. Omit to disable the feature. | — |
+| `TRANSFORM_TIMEOUT_SECONDS` | HTTP timeout for transform runner requests (seconds) | `30` |

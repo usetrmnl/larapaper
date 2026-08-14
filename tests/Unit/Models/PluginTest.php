@@ -4,6 +4,7 @@ use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Models\User;
+use App\Services\Plugin\ServerlessTransformService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -1079,4 +1080,65 @@ test('deleting plugin cascades mashup playlist items containing plugin id', func
     $secondaryPlugin->delete();
 
     expect(PlaylistItem::query()->find($mashupItem->id))->toBeNull();
+});
+
+test('updateDataPayload pipes polled data through the transform when both transform fields are set', function (): void {
+    Http::fake(['*' => Http::response(['id1', 'id2'], 200, ['Content-Type' => 'application/json'])]);
+
+    $this->mock(ServerlessTransformService::class)
+        ->shouldReceive('run')
+        ->once()
+        ->andReturn(['stories' => [['title' => 'Test Story']]]);
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy'      => 'polling',
+        'polling_url'        => 'https://example.com/api',
+        'polling_verb'       => 'get',
+        'transform_code'     => "def run(input):\n    return {'stories': []}",
+        'transform_language' => 'python',
+    ]);
+
+    $plugin->updateDataPayload();
+
+    expect($plugin->fresh()->data_payload)->toBe(['stories' => [['title' => 'Test Story']]]);
+});
+
+test('updateDataPayload skips the transform when transform_code is null', function (): void {
+    Http::fake(['*' => Http::response(['key' => 'value'], 200, ['Content-Type' => 'application/json'])]);
+
+    $this->mock(ServerlessTransformService::class)
+        ->shouldNotReceive('run');
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy'      => 'polling',
+        'polling_url'        => 'https://example.com/api',
+        'polling_verb'       => 'get',
+        'transform_code'     => null,
+        'transform_language' => null,
+    ]);
+
+    $plugin->updateDataPayload();
+
+    expect($plugin->fresh()->data_payload)->not->toBeNull();
+});
+
+test('updateDataPayload stores raw polled data when the transform service returns it unchanged', function (): void {
+    Http::fake(['*' => Http::response(['raw' => 'data'], 200, ['Content-Type' => 'application/json'])]);
+
+    $this->mock(ServerlessTransformService::class)
+        ->shouldReceive('run')
+        ->once()
+        ->andReturn(['raw' => 'data']);
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy'      => 'polling',
+        'polling_url'        => 'https://example.com/api',
+        'polling_verb'       => 'get',
+        'transform_code'     => 'bad code',
+        'transform_language' => 'php',
+    ]);
+
+    $plugin->updateDataPayload();
+
+    expect($plugin->fresh()->data_payload)->toBe(['raw' => 'data']);
 });
