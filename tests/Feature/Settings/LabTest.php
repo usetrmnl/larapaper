@@ -37,3 +37,11 @@ test('can toggle feature on and off', function (): void {
 
     expect(Toggle::active('test-feature'))->toBeFalse();
 });
+
+test('lab settings page shows mcp title and description from config', function (): void {
+    Toggle::enable('mcp');
+
+    Livewire::test('pages::settings.lab')
+        ->assertSee('MCP')
+        ->assertSee('Expose a Model Context Protocol server so AI tools can list, create, update, and render your recipes. Requires an MCP API token.');
+});

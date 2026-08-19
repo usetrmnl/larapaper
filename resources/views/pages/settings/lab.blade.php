@@ -6,12 +6,23 @@ use OffloadProject\Toggle\Facades\Toggle;
 new class extends Component
 {
     /**
-     * @return array<string, bool>
+     * @return array{toggles: Illuminate\Support\Collection<int, array{name: string, title: string, description: string|null, active: bool}>|null}
      */
     public function with(): array
     {
         return [
-            'toggles' => auth()->user()->id === 1 ? Toggle::all() : null,
+            'toggles' => auth()->user()->id === 1
+                ? collect(Toggle::all())->map(function (bool $active, string $name): array {
+                    $experiment = config("toggle.experiments.{$name}", []);
+
+                    return [
+                        'name' => $name,
+                        'title' => $experiment['title'] ?? $name,
+                        'description' => $experiment['description'] ?? null,
+                        'active' => $active,
+                    ];
+                })->values()
+                : null,
         ];
     }
 
@@ -52,12 +63,15 @@ new class extends Component
                         <flux:separator />
 
                         <div class="space-y-4">
-                            @forelse ($toggles as $name => $active)
-                                <flux:field variant="inline">
-                                    <flux:label class="flex-1">{{ $name }}</flux:label>
+                            @forelse ($toggles as $toggle)
+                                <flux:field variant="inline" wire:key="{{ $toggle['name'] }}">
+                                    <flux:label class="flex-1">{{ $toggle['title'] }}</flux:label>
+                                    @if ($toggle['description'])
+                                        <flux:description>{{ $toggle['description'] }}</flux:description>
+                                    @endif
                                     <flux:switch
-                                        :checked="$active"
-                                        wire:change="toggle('{{ $name }}', $event.target.checked)"
+                                        :checked="$toggle['active']"
+                                        wire:change="toggle('{{ $toggle['name'] }}', $event.target.checked)"
                                     />
                                 </flux:field>
                             @empty
