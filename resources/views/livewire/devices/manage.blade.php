@@ -362,7 +362,9 @@ new class extends Component
                                             </flux:modal.trigger>
                                         @else
                                             <flux:modal.trigger name="pause-device-{{ $device->id }}">
-                                                <flux:button icon="pause-circle" iconVariant="outline"> </flux:button>
+                                                <flux:tooltip content="Pause screen generation" position="bottom">
+                                                    <flux:button icon="pause-circle" iconVariant="outline" />
+                                                </flux:tooltip>
                                             </flux:modal.trigger>
                                         @endif
                                     </flux:button.group>
@@ -422,7 +424,8 @@ new class extends Component
                         />
                         <flux:input type="time" label="Time" wire:model.live="pause_until_time" />
                     </div>
-                    <flux:text class="mb-4 text-sm text-zinc-500">Timezone: {{ $this->timezone }}.</flux:text>
+                    <flux:text class="text-zinc-500">Timezone: {{ $this->timezone }}</flux:text>
+                    <flux:text class="mt-2 mb-4">The device will still ping the server every 24 hours.</flux:text>
                     <flux:error name="pause_until_date" />
 
                     <div class="flex">
