@@ -543,6 +543,19 @@ new class extends Component
                                     </div>
                                     <flux:description>{!! $safeHelp !!}</flux:description>
                                 </flux:field>
+                            @elseif ($field['field_type'] === 'lat_lon')
+                                <flux:field>
+                                    <flux:label>{{ $field['name'] }}</flux:label>
+                                    <flux:description>{!! $safeDescription !!}</flux:description>
+                                    <flux:input
+                                        wire:model="configuration.{{ $fieldKey }}"
+                                        value="{{ $currentValue }}"
+                                        placeholder="{{ $field['placeholder'] ?? '40.7128,-74.0060' }}"
+                                        pattern="-?\d+(\.\d+)?,-?\d+(\.\d+)?"
+                                        title="Latitude,longitude (e.g. 40.7128,-74.0060)"
+                                    />
+                                    <flux:description>{!! $safeHelp !!}</flux:description>
+                                </flux:field>
                             @else
                                 <flux:callout variant="warning">Field type "{{ $field['field_type'] }}" not yet supported</flux:callout>
                             @endif

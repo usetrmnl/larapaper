@@ -145,3 +145,55 @@ test('config modal saves password field values correctly', function (): void {
 
     expect($plugin->fresh()->configuration['api_key'])->toBe('my-secret-password-123');
 });
+
+test('config modal renders lat_lon field as a coordinate input', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Test Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [[
+                'keyname' => 'location',
+                'field_type' => 'lat_lon',
+                'name' => 'Location',
+            ]],
+        ],
+        'configuration' => [],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('Location')
+        ->assertSee('40.7128,-74.0060')
+        ->assertDontSee('not yet supported');
+});
+
+test('config modal saves lat_lon field values correctly', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Test Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [[
+                'keyname' => 'location',
+                'field_type' => 'lat_lon',
+                'name' => 'Location',
+            ]],
+        ],
+        'configuration' => [],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->set('configuration.location', '48.2083537,16.3725042')
+        ->call('saveConfiguration')
+        ->assertHasNoErrors();
+
+    expect($plugin->fresh()->configuration['location'])->toBe('48.2083537,16.3725042');
+});
