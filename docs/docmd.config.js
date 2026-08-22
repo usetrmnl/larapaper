@@ -37,7 +37,7 @@ export default defineConfig({
       content:
         '© ' +
         new Date().getFullYear() +
-        ' LaraPaper · <a href="https://github.com/usetrmnl/larapaper/blob/main/LICENSE.md">MIT</a> · <a href="/support">Support</a>',
+        ' LaraPaper · bnussbau · MIT',
       branding: true,
     },
   },
@@ -55,6 +55,7 @@ export default defineConfig({
   pageNavigation: true,
 
   redirects: {
+    '/posts/100-releases.html': 'https://usetrmnl.github.io/larapaper/posts/100-releases/',
     '/posts/one-year-larapaper.html': 'https://usetrmnl.github.io/larapaper/posts/one-year-larapaper/',
   },
 
@@ -90,6 +91,15 @@ export default defineConfig({
       ],
     },
     {
+      title: 'Lab',
+      icon: 'flask-conical',
+      collapsible: true,
+      children: [
+        { title: 'Experimental features', path: '/lab', icon: 'flask-conical' },
+        { title: 'MCP Server', path: '/lab/mcp', icon: 'bot' },
+      ],
+    },
+    {
       title: 'Development',
       icon: 'code',
       collapsible: true,
@@ -112,6 +122,11 @@ export default defineConfig({
       icon: 'newspaper',
       collapsible: true,
       children: [
+        {
+          title: '100 Releases of LaraPaper',
+          path: '/posts/100-releases',
+          icon: 'sparkles',
+        },
         {
           title: 'One Year of LaraPaper',
           path: '/posts/one-year-larapaper',
