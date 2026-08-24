@@ -204,32 +204,30 @@ new class extends Component
             <h2 class="text-2xl font-semibold dark:text-gray-100">Plugins &amp; Recipes</h2>
             <div class="flex items-center space-x-2">
                 <flux:button icon="funnel" variant="ghost" @click="showFilters = ! showFilters"></flux:button>
-                <flux:button.group>
-                    <flux:modal.trigger name="add-plugin">
-                        <flux:button icon="plus" variant="primary">Add Recipe</flux:button>
-                    </flux:modal.trigger>
-
-                    <flux:dropdown>
-                        <flux:button icon="chevron-down" variant="primary"></flux:button>
-                        <flux:menu>
-                            <flux:modal.trigger name="import-from-catalog">
-                                <flux:menu.item icon="book-open">Import from OSS Catalog</flux:menu.item>
+                <flux:dropdown>
+                    <flux:button variant="primary" icon="plus" icon:trailing="chevron-down">Add …</flux:button>
+                    <flux:menu>
+                        <flux:modal.trigger name="add-plugin">
+                            <flux:menu.item icon="plus">Add Recipe</flux:menu.item>
+                        </flux:modal.trigger>
+                        <flux:separator />
+                        <flux:modal.trigger name="import-from-catalog">
+                            <flux:menu.item icon="book-open">Import from OSS Catalog</flux:menu.item>
+                        </flux:modal.trigger>
+                        @if (config('services.trmnl.liquid_enabled'))
+                            <flux:modal.trigger name="import-from-trmnl-catalog">
+                                <flux:menu.item icon="book-open">Import from TRMNL Catalog</flux:menu.item>
                             </flux:modal.trigger>
-                            @if (config('services.trmnl.liquid_enabled'))
-                                <flux:modal.trigger name="import-from-trmnl-catalog">
-                                    <flux:menu.item icon="book-open">Import from TRMNL Catalog</flux:menu.item>
-                                </flux:modal.trigger>
-                            @endif
-                            <flux:separator />
-                            <flux:modal.trigger name="import-zip">
-                                <flux:menu.item icon="archive-box">Import Recipe Archive</flux:menu.item>
-                            </flux:modal.trigger>
-                            <flux:separator />
-                            <flux:menu.item icon="beaker" wire:click="seedExamplePlugins">
-                                Seed Example Recipes</flux:menu.item>
-                        </flux:menu>
-                    </flux:dropdown>
-                </flux:button.group>
+                        @endif
+                        <flux:separator />
+                        <flux:modal.trigger name="import-zip">
+                            <flux:menu.item icon="archive-box">Import Recipe Archive</flux:menu.item>
+                        </flux:modal.trigger>
+                        <flux:separator />
+                        <flux:menu.item icon="beaker" wire:click="seedExamplePlugins">
+                            Seed Example Recipes</flux:menu.item>
+                    </flux:menu>
+                </flux:dropdown>
             </div>
         </div>
 
