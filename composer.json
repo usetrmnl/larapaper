@@ -108,9 +108,6 @@
             "php-http/discovery": true
         }
     },
-    "conflict": {
-        "livewire/livewire": "4.4.1"
-    },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
