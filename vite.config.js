@@ -1,11 +1,13 @@
 import {
-    defineConfig
-} from 'vite';
+    defineConfig,
+    lazyPlugins
+} from 'vite-plus';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from "@tailwindcss/vite";
 
+
 export default defineConfig({
-    plugins: [
+    plugins: lazyPlugins(() => [
         laravel({
             input: [
                 'resources/css/app.css',
@@ -15,7 +17,7 @@ export default defineConfig({
             refresh: [`resources/views/**/*`],
         }),
         tailwindcss(),
-    ],
+    ]),
     server: {
         cors: true,
     },
