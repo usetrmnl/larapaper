@@ -26,7 +26,7 @@
         "codemirror": "^6.0.2",
         "concurrently": "^9.2.4",
         "laravel-vite-plugin": "^3.1",
-        "puppeteer": "25.3.0",
+        "puppeteer": "25.9.0",
         "tailwindcss": "^4.0.7",
         "vite": "^8.0.0",
         "vite-plus": "0.3.0"
