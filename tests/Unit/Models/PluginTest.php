@@ -41,6 +41,21 @@ test('plugin automatically generates uuid on creation', function (): void {
         ->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/');
 });
 
+test('plugin management url points at the recipe page for recipes', function (): void {
+    $plugin = Plugin::factory()->create(['plugin_type' => 'recipe']);
+
+    expect($plugin->managementUrl())->toBe(route('plugins.recipe', $plugin));
+});
+
+test('plugin management url points at the type instance page for native plugins', function (): void {
+    $plugin = Plugin::factory()->imageWebhook()->create();
+
+    expect($plugin->managementUrl())->toBe(route('plugins.type-instance', [
+        'type' => 'image_webhook',
+        'plugin' => $plugin,
+    ]));
+});
+
 test('plugin can have custom uuid', function (): void {
     $uuid = Illuminate\Support\Str::uuid();
     $plugin = Plugin::factory()->create(['uuid' => $uuid]);

@@ -48,7 +48,11 @@ new class extends Component
 
                             <div class="flex items-center justify-between gap-4">
                                 <flux:tooltip content="Friendly ID: {{ $device->friendly_id }}" position="bottom">
-                                    <h1 class="text-xl font-medium dark:text-zinc-200">{{ $device->name }}</h1>
+                                    <a
+                                        href="{{ route('devices.configure', $device) }}"
+                                        wire:navigate
+                                        class="text-xl font-medium hover:underline dark:text-zinc-200"
+                                    >{{ $device->name }}</a>
                                 </flux:tooltip>
                                 <div class="flex gap-2">
                                     <flux:tooltip content="Last refresh" position="bottom">

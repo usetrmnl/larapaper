@@ -154,3 +154,36 @@ test('clearPluginImageCache aborts when user does not own the device', function 
 
     expect($plugin->fresh()->current_image)->toBe('keep-me');
 });
+
+test('playlists index shows empty playlist next step', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    Playlist::factory()->create(['device_id' => $device->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test('playlists.index')
+        ->assertSee('This playlist is empty')
+        ->assertSee(route('plugins.index'), false);
+});
+
+test('playlists index item name links to the recipe', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'name' => 'Weather Glance',
+    ]);
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('playlists.index')
+        ->assertSee('Weather Glance')
+        ->assertSee(route('plugins.recipe', $plugin), false);
+});

@@ -68,6 +68,24 @@ class PlaylistItem extends Model
     }
 
     /**
+     * Mashup plugin names in playlist order, without per-id queries in the view.
+     */
+    public function mashupPluginNames(): string
+    {
+        $ids = $this->getMashupPluginIds();
+
+        if ($ids === []) {
+            return '';
+        }
+
+        $names = Plugin::query()->whereIn('id', $ids)->pluck('name', 'id');
+
+        return collect($ids)
+            ->map(fn (mixed $id): string => $names->get((int) $id) ?? 'Missing plugin')
+            ->join(' | ');
+    }
+
+    /**
      * Get the number of plugins required for the current layout
      */
     public function getRequiredPluginCount(): int

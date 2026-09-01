@@ -106,7 +106,8 @@ test('screenshot instance can add to playlist when url is valid', function (): v
         ->set('checked_devices', [(string) $device->id])
         ->set('device_playlists.'.$device->id, (string) $playlist->id)
         ->call('addToPlaylist')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertDispatched('toast-show');
 
     expect($playlist->fresh()->items)->toHaveCount(1)
         ->and($playlist->fresh()->items->first()->plugin_id)->toBe($plugin->id);

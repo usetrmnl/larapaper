@@ -437,6 +437,7 @@ new class extends Component
             'mashup_plugins',
         ]);
         Flux::modal('add-to-playlist')->close();
+        Flux::toast(variant: 'success', text: 'Added to playlist.');
     }
 
     public function getDevicePlaylists($deviceId)

@@ -185,6 +185,14 @@ new class extends Component
                         <flux:heading size="lg">Add Device</flux:heading>
                     </div>
 
+                    @if (auth()->id() === 1)
+                        <div class="space-y-3">
+                            <livewire:actions.device-auto-join :key="'create-device-modal'" />
+                            <flux:text>Click the button above to permit auto join. Then point the device at this server's base url to finish setup. After it appears, add recipes to a device playlist to get started.</flux:text>
+                        </div>
+                        <flux:separator text="Or add manually" />
+                    @endif
+
                     <form wire:submit="createDevice">
                         <div class="mb-4">
                             <flux:input
@@ -327,7 +335,11 @@ new class extends Component
                     @foreach ($devices as $device)
                         <tr data-flux-row="">
                             <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 first:pl-0 last:pr-0 dark:text-zinc-300">
-                                {{ $device->name }}
+                                <a
+                                    href="{{ route('devices.configure', $device) }}"
+                                    wire:navigate
+                                    class="font-medium hover:underline dark:text-zinc-200"
+                                >{{ $device->name }}</a>
                             </td>
                             <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 first:pl-0 last:pr-0 dark:text-zinc-300">
                                 {{ $device->friendly_id }}
@@ -347,13 +359,14 @@ new class extends Component
                             <td class="px-3 py-3 text-sm font-medium whitespace-nowrap text-zinc-800 first:pl-0 last:pr-0 dark:text-white">
                                 <div class="flex items-center gap-4">
                                     <flux:button.group>
-                                        <flux:button
-                                            href="{{ route('devices.configure', $device) }}"
-                                            wire:navigate
-                                            icon="eye"
-                                            iconVariant="outline"
-                                        >
-                                        </flux:button>
+                                        <flux:tooltip content="View device" position="bottom">
+                                            <flux:button
+                                                href="{{ route('devices.configure', $device) }}"
+                                                wire:navigate
+                                                icon="eye"
+                                                iconVariant="outline"
+                                            />
+                                        </flux:tooltip>
                                         @if ($device->isPauseActive())
                                             <flux:modal.trigger name="unpause-device-{{ $device->id }}">
                                                 <flux:tooltip content="Device paused until: {{ $device->pause_until->diffForHumans() }}">

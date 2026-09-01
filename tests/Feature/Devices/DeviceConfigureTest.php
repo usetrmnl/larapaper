@@ -208,3 +208,56 @@ test('check firmware updates polls for new firmware and refreshes list', functio
 
     $component->assertSet('selected_firmware_id', $latestFirmware->id);
 });
+
+test('configure shows empty playlist next step', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    Playlist::factory()->create(['device_id' => $device->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSee('This playlist is empty')
+        ->assertSee(route('plugins.index'), false);
+});
+
+test('configure playlist item name links to the recipe', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'name' => 'Weather Glance',
+    ]);
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSee('Weather Glance')
+        ->assertSee(route('plugins.recipe', $plugin), false);
+});
+
+test('configure playlist item name links to the native plugin instance', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->imageWebhook()->create([
+        'user_id' => $user->id,
+        'name' => 'Camera Feed',
+    ]);
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSee('Camera Feed')
+        ->assertSee(route('plugins.type-instance', ['type' => 'image_webhook', 'plugin' => $plugin]), false);
+});

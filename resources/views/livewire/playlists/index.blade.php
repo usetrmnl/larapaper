@@ -164,9 +164,18 @@ new class extends Component
                 @if ($device->playlists->isNotEmpty())
                     <div class="mb-8">
                         <div class="mb-4 flex items-center justify-between">
-                            <h3 class="text-lg font-medium dark:text-zinc-200">{{ $device->name }}</h3>
-                            <flux:button href="{{ route('devices.configure', $device) }}" wire:navigate icon="eye">
-                            </flux:button>
+                            <a
+                                href="{{ route('devices.configure', $device) }}"
+                                wire:navigate
+                                class="text-lg font-medium hover:underline dark:text-zinc-200"
+                            >{{ $device->name }}</a>
+                            <flux:tooltip content="View device" position="bottom">
+                                <flux:button
+                                    href="{{ route('devices.configure', $device) }}"
+                                    wire:navigate
+                                    icon="eye"
+                                />
+                            </flux:tooltip>
                         </div>
 
                         <div class="grid gap-6">
@@ -195,12 +204,14 @@ new class extends Component
                                             </div>
                                             <div class="flex gap-2">
                                                 <flux:modal.trigger name="edit-playlist-{{ $playlist->id }}">
-                                                    <flux:button
-                                                        icon="pencil-square"
-                                                        variant="subtle"
-                                                        size="sm"
-                                                        wire:click="preparePlaylistEdit({{ $playlist->id }})"
-                                                    />
+                                                    <flux:tooltip content="Edit playlist settings" position="bottom">
+                                                        <flux:button
+                                                            icon="pencil-square"
+                                                            variant="subtle"
+                                                            size="sm"
+                                                            wire:click="preparePlaylistEdit({{ $playlist->id }})"
+                                                        />
+                                                    </flux:tooltip>
                                                 </flux:modal.trigger>
                                                 <flux:modal.trigger name="delete-playlist-{{ $playlist->id }}">
                                                     <flux:button icon="trash" size="sm" />
@@ -209,150 +220,140 @@ new class extends Component
                                         </div>
                                     </div>
 
-                                    <table class="w-full" data-flux-table>
-                                        <thead data-flux-columns>
-                                            <tr>
-                                                <th
-                                                    class="w-10 px-2 py-3 text-left text-sm font-medium text-zinc-800 first:pl-0 dark:text-white"
-                                                    data-flux-column
-                                                >
-                                                    <span class="sr-only">Reorder</span>
-                                                </th>
-                                                <th
-                                                    class="px-3 py-3 text-left text-sm font-medium text-zinc-800 last:pr-0 dark:text-white"
-                                                    data-flux-column
-                                                >
-                                                    <div class="flex whitespace-nowrap">Plugin / Recipe</div>
-                                                </th>
-                                                <th
-                                                    class="px-3 py-3 text-left text-sm font-medium text-zinc-800 first:pl-0 last:pr-0 dark:text-white"
-                                                    data-flux-column
-                                                >
-                                                    <div class="flex whitespace-nowrap">Status</div>
-                                                </th>
-                                                <th
-                                                    class="px-3 py-3 text-right text-sm font-medium text-zinc-800 first:pl-0 last:pr-0 dark:text-white"
-                                                    data-flux-column
-                                                >
-                                                    <div class="flex justify-end whitespace-nowrap">Actions</div>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody
-                                            class="divide-y divide-zinc-800/10 dark:divide-white/20"
-                                            data-flux-rows
-                                            @if ($playlist->items->count() > 1) wire:sort="sortPlaylistItem" @endif
-                                        >
-                                            @foreach ($playlist->items->sortBy('order') as $item)
-                                                <tr
-                                                    data-flux-row
-                                                    wire:key="playlist-item-{{ $item->id }}"
-                                                    @if ($playlist->items->count() > 1) wire:sort:item="{{ $item->id }}" @endif
-                                                >
-                                                    <td class="w-10 px-2 py-3 align-middle text-zinc-400 first:pl-0 dark:text-zinc-500">
-                                                        @if ($playlist->items->count() > 1)
-                                                            <div
-                                                                wire:sort:handle
-                                                                class="flex cursor-grab touch-none justify-center active:cursor-grabbing"
-                                                                title="Drag to reorder"
-                                                            >
-                                                                <flux:icon
-                                                                    name="bars-3"
-                                                                    variant="mini"
-                                                                    class="size-5"
-                                                                />
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                    <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 last:pr-0 dark:text-zinc-300">
-                                                        @if ($item->isMashup())
-                                                            <div class="flex items-center gap-2">
-                                                                <div>
-                                                                    <div class="font-medium">
-                                                                        {{ $item->getMashupName() }}
-                                                                    </div>
-                                                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
-                                                                        <flux:icon
-                                                                            name="mashup-{{ $item->getMashupLayoutType() }}"
-                                                                            class="inline-block pb-1"
-                                                                            variant="mini"
-                                                                        />
-                                                                        {{ collect($item->getMashupPluginIds())->map(fn($id) => App\Models\Plugin::find($id)?->name ?? 'Missing plugin')->join(' | ') }}
-                                                                    </div>
+                                    @if ($playlist->items->isEmpty())
+                                        <x-playlist-empty-callout />
+                                    @else
+                                        <table class="w-full" data-flux-table>
+                                            <thead data-flux-columns>
+                                                <tr>
+                                                    <th
+                                                        class="w-10 px-2 py-3 text-left text-sm font-medium text-zinc-800 first:pl-0 dark:text-white"
+                                                        data-flux-column
+                                                    >
+                                                        <span class="sr-only">Reorder</span>
+                                                    </th>
+                                                    <th
+                                                        class="px-3 py-3 text-left text-sm font-medium text-zinc-800 last:pr-0 dark:text-white"
+                                                        data-flux-column
+                                                    >
+                                                        <div class="flex whitespace-nowrap">Plugin / Recipe</div>
+                                                    </th>
+                                                    <th
+                                                        class="px-3 py-3 text-left text-sm font-medium text-zinc-800 first:pl-0 last:pr-0 dark:text-white"
+                                                        data-flux-column
+                                                    >
+                                                        <div class="flex whitespace-nowrap">Status</div>
+                                                    </th>
+                                                    <th
+                                                        class="px-3 py-3 text-right text-sm font-medium text-zinc-800 first:pl-0 last:pr-0 dark:text-white"
+                                                        data-flux-column
+                                                    >
+                                                        <div class="flex justify-end whitespace-nowrap">Actions</div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody
+                                                class="divide-y divide-zinc-800/10 dark:divide-white/20"
+                                                data-flux-rows
+                                                @if ($playlist->items->count() > 1) wire:sort="sortPlaylistItem" @endif
+                                            >
+                                                @foreach ($playlist->items->sortBy('order') as $item)
+                                                    <tr
+                                                        data-flux-row
+                                                        wire:key="playlist-item-{{ $item->id }}"
+                                                        @if ($playlist->items->count() > 1) wire:sort:item="{{ $item->id }}" @endif
+                                                    >
+                                                        <td class="w-10 px-2 py-3 align-middle text-zinc-400 first:pl-0 dark:text-zinc-500">
+                                                            @if ($playlist->items->count() > 1)
+                                                                <div
+                                                                    wire:sort:handle
+                                                                    class="flex cursor-grab touch-none justify-center active:cursor-grabbing"
+                                                                    title="Drag to reorder"
+                                                                >
+                                                                    <flux:icon
+                                                                        name="bars-3"
+                                                                        variant="mini"
+                                                                        class="size-5"
+                                                                    />
                                                                 </div>
-                                                            </div>
-                                                        @else
-                                                            <div class="font-medium">
-                                                                {{ $item->plugin?->name ?? 'Missing plugin' }}
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                    <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 dark:text-zinc-300">
-                                                        <flux:switch
-                                                            wire:click="togglePlaylistItemActive({{ $item->id }})"
-                                                            :checked="$item->is_active"
-                                                        />
-                                                    </td>
-                                                    <td class="px-3 py-3 text-sm whitespace-nowrap first:pl-0 last:pr-0">
-                                                        <div class="flex items-center justify-end gap-2">
-                                                            @if (! $item->isMashup() && $item->plugin?->plugin_type === 'recipe')
-                                                                <flux:dropdown>
+                                                            @endif
+                                                        </td>
+                                                        <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 last:pr-0 dark:text-zinc-300">
+                                                            <x-playlist-plugin-name :item="$item" />
+                                                        </td>
+                                                        <td class="px-3 py-3 text-sm whitespace-nowrap text-zinc-500 dark:text-zinc-300">
+                                                            <flux:switch
+                                                                wire:click="togglePlaylistItemActive({{ $item->id }})"
+                                                                :checked="$item->is_active"
+                                                            />
+                                                        </td>
+                                                        <td class="px-3 py-3 text-sm whitespace-nowrap first:pl-0 last:pr-0">
+                                                            <div class="flex items-center justify-end gap-2">
+                                                                @if (! $item->isMashup() && $item->plugin?->plugin_type === 'recipe')
+                                                                    <flux:dropdown>
+                                                                        <flux:button
+                                                                            icon="ellipsis-horizontal"
+                                                                            variant="ghost"
+                                                                            size="xs"
+                                                                        />
+                                                                        <flux:menu>
+                                                                            <flux:menu.item
+                                                                                icon="x-mark"
+                                                                                wire:click="clearPluginImageCache({{ $item->id }})"
+                                                                            >
+                                                                                Clear image cache</flux:menu.item>
+                                                                        </flux:menu>
+                                                                    </flux:dropdown>
+                                                                @endif
+                                                                <flux:modal.trigger name="delete-playlist-item-{{ $item->id }}">
                                                                     <flux:button
-                                                                        icon="ellipsis-horizontal"
+                                                                        icon="trash"
                                                                         variant="ghost"
                                                                         size="xs"
                                                                     />
-                                                                    <flux:menu>
-                                                                        <flux:menu.item
-                                                                            icon="x-mark"
-                                                                            wire:click="clearPluginImageCache({{ $item->id }})"
-                                                                        >
-                                                                            Clear image cache</flux:menu.item>
-                                                                    </flux:menu>
-                                                                </flux:dropdown>
-                                                            @endif
-                                                            <flux:modal.trigger name="delete-playlist-item-{{ $item->id }}">
-                                                                <flux:button icon="trash" variant="ghost" size="xs" />
-                                                            </flux:modal.trigger>
-                                                        </div>
-
-                                                        <flux:modal
-                                                            name="delete-playlist-item-{{ $item->id }}"
-                                                            class="min-w-[22rem] space-y-6"
-                                                        >
-                                                            <div>
-                                                                <flux:heading size="lg">
-                                                                    @if ($item->isMashup())
-                                                                        Delete {{ $item->getMashupName() }}?
-                                                                    @else
-                                                                        Delete {{ $item->plugin?->name ?? 'missing item' }}?
-                                                                    @endif
-                                                                </flux:heading>
-                                                                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                                                    @if ($item->isMashup())
-                                                                        This will remove this mashup from the playlist.
-                                                                    @else
-                                                                        This will remove this item from the playlist.
-                                                                    @endif
-                                                                </p>
+                                                                </flux:modal.trigger>
                                                             </div>
 
-                                                            <div class="flex gap-2">
-                                                                <flux:spacer />
-                                                                <flux:modal.close>
-                                                                    <flux:button variant="ghost">Cancel</flux:button>
-                                                                </flux:modal.close>
-                                                                <flux:button
-                                                                    wire:click="deletePlaylistItem({{ $item->id }})"
-                                                                    variant="danger"
-                                                                >Delete item</flux:button>
-                                                            </div>
-                                                        </flux:modal>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                                                            <flux:modal
+                                                                name="delete-playlist-item-{{ $item->id }}"
+                                                                class="min-w-[22rem] space-y-6"
+                                                            >
+                                                                <div>
+                                                                    <flux:heading size="lg">
+                                                                        @if ($item->isMashup())
+                                                                            Delete {{ $item->getMashupName() }}?
+                                                                        @else
+                                                                            Delete {{ $item->plugin?->name ?? 'missing item' }}?
+                                                                        @endif
+                                                                    </flux:heading>
+                                                                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                                                        @if ($item->isMashup())
+                                                                            This will remove this mashup from the
+                                                                            playlist.
+                                                                        @else
+                                                                            This will remove this item from the
+                                                                            playlist.
+                                                                        @endif
+                                                                    </p>
+                                                                </div>
+
+                                                                <div class="flex gap-2">
+                                                                    <flux:spacer />
+                                                                    <flux:modal.close>
+                                                                        <flux:button variant="ghost">Cancel</flux:button>
+                                                                    </flux:modal.close>
+                                                                    <flux:button
+                                                                        wire:click="deletePlaylistItem({{ $item->id }})"
+                                                                        variant="danger"
+                                                                    >Delete item</flux:button>
+                                                                </div>
+                                                            </flux:modal>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @endif
                                 </div>
 
                                 <flux:modal name="edit-playlist-{{ $playlist->id }}" class="md:w-96">

@@ -121,3 +121,17 @@ test('device auto join component handles multiple updates correctly', function (
     $user->refresh();
     expect($user->assign_new_devices)->toBeFalse();
 });
+
+test('device auto join sibling instances stay in sync', function (): void {
+    $user = User::factory()->create(['assign_new_devices' => false]);
+
+    Livewire::actingAs($user)
+        ->test(DeviceAutoJoin::class)
+        ->set('deviceAutojoin', true)
+        ->assertDispatched('device-auto-join-changed');
+
+    Livewire::actingAs($user)
+        ->test(DeviceAutoJoin::class)
+        ->dispatch('device-auto-join-changed', enabled: true)
+        ->assertSet('deviceAutojoin', true);
+});

@@ -91,6 +91,21 @@ test('playlist item can get mashup plugin ids', function (): void {
     expect($mashupItem->getMashupPluginIds())->toBe([$plugin1->id, $plugin2->id]);
 });
 
+test('playlist item mashup plugin names preserve order and mark missing plugins', function (): void {
+    $first = Plugin::factory()->create(['name' => 'Alpha']);
+    $second = Plugin::factory()->create(['name' => 'Beta']);
+    $mashupItem = PlaylistItem::factory()->create([
+        'plugin_id' => $first->id,
+        'mashup' => [
+            'mashup_layout' => '1Lx1R',
+            'mashup_name' => 'Test Mashup',
+            'plugin_ids' => [$second->id, $first->id, 999_999],
+        ],
+    ]);
+
+    expect($mashupItem->mashupPluginNames())->toBe('Beta | Alpha | Missing plugin');
+});
+
 test('playlist item can get required plugin count for different layouts', function (): void {
     $layouts = [
         '1Lx1R' => 2,

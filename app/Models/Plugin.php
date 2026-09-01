@@ -269,6 +269,22 @@ class Plugin extends Model
         return App::make(PluginRegistry::class)->get($this->plugin_type);
     }
 
+    /**
+     * Dashboard URL for editing this plugin or recipe.
+     */
+    public function managementUrl(): ?string
+    {
+        if ($this->plugin_type === 'recipe') {
+            return route('plugins.recipe', $this);
+        }
+
+        if (filled($this->plugin_type)) {
+            return route('plugins.type-instance', ['type' => $this->plugin_type, 'plugin' => $this]);
+        }
+
+        return null;
+    }
+
     public function isDataStale(): bool
     {
         $handlerStale = $this->handler()?->isDataStale($this);

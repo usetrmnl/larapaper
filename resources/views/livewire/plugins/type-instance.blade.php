@@ -178,6 +178,7 @@ new class extends Component
             'device_active_until',
         ]);
         Flux::modal('add-to-playlist')->close();
+        Flux::toast(variant: 'success', text: 'Added to playlist.');
     }
 
     public function getDevicePlaylists($deviceId)
