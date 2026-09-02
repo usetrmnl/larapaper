@@ -17,7 +17,7 @@
         "ext-simplexml": "*",
         "ext-zip": "*",
         "bnussbau/epaper-pipeline-php": "^1.1",
-        "bnussbau/laravel-trmnl-blade": "^3.2",
+        "bnussbau/laravel-trmnl-blade": "^3.3",
         "hammerstone/sidecar": "^0.8.0",
         "keepsuit/laravel-liquid": "^0.6",
         "laravel/fortify": "^1.37",
