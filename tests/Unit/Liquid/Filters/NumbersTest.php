@@ -136,3 +136,81 @@ test('number_with_delimiter handles very large numbers', function (): void {
     expect($filter->number_with_delimiter(1000000))->toBe('1,000,000')
         ->and($filter->number_with_delimiter(1000000.50))->toBe('1,000,000.50');
 });
+
+test('random_number returns integer within default bounds (0-100)', function (): void {
+    $filter = new Numbers();
+
+    $result = $filter->random_number('');
+    expect($result)->toBeInt()
+        ->toBeGreaterThanOrEqual(0)
+        ->toBeLessThanOrEqual(100);
+});
+
+test('random_number with two args returns integer within range', function (): void {
+    $filter = new Numbers();
+
+    foreach (range(1, 20) as $_) {
+        $result = $filter->random_number('', 1, 6);
+        expect($result)->toBeGreaterThanOrEqual(1)
+            ->toBeLessThanOrEqual(6);
+    }
+});
+
+test('random_number with single arg treats it as upper bound', function (): void {
+    $filter = new Numbers();
+
+    foreach (range(1, 20) as $_) {
+        $result = $filter->random_number('', 6);
+        expect($result)->toBeGreaterThanOrEqual(0)
+            ->toBeLessThanOrEqual(6);
+    }
+});
+
+test('random_number normalizes reversed bounds', function (): void {
+    $filter = new Numbers();
+
+    foreach (range(1, 20) as $_) {
+        $result = $filter->random_number('', 6, 1);
+        expect($result)->toBeGreaterThanOrEqual(1)
+            ->toBeLessThanOrEqual(6);
+    }
+});
+
+test('random_number returns exact value when bounds are equal', function (): void {
+    $filter = new Numbers();
+
+    expect($filter->random_number('', 3, 3))->toBe(3);
+});
+
+test('random_number casts string bounds', function (): void {
+    $filter = new Numbers();
+
+    foreach (range(1, 20) as $_) {
+        $result = $filter->random_number('', '1', '6');
+        expect($result)->toBeGreaterThanOrEqual(1)
+            ->toBeLessThanOrEqual(6);
+    }
+});
+
+test('random_number ignores piped value', function (): void {
+    $filter = new Numbers();
+
+    foreach (range(1, 20) as $_) {
+        $result = $filter->random_number(99, 1, 6);
+        expect($result)->toBeGreaterThanOrEqual(1)
+            ->toBeLessThanOrEqual(6);
+    }
+});
+
+test('random_number works in liquid template with arithmetic', function (): void {
+    $environment = new Keepsuit\Liquid\Environment(
+        extensions: [new Keepsuit\Liquid\Extensions\StandardExtension()]
+    );
+    $environment->filterRegistry->register(Numbers::class);
+
+    $template = $environment->parseString('{% assign number = nil | random_number: 5, 5 %}{{ number | plus: 1 }}');
+    $context = $environment->newRenderContext();
+    $result = $template->render($context);
+
+    expect(mb_trim($result))->toBe('6');
+});
