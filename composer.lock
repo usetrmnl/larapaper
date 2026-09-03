@@ -62,16 +62,16 @@
         },
         {
             "name": "aws/aws-sdk-php",
-            "version": "3.394.6",
+            "version": "3.394.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/aws/aws-sdk-php.git",
-                "reference": "860a8b13413adcef698afa0770f0d85f85777a78"
+                "reference": "40a8717706fd789cd3e8c72a2e8e93ee4455b391"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/860a8b13413adcef698afa0770f0d85f85777a78",
-                "reference": "860a8b13413adcef698afa0770f0d85f85777a78",
+                "url": "https://api.github.com/repos/aws/aws-sdk-php/zipball/40a8717706fd789cd3e8c72a2e8e93ee4455b391",
+                "reference": "40a8717706fd789cd3e8c72a2e8e93ee4455b391",
                 "shasum": ""
             },
             "require": {
@@ -153,9 +153,9 @@
             "support": {
                 "forum": "https://github.com/aws/aws-sdk-php/discussions",
                 "issues": "https://github.com/aws/aws-sdk-php/issues",
-                "source": "https://github.com/aws/aws-sdk-php/tree/3.394.6"
+                "source": "https://github.com/aws/aws-sdk-php/tree/3.394.7"
             },
-            "time": "2026-09-01T18:09:58+00:00"
+            "time": "2026-09-02T18:07:40+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -1703,21 +1703,21 @@
         },
         {
             "name": "keepsuit/laravel-liquid",
-            "version": "v0.6.2",
+            "version": "v0.6.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keepsuit/laravel-liquid.git",
-                "reference": "e163cf79f2cd84bd57fa91650f503d58058d5581"
+                "reference": "3f64f2cb3664c78ae260a2d2bf0efbdf71840b21"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keepsuit/laravel-liquid/zipball/e163cf79f2cd84bd57fa91650f503d58058d5581",
-                "reference": "e163cf79f2cd84bd57fa91650f503d58058d5581",
+                "url": "https://api.github.com/repos/keepsuit/laravel-liquid/zipball/3f64f2cb3664c78ae260a2d2bf0efbdf71840b21",
+                "reference": "3f64f2cb3664c78ae260a2d2bf0efbdf71840b21",
                 "shasum": ""
             },
             "require": {
                 "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
-                "keepsuit/liquid": "^0.7 || ^0.8 || ^0.9 || ^0.10 || ^0.11",
+                "keepsuit/liquid": "^0.7 || ^0.8 || ^0.9 || ^0.10 || ^0.11 || ^0.12",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.16",
                 "symfony/var-exporter": "^7.0 || ^8.0"
@@ -1771,28 +1771,27 @@
             ],
             "support": {
                 "issues": "https://github.com/keepsuit/laravel-liquid/issues",
-                "source": "https://github.com/keepsuit/laravel-liquid/tree/v0.6.2"
+                "source": "https://github.com/keepsuit/laravel-liquid/tree/v0.6.3"
             },
-            "time": "2026-07-23T09:36:35+00:00"
+            "time": "2026-08-31T14:33:02+00:00"
         },
         {
             "name": "keepsuit/liquid",
-            "version": "v0.11.0",
+            "version": "v0.12.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/keepsuit/php-liquid.git",
-                "reference": "53db5a3fbe407ab6f2aa993c42196cfa53f4ab84"
+                "reference": "f91f238054d4430d56e0e390ccabfe1faab95dd5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/keepsuit/php-liquid/zipball/53db5a3fbe407ab6f2aa993c42196cfa53f4ab84",
-                "reference": "53db5a3fbe407ab6f2aa993c42196cfa53f4ab84",
+                "url": "https://api.github.com/repos/keepsuit/php-liquid/zipball/f91f238054d4430d56e0e390ccabfe1faab95dd5",
+                "reference": "f91f238054d4430d56e0e390ccabfe1faab95dd5",
                 "shasum": ""
             },
             "require": {
                 "ext-mbstring": "*",
-                "php": "^8.2",
-                "symfony/polyfill-php85": "^1.33"
+                "php": "^8.2"
             },
             "require-dev": {
                 "laravel/pint": "^1.2",
@@ -1805,8 +1804,7 @@
                 "spatie/invade": "^2.0",
                 "spatie/ray": "^1.28",
                 "symfony/console": "^7.0 || ^8.0",
-                "symfony/var-exporter": "^7.0 || ^8.0",
-                "symfony/yaml": "^7.0 || ^8.0"
+                "symfony/var-exporter": "^7.0 || ^8.0"
             },
             "type": "library",
             "autoload": {
@@ -1833,9 +1831,9 @@
             ],
             "support": {
                 "issues": "https://github.com/keepsuit/php-liquid/issues",
-                "source": "https://github.com/keepsuit/php-liquid/tree/v0.11.0"
+                "source": "https://github.com/keepsuit/php-liquid/tree/v0.12.0"
             },
-            "time": "2026-07-10T15:23:30+00:00"
+            "time": "2026-08-04T14:37:07+00:00"
         },
         {
             "name": "laravel/fortify",
