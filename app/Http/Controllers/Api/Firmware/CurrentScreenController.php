@@ -60,6 +60,8 @@ class CurrentScreenController extends Controller
             'update_firmware' => false,
             'firmware_url' => $device->firmware_url,
             'special_function' => $device->special_function ?? 'sleep',
+            // Same hardcoded value as DisplayController. The comment there has the reason.
+            'temperature_profile' => 'a',
         ];
 
         if (config('services.trmnl.image_url_timeout')) {

@@ -51,6 +51,10 @@ class DisplayController extends Controller
             'firmware_url' => $device->firmware_url,
             'special_function' => $device->special_function ?? 'sleep',
             'maximum_compatibility' => $device->maximum_compatibility,
+            // Hardcoded for the TRMNL X until devices have a setting for it.
+            // The X firmware runs a slow panel clear before every refresh when temperature_profile is "a" or "b".
+            // Without the field it runs a fast clear on 7 of 8 refreshes. The fast clear leaves ghosted grays.
+            'temperature_profile' => 'a',
         ];
 
         if (config('services.trmnl.image_url_timeout')) {

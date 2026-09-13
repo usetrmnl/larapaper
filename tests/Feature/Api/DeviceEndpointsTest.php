@@ -49,6 +49,7 @@ test('device can fetch display data with valid credentials', function (): void {
             'firmware_url' => null,
             'special_function' => 'sleep',
             'maximum_compatibility' => false,
+            'temperature_profile' => 'a',
         ]);
 
     expect($device->fresh())
@@ -516,6 +517,7 @@ test('device can fetch current screen data', function (): void {
             'update_firmware' => false,
             'firmware_url' => null,
             'special_function' => 'sleep',
+            'temperature_profile' => 'a',
         ]);
 });
 
