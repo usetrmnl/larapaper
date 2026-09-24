@@ -8,6 +8,8 @@ services:
             #- APP_KEY=
             # Base URL of the application
             #- APP_URL=
+            # Set to true if running behind a reverse proxy that terminates HTTPS (e.g. Nginx, Traefik, Cloudflare Tunnel)
+            #- FORCE_HTTPS=true
             - PHP_OPCACHE_ENABLE=1
             - TRMNL_PROXY_REFRESH_MINUTES=15
             - DB_DATABASE=database/storage/database.sqlite
