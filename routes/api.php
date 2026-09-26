@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CompanionController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\DeviceModelController;
 use App\Http\Controllers\Api\DisplayAliasController;
@@ -49,6 +50,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'import']);
 
     Route::get('/me', [PluginSettingsController::class, 'me']);
+    Route::prefix('companion')->group(function (): void {
+        Route::get('/me', [CompanionController::class, 'me']);
+        Route::get('/plugin_settings', [CompanionController::class, 'pluginSettings']);
+        Route::post('/plugin_settings/{plugin}/data', [CompanionController::class, 'storeData']);
+    });
     Route::get('/plugin_settings', [PluginSettingsController::class, 'index']);
     Route::post('/plugin_settings', [PluginSettingsController::class, 'store']);
     Route::delete('/plugin_settings/{trmnlp_id}', [PluginSettingsController::class, 'destroy']);

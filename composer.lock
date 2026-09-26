@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d42cdca71dd799c5f7bfd57a4817ddda",
+    "content-hash": "74bc8934689f8fd6edb1c3af85e3fcf4",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -5512,6 +5512,70 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.4"
             },
             "time": "2026-09-16T11:39:30+00:00"
+        },
+        {
+            "name": "rybakit/msgpack",
+            "version": "v0.11.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rybakit/msgpack.php.git",
+                "reference": "b3f830c564f3c7033666427ec32427cf28df9256"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rybakit/msgpack.php/zipball/b3f830c564f3c7033666427ec32427cf28df9256",
+                "reference": "b3f830c564f3c7033666427ec32427cf28df9256",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2",
+                "php-64bit": "*"
+            },
+            "require-dev": {
+                "ext-decimal": "*",
+                "ext-gmp": "*",
+                "friendsofphp/php-cs-fixer": "^3",
+                "phpunit/phpunit": "^11",
+                "vimeo/psalm": "^5 || ^6"
+            },
+            "suggest": {
+                "ext-decimal": "For converting overflowed integers to Decimal objects",
+                "ext-gmp": "For converting overflowed integers to GMP objects"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MessagePack\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Eugene Leonovich",
+                    "email": "gen.work@gmail.com"
+                }
+            ],
+            "description": "A pure PHP implementation of the MessagePack serialization format.",
+            "keywords": [
+                "messagepack",
+                "msgpack",
+                "pure",
+                "streaming"
+            ],
+            "support": {
+                "issues": "https://github.com/rybakit/msgpack.php/issues",
+                "source": "https://github.com/rybakit/msgpack.php/tree/v0.11.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/rybakit",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-25T21:56:28+00:00"
         },
         {
             "name": "spatie/browsershot",

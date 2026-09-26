@@ -963,6 +963,57 @@ HTML;
             </div>
         </flux:modal>
 
+        <flux:modal name="webhook-instructions" class="md:max-w-lg">
+            <div class="space-y-6">
+                <div>
+                    <flux:heading size="lg">Webhook</flux:heading>
+                </div>
+
+                <flux:field>
+                    <flux:label>Webhook URL</flux:label>
+                    <flux:input
+                        :value="route('api.custom_plugins.webhook', ['plugin' => $plugin->uuid])"
+                        class="mt-1 block w-full font-mono"
+                        readonly
+                        copyable
+                    />
+                </flux:field>
+
+                <flux:text>
+                    POST JSON with <code>merge_variables</code> to replace data, or add <code>merge_strategy</code> of
+                    <code>deep_merge</code> or <code>stream</code>. GET the same URL to retrieve the latest stored
+                    <code>merge_variables</code>.
+                    <a
+                        href="https://docs.trmnl.com/go/private-plugins/webhooks#update-existing-content"
+                        target="_blank"
+                        class="underline"
+                    >Docs</a>
+                </flux:text>
+
+                <flux:separator />
+
+                <flux:callout variant="secondary" icon="device-phone-mobile">
+                    <flux:callout.heading>TRMNL Companion app</flux:callout.heading>
+                    <flux:callout.text>
+                        Create an
+                        <a href="{{ route('settings.api-tokens') }}" wire:navigate class="underline">API Token</a>. In
+                        the <a href="https://help.trmnl.com/en/articles/12294875-trmnl-companion-for-ios" target="_blank" class="underline">TRMNL Companion App</a>, enter that token as the Permanent API key and the base URL below.
+                    </flux:callout.text>
+                </flux:callout>
+
+                <flux:field>
+                    <flux:label>Companion API Base URL</flux:label>
+                    <flux:input :value="url('/api/companion')" class="mt-1 block w-full font-mono" readonly copyable />
+                </flux:field>
+
+                <div class="flex justify-end">
+                    <flux:modal.close>
+                        <flux:button variant="primary">Close</flux:button>
+                    </flux:modal.close>
+                </div>
+            </div>
+        </flux:modal>
+
         <flux:modal name="delete-plugin" class="min-w-[22rem] space-y-6">
             <div>
                 <flux:heading size="lg">Delete {{ $plugin->name }}?</flux:heading>
@@ -1289,16 +1340,12 @@ HTML;
                                     readonly
                                     copyable
                                 />
-                                <flux:description
-                                    >POST JSON with <code>merge_variables</code> to replace data, or add
-                                    <code>merge_strategy</code> of <code>deep_merge</code> or <code>stream</code>. GET
-                                    the same URL to retrieve the latest stored <code>merge_variables</code>.
-                                    <a
-                                        href="https://docs.trmnl.com/go/private-plugins/webhooks#update-existing-content"
-                                        target="_blank"
-                                        >Docs</a
-                                    ></flux:description>
                             </flux:field>
+                            <flux:modal.trigger name="webhook-instructions">
+                                <flux:button class="w-full mt-3" icon="information-circle">
+                                    How to push data?
+                                </flux:button>
+                            </flux:modal.trigger>
                         </div>
                     @elseif ($data_strategy === 'static')
                         <flux:text class="mb-2">Enter static JSON data in the Data Payload field.</flux:text>

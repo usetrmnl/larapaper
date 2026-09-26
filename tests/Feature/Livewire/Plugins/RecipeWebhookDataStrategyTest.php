@@ -19,5 +19,23 @@ test('recipe editor renders for webhook data strategy', function (): void {
     $expectedUrl = route('api.custom_plugins.webhook', ['plugin' => $plugin->uuid]);
 
     Livewire::test('plugins.recipe', ['plugin' => $plugin])
-        ->assertSee($expectedUrl, false);
+        ->assertSee($expectedUrl, false)
+        ->assertSee('How to push data?', false);
+});
+
+test('recipe editor webhook instructions modal includes companion setup details', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'webhook',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->assertSee('merge_variables', false)
+        ->assertSee(url('/api/companion'), false)
+        ->assertSee(route('settings.api-tokens'), false)
+        ->assertSee('TRMNL Companion app', false);
 });
