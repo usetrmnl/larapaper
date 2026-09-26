@@ -81,6 +81,27 @@ test('plugin can have polling body for POST requests', function (): void {
     expect($plugin->polling_body)->toBe('{"query": "query { user { id name } }"}');
 });
 
+test('updateDataPayload uses configured http client timeout', function (): void {
+    config(['app.http_client_timeout' => 45]);
+
+    $requestTimeout = null;
+    Http::fake(function ($request, array $options) use (&$requestTimeout) {
+        $requestTimeout = $options['timeout'] ?? null;
+
+        return Http::response(['temperature' => 72], 200);
+    });
+
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://example.com/weather',
+        'polling_verb' => 'get',
+    ]);
+
+    $plugin->updateDataPayload();
+
+    expect($requestTimeout)->toBe(45);
+});
+
 test('updateDataPayload sends POST request with body when polling_verb is post', function (): void {
     Http::fake([
         'https://example.com/api' => Http::response(['success' => true], 200),

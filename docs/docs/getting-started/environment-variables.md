@@ -16,4 +16,5 @@ description: LaraPaper environment configuration reference.
 | `TRUSTED_PROXIES` | Trusted proxy CIDRs, e.g. `"172.0.0.0/8"` or `*` | `null` |
 | `PHP_OPCACHE_ENABLE` | Enable PHP OPcache | `0` |
 | `TRMNL_IMAGE_URL_TIMEOUT` | Display endpoint response timeout (seconds) | `30` |
+| `HTTP_CLIENT_TIMEOUT` | Outbound HTTP timeout when fetching recipe polling URLs (seconds) | `10` |
 | `APP_TIMEZONE` | PHP timezone (UTC recommended) | `UTC` |

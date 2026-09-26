@@ -491,10 +491,11 @@ class Plugin extends Model
         $contentType = $headers['Content-Type'] ?? 'application/json';
 
         $isPost = $this->polling_verb === 'post';
-        $responses = Http::pool(function (Pool $pool) use ($urls, $headers, $resolvedBody, $contentType, $isPost): array {
+        $httpClientTimeout = config('app.http_client_timeout');
+        $responses = Http::pool(function (Pool $pool) use ($urls, $headers, $resolvedBody, $contentType, $isPost, $httpClientTimeout): array {
             $requests = [];
             foreach ($urls as $url) {
-                $request = $pool->withHeaders($headers)->timeout(10);
+                $request = $pool->withHeaders($headers)->timeout($httpClientTimeout);
                 if ($isPost && $resolvedBody !== null) {
                     $request = $request->withBody($resolvedBody, $contentType);
                 }
