@@ -103,7 +103,13 @@ new class extends Component
             <h3 class="text-lg font-semibold dark:text-gray-100">TRMNL Companion app</h3>
             <flux:callout variant="secondary" icon="device-phone-mobile" class="mt-4">
                 <flux:callout.text>
-                    Push data from the <a href="https://help.trmnl.com/en/articles/12294875-trmnl-companion-for-ios" target="_blank" class="underline">TRMNL Companion App</a> to webhook recipes.
+                    Push data from the
+                    <a
+                        href="https://help.trmnl.com/en/articles/12294875-trmnl-companion-for-ios"
+                        target="_blank"
+                        class="underline"
+                    >TRMNL Companion App</a>
+                    to webhook recipes.
                 </flux:callout.text>
             </flux:callout>
 
@@ -124,7 +130,8 @@ new class extends Component
                 </div>
                 <flux:text class="mt-2 text-zinc-500">
                     Alternatively, create a new
-                    <a href="{{ route('settings.api-tokens') }}" wire:navigate class="underline">API Token</a> for just the Companion app.
+                    <a href="{{ route('settings.api-tokens') }}" wire:navigate class="underline">API Token</a> for just
+                    the Companion app.
                 </flux:text>
             </div>
         </div>

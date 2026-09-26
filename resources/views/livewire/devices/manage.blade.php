@@ -200,7 +200,9 @@ new class extends Component
                     @if (auth()->id() === 1)
                         <div class="space-y-3">
                             <livewire:actions.device-auto-join :key="'create-device-modal'" />
-                            <flux:text>Click the button above to permit auto join. Then point the device at this server's base url to finish setup. After it appears, add recipes to a device playlist to get started.</flux:text>
+                            <flux:text>
+                                Click the button above to permit auto join. Then point the device at this server's base url to finish setup. After it appears, add recipes to a device playlist to get started.
+                            </flux:text>
                         </div>
                         <flux:separator text="Or add manually" />
                     @endif
@@ -440,7 +442,7 @@ new class extends Component
                         </tr>
                     @endforeach
 
-                    <!--[if ENDBLOCK[endif]-->
+                    <!--[if ENDBLOCK]><![endif]-->
                 </tbody>
             </table>
         </div>

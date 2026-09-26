@@ -997,7 +997,13 @@ HTML;
                     <flux:callout.text>
                         Create an
                         <a href="{{ route('settings.api-tokens') }}" wire:navigate class="underline">API Token</a>. In
-                        the <a href="https://help.trmnl.com/en/articles/12294875-trmnl-companion-for-ios" target="_blank" class="underline">TRMNL Companion App</a>, enter that token as the Permanent API key and the base URL below.
+                        the
+                        <a
+                            href="https://help.trmnl.com/en/articles/12294875-trmnl-companion-for-ios"
+                            target="_blank"
+                            class="underline"
+                            >TRMNL Companion App</a
+                        >, enter that token as the Permanent API key and the base URL below.
                     </flux:callout.text>
                 </flux:callout>
 
@@ -1342,7 +1348,7 @@ HTML;
                                 />
                             </flux:field>
                             <flux:modal.trigger name="webhook-instructions">
-                                <flux:button class="w-full mt-3" icon="information-circle">
+                                <flux:button class="mt-3 w-full" icon="information-circle">
                                     How to push data?
                                 </flux:button>
                             </flux:modal.trigger>

@@ -51,7 +51,7 @@
         </defs>
     </svg>
 @else
-    <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000" >
+    <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
         <defs>
             <clipPath id="canvas">
                 <rect width="1000" height="1000" rx="200" ry="200" />
@@ -63,7 +63,7 @@
             <rect x="150" y="237.5" width="700" height="525" rx="36" fill="currentColor" />
             <rect x="198" y="285.5" width="604" height="399" rx="12" fill="#F8654B" />
             <!-- Pixelify Sans "LP" -->
-            <path fill="currentColor" fill-rule="evenodd" d="M524.4 614.66V392.04h36.7v-36.7h113.73v36.7h37.1v112.92h-37.1v36.7h-109.7v73Zm40.73-113.73H670.8V396.07H565.13ZM324.77 614.66v-36.3h-36.7V355.34h40.73v219h105.66v-36.7h41.14v40.72h-37.1v36.3Z"/>
+            <path fill="currentColor" fill-rule="evenodd" d="M524.4 614.66V392.04h36.7v-36.7h113.73v36.7h37.1v112.92h-37.1v36.7h-109.7v73Zm40.73-113.73H670.8V396.07H565.13ZM324.77 614.66v-36.3h-36.7V355.34h40.73v219h105.66v-36.7h41.14v40.72h-37.1v36.3Z" />
         </g>
     </svg>
 @endif
