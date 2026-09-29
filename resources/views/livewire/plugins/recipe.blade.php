@@ -4,6 +4,7 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
 use App\Services\PluginExportService;
+use App\Support\UserBladeExecution;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Keepsuit\Liquid\Exceptions\LiquidException;
@@ -82,23 +83,28 @@ new class extends Component
         $this->configuration_template = $this->plugin->configuration_template ?? [];
 
         if ($this->plugin->render_markup_view) {
+            $this->view_content = null;
+            $detectedLanguage = 'blade';
+
             try {
                 $basePath = resource_path('views/'.str_replace('.', '/', $this->plugin->render_markup_view));
-                $paths = [
-                    $basePath.'.blade.php',
-                    $basePath.'.liquid',
+                $candidates = [
+                    $basePath.'.blade.php' => 'blade',
+                    $basePath.'.liquid' => 'liquid',
                 ];
 
-                $this->view_content = null;
-                foreach ($paths as $path) {
+                foreach ($candidates as $path => $language) {
                     if (file_exists($path)) {
                         $this->view_content = file_get_contents($path);
+                        $detectedLanguage = $language;
                         break;
                     }
                 }
             } catch (Exception $e) {
                 $this->view_content = null;
             }
+
+            $this->markup_language = $this->plugin->markup_language ?? $detectedLanguage;
         } else {
             // Initialize layout markups from plugin columns
             $this->markup_layouts = [
@@ -147,6 +153,32 @@ new class extends Component
         $this->polling_header = $this->plugin->polling_header;
         $this->polling_body = $this->plugin->polling_body;
         $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
+    }
+
+    public function userBladeIsAllowed(): bool
+    {
+        return UserBladeExecution::allowed();
+    }
+
+    public function showsBladeDisabledCallout(): bool
+    {
+        if ($this->userBladeIsAllowed()) {
+            return false;
+        }
+
+        return ($this->markup_language ?? 'blade') !== 'liquid';
+    }
+
+    public function userBladeRenderingIsBlocked(): bool
+    {
+        if (UserBladeExecution::allowed() || filled($this->plugin->render_markup_view)) {
+            return false;
+        }
+
+        $editorLanguage = $this->markup_language ?? 'blade';
+        $storedLanguage = $this->plugin->markup_language ?? 'blade';
+
+        return $editorLanguage !== 'liquid' || $storedLanguage !== 'liquid';
     }
 
     public function saveMarkup(): void
@@ -255,26 +287,32 @@ new class extends Component
         return 'Responsive';
     }
 
-    protected array $rules = [
-        'name' => 'required|string|max:255',
-        'data_stale_minutes' => 'required|integer|min:1',
-        'data_strategy' => 'required|string|in:polling,webhook,static',
-        'polling_url' => 'required_if:data_strategy,polling|nullable',
-        'polling_verb' => 'required|string|in:get,post',
-        'polling_header' => 'nullable|string|max:10240',
-        'polling_body' => 'nullable|string',
-        'data_payload' => 'required_if:data_strategy,static|nullable|json',
-        'markup_code' => 'nullable|string',
-        'markup_language' => 'nullable|string|in:blade,liquid',
-        'checked_devices' => 'array',
-        'device_playlist_names' => 'array',
-        'device_playlists' => 'array',
-        'device_weekdays' => 'array',
-        'device_active_from' => 'array',
-        'device_active_until' => 'array',
-        'no_bleed' => 'boolean',
-        'dark_mode' => 'boolean',
-    ];
+    /**
+     * @return array<string, mixed>
+     */
+    protected function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'data_stale_minutes' => 'required|integer|min:1',
+            'data_strategy' => 'required|string|in:polling,webhook,static',
+            'polling_url' => 'required_if:data_strategy,polling|nullable',
+            'polling_verb' => 'required|string|in:get,post',
+            'polling_header' => 'nullable|string|max:10240',
+            'polling_body' => 'nullable|string',
+            'data_payload' => 'required_if:data_strategy,static|nullable|json',
+            'markup_code' => 'nullable|string',
+            'markup_language' => 'nullable|string|in:blade,liquid',
+            'checked_devices' => 'array',
+            'device_playlist_names' => 'array',
+            'device_playlists' => 'array',
+            'device_weekdays' => 'array',
+            'device_active_from' => 'array',
+            'device_active_until' => 'array',
+            'no_bleed' => 'boolean',
+            'dark_mode' => 'boolean',
+        ];
+    }
 
     public function editSettings()
     {
@@ -518,6 +556,12 @@ HTML;
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
 
+        if ($this->userBladeRenderingIsBlocked()) {
+            $this->dispatch('preview-error', message: UserBladeExecution::DISABLED_MESSAGE);
+
+            return;
+        }
+
         $this->preview_size = $size;
 
         // If data strategy is polling and data_payload is null, fetch the data first
@@ -578,6 +622,12 @@ HTML;
     public function renderImage(): void
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+
+        if ($this->userBladeRenderingIsBlocked()) {
+            $this->dispatch('preview-error', message: UserBladeExecution::DISABLED_MESSAGE);
+
+            return;
+        }
 
         if ($this->plugin->data_strategy === 'polling' && $this->plugin->data_payload === null) {
             $this->updateData();
@@ -662,6 +712,10 @@ HTML;
 
     public function updatedPreviewDeviceModelId(): void
     {
+        if ($this->userBladeRenderingIsBlocked()) {
+            return;
+        }
+
         $this->renderPreview($this->preview_size);
     }
 
@@ -745,20 +799,20 @@ HTML;
                     <flux:button
                         icon="eye"
                         wire:click="renderPreview"
-                        :disabled="$plugin->hasMissingRequiredConfigurationFields()"
+                        :disabled="$plugin->hasMissingRequiredConfigurationFields() || $this->userBladeRenderingIsBlocked()"
                     >Preview</flux:button>
                 </flux:modal.trigger>
                 <flux:dropdown>
                     <flux:button
                         icon="chevron-down"
-                        :disabled="$plugin->hasMissingRequiredConfigurationFields()"
+                        :disabled="$plugin->hasMissingRequiredConfigurationFields() || $this->userBladeRenderingIsBlocked()"
                     ></flux:button>
                     <flux:menu>
                         <flux:modal.trigger name="preview-plugin">
                             <flux:menu.item
                                 icon="mashup-1Tx1B"
                                 wire:click="renderPreview('half_horizontal')"
-                                :disabled="$plugin->hasMissingRequiredConfigurationFields()"
+                                :disabled="$plugin->hasMissingRequiredConfigurationFields() || $this->userBladeRenderingIsBlocked()"
                             >
                                 Half-Horizontal
                             </flux:menu.item>
@@ -768,7 +822,7 @@ HTML;
                             <flux:menu.item
                                 icon="mashup-1Lx1R"
                                 wire:click="renderPreview('half_vertical')"
-                                :disabled="$plugin->hasMissingRequiredConfigurationFields()"
+                                :disabled="$plugin->hasMissingRequiredConfigurationFields() || $this->userBladeRenderingIsBlocked()"
                             >
                                 Half-Vertical
                             </flux:menu.item>
@@ -778,7 +832,7 @@ HTML;
                             <flux:menu.item
                                 icon="mashup-2x2"
                                 wire:click="renderPreview('quadrant')"
-                                :disabled="$plugin->hasMissingRequiredConfigurationFields()"
+                                :disabled="$plugin->hasMissingRequiredConfigurationFields() || $this->userBladeRenderingIsBlocked()"
                             >
                                 Quadrant</flux:menu.item>
                         </flux:modal.trigger>
@@ -1052,7 +1106,8 @@ HTML;
                             @endforeach
                         </flux:select>
                     </flux:field>
-                    <flux:button icon="camera" wire:click="renderImage">Render Image</flux:button>
+                    <flux:button icon="camera" wire:click="renderImage" :disabled="$this->userBladeRenderingIsBlocked()"
+                        >Render Image</flux:button>
                 </div>
 
                 <div
@@ -1433,10 +1488,28 @@ HTML;
         <flux:separator class="my-5" />
         <div>
             <h3 class="text-xl font-semibold dark:text-gray-100">Markup</h3>
+            @if ($this->showsBladeDisabledCallout())
+                <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4 mb-4">
+                    <flux:callout.heading>Blade markup is disabled</flux:callout.heading>
+                    <flux:callout.text>
+                        You can still write and save Blade markup. Preview and device rendering are disabled because
+                        Blade executes PHP. Built-in example views still preview and render. To compile user Blade, set
+                        <code>INSECURE_BLADE_ALLOW_PHP_EXECUTION=true</code>
+                        in the environment. That flag is remote code execution for every registered user — leave it
+                        false on a shared instance.
+                    </flux:callout.text>
+                </flux:callout>
+            @endif
             @if ($plugin->render_markup_view)
                 <div>
                     Edit view
                     <span class="text-accent mb-4 font-mono">{{ $plugin->render_markup_view }}</span> to update.
+                </div>
+                <div class="mt-4 mb-4 flex items-center gap-6">
+                    <div class="flex flex-1 items-center">
+                        <span class="pr-2">Template language</span>
+                        <span>{{ $markup_language === 'liquid' ? 'Liquid' : 'Blade' }}</span>
+                    </div>
                 </div>
                 <div class="mt-4 mb-4">
                     <flux:field>
@@ -1453,12 +1526,12 @@ HTML;
                         <div
                             x-data="codeEditorFormComponent({
                                 isDisabled: @js((bool) $plugin->render_markup_view),
-                                language: 'liquid',
-                                state: $wire.entangle('markup_code'),
+                                language: @js($markup_language === 'liquid' ? 'liquid' : 'html'),
+                                state: $wire.entangle('view_content'),
                                 textareaId: @js($textareaId)
                             })"
                             wire:ignore
-                            wire:key="cm-{{ $textareaId }}"
+                            wire:key="cm-{{ $textareaId }}-{{ $markup_language }}"
                             class="h-[300px] min-h-[300px] resize-y overflow-hidden"
                         >
                             <!-- Loading state -->
@@ -1548,7 +1621,7 @@ HTML;
                                         textareaId: @js($textareaId)
                                     })"
                                     wire:ignore
-                                    wire:key="cm-{{ $textareaId }}"
+                                    wire:key="cm-{{ $textareaId }}-{{ $markup_language }}"
                                     class="h-[300px] min-h-[300px] resize-y overflow-hidden"
                                 >
                                     <!-- Loading state -->

@@ -17,7 +17,7 @@ For production, generate an application key and set it in your environment:
 php artisan key:generate --show
 ```
 
-Set `APP_KEY=` in your environment. For personal use you can disable registration (see [Environment variables](./environment-variables)).
+Set `APP_KEY=` in your environment. The first account can always be created. Further signup needs `MULTIUSER_REGISTRATION_ENABLED=1` (see [Environment variables](./environment-variables)).
 
 ### Backup database
 
@@ -62,5 +62,5 @@ location /larapaper/ {
 ## First login
 
 - **Local:** open `http://localhost:4567` and sign in with `admin@example.com` / `admin@example.com` (after seeding).
-- **Production:** register a user, or set `REGISTRATION_ENABLED=0` to disable public registration.
+- **Production:** register the first account. Further signup stays closed unless `MULTIUSER_REGISTRATION_ENABLED=1`. That also disables user-authored Blade unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`, which allows any registered user to execute PHP as the web server user.
 - **OpenID Connect:** optional. See [Authentication](./authentication).

@@ -7,7 +7,7 @@ description: Connect AI tools to LaraPaper recipes over the Model Context Protoc
 
 LaraPaper can expose an HTTP [Model Context Protocol](https://modelcontextprotocol.io/) server so AI clients (Cursor, Claude Code, and others) can list, create, update, and render **recipe** plugins for the authenticated user.
 
-The endpoint is `POST /mcp`. Native plugins are not available through these tools. Recipes are identified by **numeric database ID**, not UUID. Markup defaults to Blade; pass `markup_language: liquid` when writing Liquid templates.
+The endpoint is `POST /mcp`. Native plugins are not available through these tools. Recipes are identified by **numeric database ID**, not UUID. Markup defaults to Blade; pass `markup_language: liquid` when writing Liquid templates. When `MULTIUSER_REGISTRATION_ENABLED` is on, Blade markup can still be saved, but it is not rendered unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION` is enabled.
 
 ## Enable
 

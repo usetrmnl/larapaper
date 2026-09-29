@@ -90,6 +90,27 @@ it('oidc callback links existing user by email (placeholder)', function (): void
     expect(true)->toBeTrue(); // Placeholder assertion
 });
 
+it('creates the first user via oidc when no account exists', function (): void {
+    expect(User::query()->count())->toBe(0);
+
+    $response = $this->get(route('auth.oidc.callback'));
+
+    $response->assertRedirect(route('dashboard', absolute: false));
+
+    expect(User::query()->count())->toBe(1);
+});
+
+it('does not create another user via oidc when multi-user registration is off', function (): void {
+    User::factory()->create();
+
+    $response = $this->get(route('auth.oidc.callback'));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors(['oidc' => 'Registration is closed.']);
+
+    expect(User::query()->count())->toBe(1);
+});
+
 it('oidc callback fails when disabled', function (): void {
     Config::set('services.oidc.enabled', false);
 

@@ -16,6 +16,7 @@ use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
 use App\Services\PluginImportService;
+use App\Support\UserBladeExecution;
 use Carbon\Carbon;
 use Closure;
 use Exception;
@@ -861,6 +862,10 @@ class Plugin extends Model
                     $renderedContent = $template->render($liquidContext);
                 }
             } else {
+                if (! UserBladeExecution::allowed()) {
+                    throw new InvalidArgumentException(UserBladeExecution::DISABLED_MESSAGE);
+                }
+
                 $renderedContent = Blade::render($markup, [
                     'size' => $size,
                     'data' => $this->data_payload,

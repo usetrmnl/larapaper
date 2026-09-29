@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Registration;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -63,10 +64,14 @@ class OidcController extends Controller
         try {
             $oidcUser = Socialite::driver('oidc')->user();
 
-            // Find or create the user
             $user = $this->findOrCreateUser($oidcUser);
 
-            // Log the user in
+            if (! $user instanceof User) {
+                return redirect()->route('login')->withErrors([
+                    'oidc' => 'Registration is closed.',
+                ]);
+            }
+
             Auth::login($user, true);
 
             return redirect()->intended(route('dashboard', absolute: false));
@@ -81,7 +86,7 @@ class OidcController extends Controller
     /**
      * Find or create a user based on OIDC information.
      */
-    protected function findOrCreateUser($oidcUser)
+    protected function findOrCreateUser(mixed $oidcUser): ?User
     {
         // First, try to find user by OIDC subject ID
         $user = User::where('oidc_sub', $oidcUser->getId())->first();
@@ -111,7 +116,10 @@ class OidcController extends Controller
             }
         }
 
-        // Create new user
+        if (! Registration::isOpen()) {
+            return null;
+        }
+
         return User::create([
             'oidc_sub' => $oidcUser->getId(),
             'name' => $oidcUser->getName() ?: 'OIDC User',

@@ -8,7 +8,7 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        @if (config('app.passkeys.enabled'))
+        @if (Route::has('passkey.login-options'))
             <x-passkey-verify />
         @endif
 
@@ -57,7 +57,7 @@
             </div>
         </form>
 
-        @if (Route::has('register'))
+        @if (Route::has('register') && \App\Support\Registration::isOpen())
             <div class="space-x-1 text-center text-sm text-zinc-600 rtl:space-x-reverse dark:text-zinc-400">
                 <span>{{ __('Don\'t have an account?') }}</span>
                 <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreScreenRequest;
 use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
+use App\Support\UserBladeExecution;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Blade;
 
@@ -23,7 +24,13 @@ class ScreenController extends Controller
             ], 404);
         }
 
-        $view = Blade::render($request->input('image.content'));
+        $markup = (string) $request->input('image.content');
+
+        if (UserBladeExecution::allowed()) {
+            $view = Blade::render($markup);
+        } else {
+            $view = $markup;
+        }
         GenerateScreenJob::dispatchSync($device->id, null, $view);
 
         return response()->json([

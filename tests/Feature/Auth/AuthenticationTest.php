@@ -11,18 +11,7 @@ test('login screen can be rendered', function (): void {
 });
 
 test('login screen shows passkey sign-in when passkeys are enabled', function (): void {
-    config(['app.passkeys.enabled' => true]);
-
-    Features::passkeys([
-        'confirmPassword' => true,
-    ]);
-
-    $features = array_values(array_filter(config('fortify.features', [])));
-    $passkeysFeature = Features::passkeys();
-    if (! in_array($passkeysFeature, $features, true)) {
-        $features[] = $passkeysFeature;
-    }
-    config(['fortify.features' => $features]);
+    $this->bootWithPasskeysEnabled();
 
     $this->skipUnlessFortifyHas(Features::passkeys());
 

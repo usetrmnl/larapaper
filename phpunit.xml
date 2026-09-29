@@ -20,6 +20,8 @@
     <php>
         <env name="APP_URL" value="http://localhost"/>
         <env name="APP_TIMEZONE" value="UTC"/>
+        <env name="MULTIUSER_REGISTRATION_ENABLED" value="false"/>
+        <env name="INSECURE_BLADE_ALLOW_PHP_EXECUTION" value="false"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

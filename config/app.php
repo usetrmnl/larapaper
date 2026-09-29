@@ -123,8 +123,34 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'registration' => [
-        'enabled' => env('REGISTRATION_ENABLED', true),
+    /*
+    |--------------------------------------------------------------------------
+    | Multi-user registration (MULTIUSER_REGISTRATION_ENABLED)
+    |--------------------------------------------------------------------------
+    |
+    | The first account can always be created. When this flag is true, further
+    | accounts can register and user-authored Blade is disabled unless
+    | allow_php_execution is set. Those accounts share this server.
+    |
+    */
+
+    'multiuser_registration' => [
+        'enabled' => filter_var(env('MULTIUSER_REGISTRATION_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Insecure Blade PHP execution
+    |--------------------------------------------------------------------------
+    |
+    | User-authored Blade is compiled to PHP. In multi-user mode that is remote
+    | code execution for every registered user. Leave this false unless that
+    | risk is accepted. Single-user mode already runs Blade in-process.
+    |
+    */
+
+    'blade' => [
+        'allow_php_execution' => filter_var(env('INSECURE_BLADE_ALLOW_PHP_EXECUTION', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /*

@@ -145,7 +145,7 @@ return [
     */
 
     'features' => [
-        config('app.registration.enabled') && Features::registration(),
+        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         // Features::updateProfileInformation(),

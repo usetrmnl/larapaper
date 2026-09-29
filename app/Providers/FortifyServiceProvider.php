@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Support\Registration;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
@@ -51,7 +52,11 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::verifyEmailView(fn (): Factory|View => view('pages::auth.verify-email'));
         Fortify::twoFactorChallengeView(fn (): Factory|View => view('pages::auth.two-factor-challenge'));
         Fortify::confirmPasswordView(fn (): Factory|View => view('pages::auth.confirm-password'));
-        Fortify::registerView(fn (): Factory|View => view('pages::auth.register'));
+        Fortify::registerView(function (): Factory|View {
+            abort_unless(Registration::isOpen(), 404);
+
+            return view('pages::auth.register');
+        });
         Fortify::resetPasswordView(fn (): Factory|View => view('pages::auth.reset-password'));
         Fortify::requestPasswordResetLinkView(fn (): Factory|View => view('pages::auth.forgot-password'));
     }

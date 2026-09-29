@@ -27,7 +27,7 @@ use Laravel\Mcp\Server\Attributes\Version;
     4. Re-run render-recipe until it succeeds.
     5. Use create-recipe when a new recipe is needed. It returns the recipe ID and browser URL.
 
-    Recipes use blade markup by default. Pass markup_language: liquid when writing Liquid templates.
+    Recipes use Blade markup by default. Pass markup_language: liquid when writing Liquid templates. When MULTIUSER_REGISTRATION_ENABLED is on, Blade markup can still be saved, but render-recipe does not compile it unless INSECURE_BLADE_ALLOW_PHP_EXECUTION is enabled.
 
     Recipe tools identify recipes by numeric database ID, not UUID.
 

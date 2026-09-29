@@ -7,7 +7,7 @@
 
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        @if (config('app.passkeys.enabled'))
+        @if (Route::has('passkey.confirm-options'))
             <x-passkey-verify
                 options-route="passkey.confirm-options"
                 submit-route="passkey.confirm"
