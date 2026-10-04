@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf5b094493654c441de35d5d8214b671",
+    "content-hash": "c760f059ad672c705cffc1acab1fc14d",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -284,18 +284,12 @@
             "time": "2026-07-29T16:02:43+00:00"
         },
         {
-            "name": "bnussbau/laravel-trmnl-blade",
-            "version": "3.3.1",
+            "name": "bnussbau/trmnl-blade",
+            "version": "dev-feat/self-hosted-assets",
             "source": {
                 "type": "git",
-                "url": "https://github.com/bnussbau/trmnl-blade.git",
-                "reference": "3735cecc27d7dafeea372a1bd90e7fd5c48e1764"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/bnussbau/trmnl-blade/zipball/3735cecc27d7dafeea372a1bd90e7fd5c48e1764",
-                "reference": "3735cecc27d7dafeea372a1bd90e7fd5c48e1764",
-                "shasum": ""
+                "url": "https://github.com/iainlane/trmnl-blade.git",
+                "reference": "d28f86ee29d21b0d233cccaa2fde8df2e9259f04"
             },
             "require": {
                 "illuminate/contracts": "^10.0||^11.0||^12.0||^13.0",
@@ -313,12 +307,12 @@
             "type": "library",
             "extra": {
                 "laravel": {
-                    "aliases": {
-                        "TrmnlBlade": "Bnussbau\\TrmnlBlade\\Facades\\TrmnlBlade"
-                    },
                     "providers": [
                         "Bnussbau\\TrmnlBlade\\TrmnlBladeServiceProvider"
-                    ]
+                    ],
+                    "aliases": {
+                        "TrmnlBlade": "Bnussbau\\TrmnlBlade\\Facades\\TrmnlBlade"
+                    }
                 }
             },
             "autoload": {
@@ -327,7 +321,32 @@
                     "Bnussbau\\TrmnlBlade\\Database\\Factories\\": "database/factories/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Bnussbau\\TrmnlBlade\\Tests\\": "tests/",
+                    "Workbench\\App\\": "workbench/app/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@composer run prepare"
+                ],
+                "prepare": [
+                    "@php vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -342,30 +361,12 @@
             "homepage": "https://github.com/bnussbau/trmnl-blade",
             "keywords": [
                 "Benjamin Nussbaum",
-                "TRMNL",
-                "blade",
-                "design system",
-                "laravel"
+                "Blade",
+                "Design System",
+                "Laravel",
+                "TRMNL"
             ],
-            "support": {
-                "issues": "https://github.com/bnussbau/trmnl-blade/issues",
-                "source": "https://github.com/bnussbau/trmnl-blade/tree/3.3.1"
-            },
-            "funding": [
-                {
-                    "url": "https://www.buymeacoffee.com/bnussbau",
-                    "type": "buy_me_a_coffee"
-                },
-                {
-                    "url": "https://trmnl.com/?ref=laravel-trmnl",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/bnussbau",
-                    "type": "github"
-                }
-            ],
-            "time": "2026-09-02T19:40:05+00:00"
+            "time": "2026-10-04T12:47:45+00:00"
         },
         {
             "name": "brick/math",
@@ -13955,7 +13956,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "bnussbau/trmnl-blade": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

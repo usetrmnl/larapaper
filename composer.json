@@ -10,14 +10,18 @@
         "laravel"
     ],
     "license": "MIT",
-    "repositories": [],
+    "repositories": [{
+        "name": "trmnl-blade",
+        "type": "git",
+        "url": "https://github.com/iainlane/trmnl-blade.git"
+    }],
     "require": {
         "php": "^8.4",
         "ext-imagick": "*",
         "ext-simplexml": "*",
         "ext-zip": "*",
         "bnussbau/epaper-pipeline-php": "^1.1",
-        "bnussbau/laravel-trmnl-blade": "^3.3",
+        "bnussbau/trmnl-blade": "dev-feat/self-hosted-assets",
         "hammerstone/sidecar": "^0.8.0",
         "keepsuit/laravel-liquid": "^0.6",
         "laravel/fortify": "^1.37",

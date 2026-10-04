@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Config;
 
 beforeEach(function (): void {
     Config::set('app.puppeteer_window_size_strategy', 'v2');
-    Config::set('services.trmnl.base_url', 'https://trmnl.test');
+    Config::set('trmnl-blade.framework_base_url', 'https://trmnl.test');
 });
 
 test('resolvedFrameworkVersion returns config default when framework_version is null', function (): void {
@@ -132,4 +132,32 @@ test('plugin render uses global default framework version when null', function (
 
     expect($html)->toContain('https://trmnl.test/css/3.1.1/plugins.css')
         ->and($html)->toContain('https://trmnl.test/js/3.1.1/plugins.js');
+});
+
+test('framework asset host does not change the recipe API and retains URL overrides', function (): void {
+    config([
+        'services.trmnl.base_url' => 'https://recipes.example.com',
+        'trmnl-blade.framework_base_url' => 'https://assets.example.com',
+        'trmnl-blade.framework_css_url' => 'https://override.example.com/plugins.css',
+        'trmnl-blade.framework_js_url' => 'https://override.example.com/plugins.js',
+    ]);
+
+    $html = Plugin::factory()->create([
+        'markup_language' => 'blade',
+        'render_markup' => '<div>Hello</div>',
+        'framework_version' => '2.3.7',
+    ])->render();
+
+    preg_match_all('/(?:href|src)="([^\"]+plugins\.(?:css|js))"/', $html, $matches);
+
+    expect([
+        'assets' => $matches[1],
+        'recipe_api' => config('services.trmnl.base_url'),
+    ])->toBe([
+        'assets' => [
+            'https://override.example.com/plugins.css',
+            'https://override.example.com/plugins.js',
+        ],
+        'recipe_api' => 'https://recipes.example.com',
+    ]);
 });

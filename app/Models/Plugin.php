@@ -746,6 +746,11 @@ class Plugin extends Model
             throw new InvalidArgumentException('Render method is only applicable for recipe plugins.');
         }
 
+        $assets = [
+            'highcharts_js_url' => config('trmnl-blade.highcharts_js_url'),
+            'chartkick_js_url' => config('trmnl-blade.chartkick_js_url'),
+        ];
+
         $markup = $this->getMarkupForSize($size);
 
         if ($markup) {
@@ -765,6 +770,7 @@ class Plugin extends Model
                     'config' => $this->configuration ?? [],
                     ...(is_array($this->data_payload) ? $this->data_payload : []),
                     'trmnl' => [
+                        'assets' => $assets,
                         'system' => [
                             'timestamp_utc' => now()->utc()->timestamp,
                         ],
@@ -841,6 +847,7 @@ class Plugin extends Model
                     'data' => $this->data_payload,
                     'config' => $this->configuration ?? [],
                     'trmnl' => [
+                        'assets' => $assets,
                         'system' => [
                             'timestamp_utc' => now()->utc()->timestamp,
                         ],
@@ -909,6 +916,7 @@ class Plugin extends Model
                     'size' => $size,
                     'data' => $this->data_payload,
                     'config' => $this->configuration ?? [],
+                    'trmnl' => ['assets' => $assets],
                 ])->render();
 
                 if ($size === 'full') {
@@ -940,6 +948,7 @@ class Plugin extends Model
                 'size' => $size,
                 'data' => $this->data_payload,
                 'config' => $this->configuration ?? [],
+                'trmnl' => ['assets' => $assets],
             ])->render();
 
         }
