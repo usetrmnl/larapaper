@@ -28,5 +28,9 @@ Framework CSS and JavaScript for recipe screens can be loaded from a mirror or l
 | `TRMNL_BLADE_FRAMEWORK_BASE_URL` | Base URL for versioned framework assets (`plugins.css`, `plugins.js`) | `https://trmnl.com` |
 | `TRMNL_BLADE_FRAMEWORK_CSS_URL` | Override the framework stylesheet URL | `null` |
 | `TRMNL_BLADE_FRAMEWORK_JS_URL` | Override the framework JavaScript URL | `null` |
+| `TRMNL_BLADE_HIGHCHARTS_JS_URL` | Highcharts script URL | `https://trmnl.com/js/highcharts/12.3.0/highcharts.js` |
+| `TRMNL_BLADE_CHARTKICK_JS_URL` | Chartkick script URL | `https://trmnl.com/js/chartkick/5.0.1/chartkick.min.js` |
 
 Explicit stylesheet and JavaScript URLs take precedence over the base URL and per-recipe framework version.
+
+Recipe render contexts expose the chart URLs as `trmnl.assets.highcharts_js_url` and `trmnl.assets.chartkick_js_url`, and the bundled pollen recipe uses them. Inline Blade and Liquid markup, including markup rendered by the external Liquid renderer, receive the same context. Recipes duplicated from the pollen recipe in earlier versions of LaraPaper contain literal trmnl.com script URLs. They keep loading the scripts from trmnl.com until those URLs are replaced with the `trmnl.assets` variables.
