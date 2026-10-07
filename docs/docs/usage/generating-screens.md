@@ -31,3 +31,16 @@ php artisan trmnl:screen:generate
   "markup": "<h1>Hello World</h1>"
 }
 ```
+
+## Fonts
+
+Inter fonts are included in the frontend build through [Fontsource]. Run
+`npm ci` and `npm run build` to produce the font stylesheet and files. Screens
+load the font stylesheet separately from the admin UI styles.
+
+HTML image rendering keeps the browser's file origin. Set `APP_URL` to the
+application URL that the renderer can access. The asset server must permit
+cross-origin font requests from the file origin, which sends `Origin: null`.
+This requirement also applies when `ASSET_URL` specifies a separate server.
+
+[Fontsource]: https://fontsource.org/fonts/inter

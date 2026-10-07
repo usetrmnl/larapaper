@@ -19,8 +19,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=Inter:300,400,500" rel="stylesheet"/>
+    @vite('resources/css/fonts.css')
     @if (config('trmnl-blade.framework_css_url'))
         <link rel="stylesheet"
               href="{{ config('trmnl-blade.framework_css_url') }}">

@@ -68,7 +68,8 @@ test('default handle webhook returns 404 json', function (): void {
     expect($response->getStatusCode())->toBe(404);
 });
 
-test('configure browser stage sets html from markup', function (): void {
+test('configure browser stage keeps the file origin', function (): void {
+    config(['app.url' => 'https://larapaper.example.com']);
     $handler = new class extends PluginHandler
     {
         public function key(): string
@@ -97,7 +98,15 @@ test('configure browser stage sets html from markup', function (): void {
 
     $html = new ReflectionClass(BrowserStage::class)->getProperty('html');
 
-    expect($html->getValue($stage))->toBe('<main>x</main>');
+    $options = new ReflectionClass(BrowserStage::class)->getProperty('browsershotOptions');
+
+    expect([
+        'html' => $html->getValue($stage),
+        'options' => $options->getValue($stage),
+    ])->toBe([
+        'html' => '<main>x</main>',
+        'options' => [],
+    ]);
 });
 
 test('default output is html', function (): void {
@@ -125,4 +134,23 @@ test('default output is html', function (): void {
     };
 
     expect($handler->output())->toBe(PluginOutput::Html);
+});
+
+test('screenshot browser stage retains the external page origin', function (): void {
+    config(['app.url' => 'https://larapaper.example.com']);
+
+    $stage = new BrowserStage;
+    (new App\Plugins\ScreenshotPlugin)->configureBrowserStage($stage, '', Plugin::factory()->make([
+        'configuration' => ['url' => 'https://example.com/page'],
+    ]));
+
+    $reflection = new ReflectionClass(BrowserStage::class);
+
+    expect([
+        'url' => $reflection->getProperty('url')->getValue($stage),
+        'options' => $reflection->getProperty('browsershotOptions')->getValue($stage),
+    ])->toBe([
+        'url' => 'https://example.com/page',
+        'options' => [],
+    ]);
 });
