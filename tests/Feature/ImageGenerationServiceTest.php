@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\ImageFormat;
+use App\Enums\ScaleLevel;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Services\ImageGenerationService;
@@ -377,6 +378,16 @@ it('imageMetadataMatches returns false when metadata differs', function (): void
     $device->refresh();
 
     expect(ImageGenerationService::imageMetadataMatches($stored, $device))->toBeFalse();
+});
+
+it('imageMetadataMatches returns false when the device scale level changes', function (): void {
+    $deviceModel = DeviceModel::factory()->create(['width' => 1872, 'height' => 1404]);
+    $device = Device::factory()->create(['device_model_id' => $deviceModel->id, 'scale_level' => null]);
+    $stored = ImageGenerationService::buildImageMetadataFromDevice($device);
+
+    $device->update(['scale_level' => ScaleLevel::REGULAR]);
+
+    expect(ImageGenerationService::imageMetadataMatches($stored, $device->refresh()))->toBeFalse();
 });
 
 it('resetIfNotCacheable clears recipe cache when metadata does not match', function (): void {

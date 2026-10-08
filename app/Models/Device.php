@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ScaleLevel;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
  * @property-read User|null $user
  * @property-read Device|null $mirrorDevice
  * @property-read bool $update_firmware
+ * @property ScaleLevel|null $scale_level
  */
 class Device extends Model
 {
@@ -53,6 +55,7 @@ class Device extends Model
         'special_function' => 'string',
         'pause_until' => 'datetime',
         'maximum_compatibility' => 'boolean',
+        'scale_level' => ScaleLevel::class,
     ];
 
     public function getBatteryPercentAttribute(): int|float
@@ -249,11 +252,11 @@ class Device extends Model
     }
 
     /**
-     * Get the scale level (e.g., large/xlarge/xxlarge) for the associated device model.
+     * Get the scale level (e.g., large/xlarge/xxlarge): the device's own, else the one its device model derives from its width.
      */
     public function scaleLevel(): ?string
     {
-        return $this->deviceModel?->scale_level;
+        return $this->scale_level->value ?? $this->deviceModel?->scale_level;
     }
 
     /**

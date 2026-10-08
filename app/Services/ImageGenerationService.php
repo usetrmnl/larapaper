@@ -461,7 +461,7 @@ class ImageGenerationService
     /**
      * Build canonical image metadata from a Device for cache comparison.
      *
-     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string}
+     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null}
      */
     public static function buildImageMetadataFromDevice(Device $device): array
     {
@@ -475,13 +475,14 @@ class ImageGenerationService
             'rotation' => $settings['rotation'] ?? 0,
             'palette_id' => $paletteId,
             'mime_type' => $settings['mime_type'],
+            'scale_level' => $device->scaleLevel(),
         ];
     }
 
     /**
      * Build canonical image metadata from a DeviceModel for cache comparison.
      *
-     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string}
+     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null}
      */
     public static function buildImageMetadataFromDeviceModel(DeviceModel $model): array
     {
@@ -491,6 +492,7 @@ class ImageGenerationService
             'rotation' => $model->rotation ?? 0,
             'palette_id' => $model->palette_id,
             'mime_type' => $model->mime_type,
+            'scale_level' => $model->scale_level,
         ];
     }
 
@@ -508,7 +510,7 @@ class ImageGenerationService
             ? self::buildImageMetadataFromDevice($deviceOrModel)
             : self::buildImageMetadataFromDeviceModel($deviceOrModel);
 
-        foreach (['width', 'height', 'rotation', 'palette_id', 'mime_type'] as $key) {
+        foreach (['width', 'height', 'rotation', 'palette_id', 'mime_type', 'scale_level'] as $key) {
             if (($stored[$key] ?? null) !== ($current[$key] ?? null)) {
                 return false;
             }

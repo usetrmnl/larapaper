@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FirmwareModel;
+use App\Enums\ScaleLevel;
 use App\Jobs\FirmwareDownloadJob;
 use App\Jobs\FirmwarePollJob;
 use App\Models\DeviceModel;
@@ -45,6 +46,9 @@ new class extends Component
 
     // Signal to device to use high compatibility approaches when redrawing content
     public $maximum_compatibility = false;
+
+    // Interface scale; null follows the device model
+    public $scale_level = null;
 
     // Sleep mode and special function
     public $sleep_mode_enabled = false;
@@ -99,6 +103,7 @@ new class extends Component
         $this->image_format = $device->image_format;
         $this->device_model_id = $device->device_model_id;
         $this->maximum_compatibility = $device->maximum_compatibility;
+        $this->scale_level = $device->scale_level?->value;
         $this->deviceModels = DeviceModel::orderBy('label')->get()->sortBy(function ($deviceModel) {
             // Put TRMNL models at the top, then sort alphabetically within each group
             $isTrmnl = str_starts_with($deviceModel->label, 'TRMNL');
@@ -184,6 +189,7 @@ new class extends Component
             'device_model_id' => 'nullable|exists:device_models,id',
             'mirror_device_id' => 'required_if:is_mirror,true',
             'maximum_compatibility' => 'boolean',
+            'scale_level' => ['nullable', Rule::enum(ScaleLevel::class)],
             'sleep_mode_enabled' => 'boolean',
             'sleep_mode_from' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
@@ -215,6 +221,7 @@ new class extends Component
             'device_model_id' => $deviceModelId,
             'mirror_device_id' => $this->is_mirror ? $this->mirror_device_id : null,
             'maximum_compatibility' => $this->maximum_compatibility,
+            'scale_level' => empty($this->scale_level) ? null : $this->scale_level,
             'sleep_mode_enabled' => $this->sleep_mode_enabled,
             'sleep_mode_from' => $this->sleep_mode_from,
             'sleep_mode_to' => $this->sleep_mode_to,
@@ -584,6 +591,20 @@ new class extends Component
                             @endforeach
                         </flux:select>
                     @endif
+
+                    <flux:select
+                        label="Scale"
+                        wire:model="scale_level"
+                        description="Size of text and spacing in screens. Automatic picks one from the screen width."
+                    >
+                        <flux:select.option value="">
+                            Automatic ({{ ScaleLevel::tryFrom($device->deviceModel?->scale_level ?? '')?->label() ?? 'Regular' }})
+                        </flux:select.option>
+                        @foreach (ScaleLevel::cases() as $scaleLevel)
+                            <flux:select.option value="{{ $scaleLevel->value }}">
+                                {{ $scaleLevel->label() }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
 
                     <flux:checkbox
                         wire:model="maximum_compatibility"
