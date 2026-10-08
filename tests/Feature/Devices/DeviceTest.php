@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\ScaleLevel;
 use App\Models\Device;
+use App\Models\DeviceModel;
 use Illuminate\Support\Carbon;
 
 test('device can be created with basic attributes', function (): void {
@@ -88,4 +90,18 @@ test('getSleepModeEndsInSeconds returns correct value for overnight sleep window
     expect($seconds)->toBe(2820);
 
     Carbon::setTestNow(); // Clear test time
+});
+
+test('scale level falls back to the device model when the device has none', function (): void {
+    $deviceModel = DeviceModel::factory()->create(['width' => 1872, 'height' => 1404]);
+    $device = Device::factory()->create(['device_model_id' => $deviceModel->id, 'scale_level' => null]);
+
+    expect($device->scaleLevel())->toBe('xxlarge');
+});
+
+test('scale level set on the device overrides the device model', function (): void {
+    $deviceModel = DeviceModel::factory()->create(['width' => 1872, 'height' => 1404]);
+    $device = Device::factory()->create(['device_model_id' => $deviceModel->id, 'scale_level' => ScaleLevel::REGULAR]);
+
+    expect($device->scaleLevel())->toBe('regular');
 });
