@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CompanionController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\DeviceModelController;
+use App\Http\Controllers\Api\DeviceRefreshController;
 use App\Http\Controllers\Api\DisplayAliasController;
 use App\Http\Controllers\Api\DisplayStatusController;
 use App\Http\Controllers\Api\DisplayUpdateController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\Firmware\ScreenController;
 use App\Http\Controllers\Api\Firmware\SetupController;
 use App\Http\Controllers\Api\PluginActionController;
 use App\Http\Controllers\Api\PluginArchiveController;
+use App\Http\Controllers\Api\PluginRefreshController;
 use App\Http\Controllers\Api\PluginSettingsController;
 use App\Http\Controllers\Api\PluginWebhookController;
 use App\Http\Controllers\Api\UserController;
@@ -39,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/devices', [DeviceController::class, 'index']);
     Route::get('/devices/{device}', [DeviceController::class, 'show'])->name('api.devices.show');
     Route::patch('/devices/{device}', [DeviceController::class, 'update'])->name('api.devices.update');
+    Route::post('/devices/{device}/refreshes', DeviceRefreshController::class)->name('api.devices.refreshes.store');
     Route::get('/device-models', [DeviceModelController::class, 'index']);
 
     Route::get('/display/status', [DisplayStatusController::class, 'show'])->name('display.status');
@@ -50,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'export']);
     Route::post('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'import']);
+    Route::post('/plugin_settings/{id}/refreshes', PluginRefreshController::class)->name('api.plugin_settings.refreshes.store');
 
     Route::get('/me', [PluginSettingsController::class, 'me']);
     Route::prefix('companion')->group(function (): void {

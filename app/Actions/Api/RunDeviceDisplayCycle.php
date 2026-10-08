@@ -148,7 +148,7 @@ class RunDeviceDisplayCycle
             $plugin->refresh();
         }
 
-        if ($this->shouldSkipFromPayload($plugin)) {
+        if (self::shouldSkipFromPayload($plugin)) {
             Log::info('Skipping rendering because payload sets TRMNL_SKIP_DISPLAY', [
                 'device_id' => $device->id,
                 'plugin_id' => $plugin->id,
@@ -164,7 +164,7 @@ class RunDeviceDisplayCycle
                 $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
                 $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
 
-                if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
+                if ($usesMarkupPipeline && self::shouldSkipFromMarkup($markup)) {
                     Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
                         'device_id' => $device->id,
                         'plugin_id' => $plugin->id,
@@ -226,13 +226,13 @@ class RunDeviceDisplayCycle
         }
     }
 
-    private function shouldSkipFromPayload(Plugin $plugin): bool
+    public static function shouldSkipFromPayload(Plugin $plugin): bool
     {
         return is_array($plugin->data_payload)
             && ($plugin->data_payload['TRMNL_SKIP_DISPLAY'] ?? false) === true;
     }
 
-    private function shouldSkipFromMarkup(string $markup): bool
+    public static function shouldSkipFromMarkup(string $markup): bool
     {
         return preg_match(
             '/<script\b[^>]*>.*?window\.TRMNL_SKIP_DISPLAY\s*=\s*true\b.*?<\/script>/is',
