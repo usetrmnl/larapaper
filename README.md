@@ -2,6 +2,8 @@
 
 [![tests](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml/badge.svg)](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml)
 
+<a href="https://trendshift.io/repositories/22936?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22936" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22936/daily?language=PHP" alt="usetrmnl%2Flarapaper | Trendshift" width="250" height="55"/></a>
+
 LaraPaper is a self-hostable implementation of a TRMNL server (BYOS), built with Laravel.
 It allows you to manage TRMNL-compatible devices, generate screens using **native plugins** (Screens API, Screenshot, Image Webhook), **recipes** (170+ from the [OSS community catalog](https://bnussbau.github.io/trmnl-recipe-catalog/), 1000+ from the [TRMNL catalog](https://trmnl.com/recipes), or your own), or the **API**, and can also act as a **proxy** for the native cloud service (Core). With over 400k downloads and 400+ stars, it’s the most popular community-driven BYOS.
 
