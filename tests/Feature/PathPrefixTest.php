@@ -22,8 +22,7 @@ it('ignores the prefix from an untrusted client', function (): void {
 
 it('sends passkey sign-ins to the dashboard under the prefix', function (): void {
     config(['trustedproxy.proxies' => ['127.0.0.1']]);
-    config(['app.passkeys.enabled' => true]);
-    config(['fortify.features' => [...config('fortify.features', []), Features::passkeys()]]);
+    $this->bootWithPasskeysEnabled();
 
     $this->skipUnlessFortifyHas(Features::passkeys());
 
