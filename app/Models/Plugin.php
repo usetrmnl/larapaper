@@ -782,6 +782,12 @@ class Plugin extends Model
                 'wifi_strength' => $device?->wifi_strength,
                 'height' => $device?->height,
                 'width' => $device?->width,
+                'model' => $device?->deviceModel?->name,
+                'bit_depth' => $device?->deviceModel?->bit_depth,
+                'refresh_interval_seconds' => $device === null ? null : (int) $device->default_refresh_interval,
+                'sleep_mode_enabled' => $device?->sleep_mode_enabled,
+                'sleep_start_time' => $device?->sleepStartMinutes(),
+                'sleep_end_time' => $device?->sleepEndMinutes(),
             ],
             'sensors' => $device ? $device->sensorContext() : ['latest' => [], 'all' => []],
             'plugin_settings' => [
@@ -794,6 +800,8 @@ class Plugin extends Model
                 'custom_fields_values' => [
                     ...(is_array($this->configuration) ? $this->configuration : []),
                 ],
+                'refresh_interval_minutes' => $this->data_stale_minutes === null ? null : (int) $this->data_stale_minutes,
+                'data_fetched_utc' => $this->data_payload_updated_at?->getTimestamp(),
             ],
         ];
     }

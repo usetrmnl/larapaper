@@ -63,3 +63,4 @@ location /larapaper/ {
 
 - **Local:** open `http://localhost:4567` and sign in with `admin@example.com` / `admin@example.com` (after seeding).
 - **Production:** register a user, or set `REGISTRATION_ENABLED=0` to disable public registration.
+- **OpenID Connect:** optional. See [Authentication](./authentication).

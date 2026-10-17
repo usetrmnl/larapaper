@@ -301,6 +301,16 @@ class Device extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function sleepStartMinutes(): ?int
+    {
+        return $this->minutesSinceMidnight($this->sleep_mode_from);
+    }
+
+    public function sleepEndMinutes(): ?int
+    {
+        return $this->minutesSinceMidnight($this->sleep_mode_to);
+    }
+
     public function isSleepModeActive(?DateTimeInterface $now = null): bool
     {
         if (! $this->sleep_mode_enabled || ! $this->sleep_mode_from || ! $this->sleep_mode_to) {
@@ -371,6 +381,15 @@ class Device extends Model
     public static function generateApiKey(): string
     {
         return self::generateUniqueValue('api_key', 22);
+    }
+
+    private function minutesSinceMidnight(?DateTimeInterface $time): ?int
+    {
+        if (! $time instanceof DateTimeInterface) {
+            return null;
+        }
+
+        return (int) $time->format('G') * 60 + (int) $time->format('i');
     }
 
     private static function generateUniqueValue(string $column, int $length): string

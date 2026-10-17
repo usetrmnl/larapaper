@@ -7,8 +7,7 @@ export default defineConfig({
   logo: {
     light: 'assets/images/logo-light.svg',
     dark: 'assets/images/logo-dark.svg',
-    alt: 'LaraPaper',
-    href: '/larapaper/'
+    alt: 'LaraPaper'
   },
   favicon: 'assets/favicon.ico',
 
@@ -72,6 +71,11 @@ export default defineConfig({
           title: 'Environment variables',
           path: '/getting-started/environment-variables',
           icon: 'settings',
+        },
+        {
+          title: 'Authentication',
+          path: '/getting-started/authentication',
+          icon: 'key-round',
         },
         {
           title: 'Connecting devices',
