@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\ScaleLevel;
+use App\Models\Device;
+use App\Models\DeviceModel;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
@@ -1233,4 +1236,18 @@ test('updating current_image does not clear newly set current_image', function (
     $plugin->refresh();
     expect($plugin->current_image)->toBe('new-image-uuid')
         ->and($plugin->current_image_metadata)->toBe(['width' => 800, 'height' => 480]);
+});
+
+test('plugin render uses the scale level set on the device', function (): void {
+    $deviceModel = DeviceModel::factory()->create(['width' => 1872, 'height' => 1404]);
+    $device = Device::factory()->create(['device_model_id' => $deviceModel->id, 'scale_level' => ScaleLevel::LARGE]);
+    $plugin = Plugin::factory()->create([
+        'markup_language' => 'blade',
+        'render_markup' => '<div>Hello</div>',
+    ]);
+
+    $rendered = $plugin->render(device: $device);
+
+    expect($rendered)->toContain('screen--scale-large')
+        ->not->toContain('screen--scale-xxlarge');
 });

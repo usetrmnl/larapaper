@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ScaleLevel;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
@@ -549,8 +550,26 @@ HTML;
 
         $device = new Device();
         $device->setRelation('deviceModel', $deviceModel);
+        $device->scale_level = $this->previewScaleLevel($deviceModel);
 
         return $device;
+    }
+
+    /**
+     * The scale of the user's first device with this model (the one "Your Devices" lists it for), so the preview matches that device's screen.
+     */
+    private function previewScaleLevel(?DeviceModel $deviceModel): ?ScaleLevel
+    {
+        if (! $deviceModel instanceof DeviceModel) {
+            return null;
+        }
+
+        return auth()->user()
+            ->devices()
+            ->where('device_model_id', $deviceModel->id)
+            ->orderBy('id')
+            ->first()
+            ?->scale_level;
     }
 
     /**
