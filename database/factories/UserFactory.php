@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -42,6 +43,16 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user's Auto-Join window is open.
+     */
+    public function autoJoinEnabled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'assign_new_devices_until' => now()->addMinutes(User::AUTO_JOIN_WINDOW_MINUTES),
         ]);
     }
 

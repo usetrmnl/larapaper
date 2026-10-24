@@ -225,8 +225,9 @@ new class extends Component
                         <div class="space-y-3">
                             <livewire:actions.device-auto-join :key="'create-device-modal'" />
                             <flux:text>
-                                Click the button above to permit auto join. Then point the device at this server's base
-                                url to finish setup. After it appears, add recipes to a device playlist to get started.
+                                Click the button above to permit auto join for {{ \App\Models\User::AUTO_JOIN_WINDOW_MINUTES }} minutes.
+                                Then point the device at this server's base url to finish setup. After it appears, add
+                                recipes to a device playlist to get started.
                             </flux:text>
                         </div>
                         <flux:separator text="Or add manually" />
@@ -369,7 +370,8 @@ new class extends Component
                         connected yet. Point the device at this server to finish setup. The first setup request
                         activates the device and hands out its API key. Until then, anyone who knows its MAC address can
                         claim the key, so activate the device soon. After activation, setup can only run again while
-                        Auto-Join is permitted.
+                        Auto-Join is permitted, which lasts {{ \App\Models\User::AUTO_JOIN_WINDOW_MINUTES }} minutes
+                        after enabling it.
                     </flux:callout.text>
                 </flux:callout>
             @endif

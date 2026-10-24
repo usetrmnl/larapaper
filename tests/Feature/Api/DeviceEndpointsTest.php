@@ -121,7 +121,7 @@ test('display endpoint includes maximum_compatibility value when true for device
 });
 
 test('new device is auto-assigned to user with auto-assign enabled', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => true]);
+    $user = User::factory()->autoJoinEnabled()->create();
 
     $response = $this->withHeaders([
         'id' => '00:11:22:33:44:55',
@@ -149,8 +149,7 @@ test('new device is auto-assigned and mirrors specified device', function (): vo
     ]);
 
     // Create user with auto-assign enabled and mirror device set
-    $user = User::factory()->create([
-        'assign_new_devices' => true,
+    $user = User::factory()->autoJoinEnabled()->create([
         'assign_new_device_id' => $sourceDevice->id,
     ]);
 
@@ -200,7 +199,7 @@ test('device setup endpoint returns correct data', function (): void {
 });
 
 test('setup endpoint hands out the api key only once when auto-join is off', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => false]);
+    $user = User::factory()->create();
     $device = Device::factory()->create([
         'user_id' => $user->id,
         'mac_address' => '00:11:22:33:44:55',
@@ -221,7 +220,7 @@ test('setup endpoint hands out the api key only once when auto-join is off', fun
 });
 
 test('setup endpoint does not return the api key of a connected device when auto-join is off', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => false]);
+    $user = User::factory()->create();
     $device = Device::factory()->create([
         'user_id' => $user->id,
         'mac_address' => '00:11:22:33:44:55',
@@ -241,7 +240,7 @@ test('setup endpoint does not return the api key of a connected device when auto
 });
 
 test('setup endpoint returns the api key of a connected device when its owner has auto-join on', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => true]);
+    $user = User::factory()->autoJoinEnabled()->create();
     $device = Device::factory()->create([
         'user_id' => $user->id,
         'mac_address' => '00:11:22:33:44:55',
@@ -258,8 +257,8 @@ test('setup endpoint returns the api key of a connected device when its owner ha
 });
 
 test('setup endpoint ignores auto-join of a user who does not own the connected device', function (): void {
-    User::factory()->create(['assign_new_devices' => true]);
-    $owner = User::factory()->create(['assign_new_devices' => false]);
+    User::factory()->autoJoinEnabled()->create();
+    $owner = User::factory()->create();
     $device = Device::factory()->create([
         'user_id' => $owner->id,
         'mac_address' => '00:11:22:33:44:55',
@@ -271,6 +270,33 @@ test('setup endpoint ignores auto-join of a user who does not own the connected 
     ])->get('/api/setup')->assertNotFound();
 
     expect(Device::where('mac_address', '00:11:22:33:44:55')->count())->toBe(1);
+});
+
+test('expired auto join window neither re-hands out keys nor auto-provisions devices', function (): void {
+    $user = User::factory()->autoJoinEnabled()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'mac_address' => '00:11:22:33:44:55',
+        'api_key' => 'test-api-key',
+        'last_refreshed_at' => now(),
+    ]);
+
+    $this->travel(User::AUTO_JOIN_WINDOW_MINUTES + 1)->minutes();
+
+    $this->withHeaders(['id' => $device->mac_address])
+        ->get('/api/setup')
+        ->assertNotFound()
+        ->assertJsonMissing(['api_key' => 'test-api-key']);
+
+    $this->withHeaders(['id' => '66:77:88:99:AA:BB'])
+        ->get('/api/setup')
+        ->assertNotFound();
+
+    $this->withHeaders(['id' => '66:77:88:99:AA:CC', 'access-token' => 'new-device-key'])
+        ->get('/api/display')
+        ->assertNotFound();
+
+    expect(Device::count())->toBe(1);
 });
 
 test('setup endpoint is rate limited per ip', function (): void {
@@ -2031,7 +2057,7 @@ test('screens endpoint returns 404 for devices of other users', function (): voi
 });
 
 test('setup endpoint assigns device model when model-id header is provided', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => true]);
+    $user = User::factory()->autoJoinEnabled()->create();
     $deviceModel = DeviceModel::factory()->create([
         'name' => 'test-model',
         'label' => 'Test Model',
@@ -2054,7 +2080,7 @@ test('setup endpoint assigns device model when model-id header is provided', fun
 });
 
 test('setup endpoint handles non-existent device model gracefully', function (): void {
-    $user = User::factory()->create(['assign_new_devices' => true]);
+    $user = User::factory()->autoJoinEnabled()->create();
 
     $response = $this->withHeaders([
         'id' => '00:11:22:33:44:55',

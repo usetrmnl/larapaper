@@ -13,8 +13,8 @@ class ResolveDeviceByApiKey
      * Resolve the device for a firmware request by its access-token header.
      *
      * When `$autoAssign` is true and no matching device exists, a new device
-     * will be created and assigned to the first user with assign_new_devices
-     * enabled (if any). Returns null if the device cannot be resolved or
+     * will be created and assigned to the first user whose Auto-Join window
+     * is open (if any). Returns null if the device cannot be resolved or
      * auto-created.
      */
     public function handle(Request $request, bool $autoAssign = false): ?Device
@@ -32,7 +32,7 @@ class ResolveDeviceByApiKey
             return null;
         }
 
-        $autoAssignUser = User::where('assign_new_devices', true)->first();
+        $autoAssignUser = User::withActiveAutoJoin()->first();
 
         if (! $autoAssignUser) {
             return null;

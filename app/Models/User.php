@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,6 +20,11 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
+     * How long Auto-Join stays permitted after it is enabled.
+     */
+    public const int AUTO_JOIN_WINDOW_MINUTES = 15;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -27,7 +33,7 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
         'name',
         'email',
         'password',
-        'assign_new_devices',
+        'assign_new_devices_until',
         'assign_new_device_id',
         'oidc_sub',
         'timezone',
@@ -55,8 +61,41 @@ class User extends Authenticatable implements PasskeyUser // implements MustVeri
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'assign_new_devices' => 'boolean',
+            'assign_new_devices_until' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether devices may currently auto-join this user's account or re-run
+     * setup for an already activated device.
+     */
+    public function hasActiveAutoJoin(): bool
+    {
+        return $this->assign_new_devices_until?->isFuture() ?? false;
+    }
+
+    /**
+     * Permit Auto-Join for the next AUTO_JOIN_WINDOW_MINUTES minutes.
+     */
+    public function enableAutoJoin(): void
+    {
+        $this->update(['assign_new_devices_until' => now()->addMinutes(self::AUTO_JOIN_WINDOW_MINUTES)]);
+    }
+
+    public function disableAutoJoin(): void
+    {
+        $this->update(['assign_new_devices_until' => null]);
+    }
+
+    /**
+     * Scope to users whose Auto-Join window is still open.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeWithActiveAutoJoin(Builder $query): Builder
+    {
+        return $query->where('assign_new_devices_until', '>', now());
     }
 
     /**

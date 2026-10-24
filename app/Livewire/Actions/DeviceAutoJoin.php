@@ -11,10 +11,21 @@ class DeviceAutoJoin extends Component
 
     public bool $isFirstUser = false;
 
+    /**
+     * Unix timestamp at which the Auto-Join window closes, or null when closed.
+     */
+    public ?int $autoJoinExpiresAt = null;
+
+    /**
+     * Server unix timestamp at the last sync, used by the countdown to correct
+     * for client clock skew.
+     */
+    public int $serverNow = 0;
+
     public function mount(): void
     {
-        $this->deviceAutojoin = (bool) (auth()->user()->assign_new_devices ?? false);
         $this->isFirstUser = auth()->user()->id === 1;
+        $this->syncState();
     }
 
     public function updating(string $name, mixed $value): void
@@ -27,24 +38,31 @@ class DeviceAutoJoin extends Component
             'deviceAutojoin' => 'boolean',
         ]);
 
-        $enabled = (bool) $value;
         $user = auth()->user();
 
-        if ((bool) ($user->assign_new_devices ?? false) === $enabled) {
-            return;
+        if ((bool) $value) {
+            $user->enableAutoJoin();
+        } else {
+            $user->disableAutoJoin();
         }
 
-        $user->update([
-            'assign_new_devices' => $enabled,
-        ]);
+        $this->syncState();
 
-        $this->dispatch('device-auto-join-changed', enabled: $enabled);
+        $this->dispatch('device-auto-join-changed');
     }
 
+    /**
+     * Reload the Auto-Join state from the user. Also called by the countdown
+     * once it reaches zero.
+     */
     #[On('device-auto-join-changed')]
-    public function syncFromSibling(bool $enabled): void
+    public function syncState(): void
     {
-        $this->deviceAutojoin = $enabled;
+        $user = auth()->user()->refresh();
+
+        $this->deviceAutojoin = $user->hasActiveAutoJoin();
+        $this->autoJoinExpiresAt = $this->deviceAutojoin ? $user->assign_new_devices_until->timestamp : null;
+        $this->serverNow = now()->timestamp;
     }
 
     public function render(): \Illuminate\Contracts\View\View|\Illuminate\Contracts\View\Factory

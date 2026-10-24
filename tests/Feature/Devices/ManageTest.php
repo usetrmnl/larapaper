@@ -245,7 +245,7 @@ test('add device modal highlights auto join for the first user', function (): vo
         ->get('/devices')
         ->assertOk()
         ->assertSee('Or add manually')
-        ->assertSee('Click the button above to permit auto join.')
+        ->assertSee('Click the button above to permit auto join for')
         ->assertSee('device playlist to get started');
 });
 

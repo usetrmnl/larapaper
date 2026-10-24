@@ -131,9 +131,7 @@ test('device falls back to bmp when png does not exist', function (): void {
 
 test('device without device_model_id and image_format bmp3_1bit_srgb returns bmp when plugin is rendered', function (): void {
     // Create a user with auto-assign enabled
-    $user = User::factory()->create([
-        'assign_new_devices' => true,
-    ]);
+    $user = User::factory()->autoJoinEnabled()->create();
 
     // Create a device without device_model_id and with bmp3_1bit_srgb format
     $device = Device::factory()->create([
