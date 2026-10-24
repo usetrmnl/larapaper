@@ -31,6 +31,10 @@ class SetupController extends Controller
             ], 404);
         }
 
+        // Activating the device closes the setup window: its api_key is only
+        // handed out again while the owner has Auto-Join enabled.
+        $device->update(['last_refreshed_at' => now()]);
+
         $imagePath = ImageGenerationService::getDeviceSpecificDefaultImage($device, 'setup-logo');
 
         return response()->json([

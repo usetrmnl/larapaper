@@ -259,3 +259,26 @@ test('add device modal does not show auto join for other users', function (): vo
         ->assertDontSee('Or add manually')
         ->assertDontSee('Point the device at this server to finish setup');
 });
+
+test('device management page warns about devices awaiting activation', function (): void {
+    $user = User::factory()->create();
+    Device::factory()->create(['user_id' => $user->id, 'name' => 'Kitchen TRMNL', 'last_refreshed_at' => null]);
+    Device::factory()->create(['user_id' => $user->id, 'name' => 'Office TRMNL', 'last_refreshed_at' => now()]);
+
+    $this->actingAs($user);
+
+    $component = Livewire::test('devices.manage')
+        ->assertSee('Awaiting activation');
+
+    expect($component->instance()->devicesAwaitingActivation->pluck('name')->all())->toBe(['Kitchen TRMNL']);
+});
+
+test('device management page shows no activation warning when all devices are activated', function (): void {
+    $user = User::factory()->create();
+    Device::factory()->create(['user_id' => $user->id, 'last_refreshed_at' => now()]);
+
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->assertDontSee('Awaiting activation');
+});

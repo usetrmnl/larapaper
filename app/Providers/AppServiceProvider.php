@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Services\OidcProvider;
 use App\Services\QrCodeService;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Socialite\Facades\Socialite;
@@ -27,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
         if (app()->isProduction() && config('app.force_https')) {
             URL::forceScheme('https');
         }
+
+        RateLimiter::for('device-setup', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('device-api', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
 
         Request::macro('hasValidSignature', function ($absolute = true, array $ignoreQuery = []) {
             $https = clone $this;

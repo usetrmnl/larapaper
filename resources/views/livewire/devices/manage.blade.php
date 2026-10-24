@@ -4,6 +4,7 @@ use App\Concerns\ProvidesSelectablePlugins;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -67,6 +68,15 @@ new class extends Component
     public function timezone(): string
     {
         return auth()->user()->preferredTimezone();
+    }
+
+    /**
+     * Devices that have not requested /api/setup or /api/display yet.
+     */
+    #[Computed]
+    public function devicesAwaitingActivation(): Collection
+    {
+        return $this->devices->whereNull('last_refreshed_at')->values();
     }
 
     public function updated(string $property): void
@@ -350,6 +360,19 @@ new class extends Component
                     </form>
                 </div>
             </flux:modal>
+
+            @if ($this->devicesAwaitingActivation->isNotEmpty())
+                <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6">
+                    <flux:callout.heading>Awaiting activation</flux:callout.heading>
+                    <flux:callout.text>
+                        {{ $this->devicesAwaitingActivation->pluck('name')->join(', ') }} {{ $this->devicesAwaitingActivation->count() === 1 ? 'has' : 'have' }} not
+                        connected yet. Point the device at this server to finish setup. The first setup request
+                        activates the device and hands out its API key. Until then, anyone who knows its MAC address can
+                        claim the key, so activate the device soon. After activation, setup can only run again while
+                        Auto-Join is permitted.
+                    </flux:callout.text>
+                </flux:callout>
+            @endif
 
             <table
                 class="min-w-full table-fixed divide-y divide-zinc-800/10 text-zinc-800 dark:divide-white/20"

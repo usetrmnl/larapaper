@@ -24,11 +24,13 @@ use Illuminate\Support\Facades\Route;
 | Device endpoints (header-authenticated, used by TRMNL compatible device)
 |--------------------------------------------------------------------------
 */
-Route::get('/display', DisplayController::class);
-Route::get('/setup', SetupController::class);
-Route::post('/log', [DeviceLogController::class, 'store']);
-Route::post('/screens', [ScreenController::class, 'store'])->name('screens.update');
-Route::get('/current_screen', CurrentScreenController::class);
+Route::get('/setup', SetupController::class)->middleware('throttle:device-setup');
+
+Route::middleware('throttle:device-api')->group(function (): void {
+    Route::get('/display', DisplayController::class);
+    Route::post('/log', [DeviceLogController::class, 'store']);
+    Route::get('/current_screen', CurrentScreenController::class);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -51,6 +53,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/display/update', DisplayUpdateController::class)
         ->middleware('ability:update-screen')
         ->name('display.update');
+
+    // Deprecated alias of /display/update, kept for older clients.
+    Route::post('/screens', [ScreenController::class, 'store'])
+        ->middleware('ability:update-screen')
+        ->name('screens.update');
 
     Route::get('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'export']);
     Route::post('/plugin_settings/{trmnlp_id}/archive', [PluginArchiveController::class, 'import']);

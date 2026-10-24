@@ -2,26 +2,34 @@
 
 namespace App\Http\Controllers\Api\Firmware;
 
+use App\Http\Controllers\Api\DisplayUpdateController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreScreenRequest;
 use App\Jobs\GenerateScreenJob;
-use App\Models\Device;
 use App\Support\UserBladeExecution;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Blade;
 
+/**
+ * @deprecated Use POST /api/display/update ({@see DisplayUpdateController}) instead.
+ */
 class ScreenController extends Controller
 {
+    /**
+     * Update a device screen. Requires a Sanctum token with the update-screen
+     * ability; the device is selected by the `id` (MAC address) header among
+     * the token user's own devices.
+     */
     public function store(StoreScreenRequest $request): JsonResponse
     {
-        $device = Device::where('mac_address', mb_strtoupper((string) $request->header('id')))
-            ->where('api_key', $request->header('access-token'))
+        $device = $request->user()->devices()
+            ->where('mac_address', mb_strtoupper((string) $request->header('id')))
             ->first();
 
         if (! $device) {
-            return response()->json([
-                'message' => 'MAC Address not registered or invalid access token',
-            ], 404);
+            return $this->withDeprecationHeaders(response()->json([
+                'message' => 'MAC Address not registered',
+            ], 404));
         }
 
         $markup = (string) $request->input('image.content');
@@ -33,8 +41,16 @@ class ScreenController extends Controller
         }
         GenerateScreenJob::dispatchSync($device->id, null, $view);
 
-        return response()->json([
+        return $this->withDeprecationHeaders(response()->json([
             'message' => 'success',
+        ]));
+    }
+
+    private function withDeprecationHeaders(JsonResponse $response): JsonResponse
+    {
+        return $response->withHeaders([
+            'Deprecation' => 'true',
+            'Link' => '<'.route('display.update').'>; rel="successor-version"',
         ]);
     }
 }

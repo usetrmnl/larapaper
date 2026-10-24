@@ -104,16 +104,18 @@ test('screen update passes markup through without executing blade when multi-use
 
     Bus::fake();
 
+    $user = User::factory()->create();
     $device = Device::factory()->create([
+        'user_id' => $user->id,
         'mac_address' => '00:11:22:33:44:55',
-        'api_key' => 'test-api-key',
     ]);
+
+    Sanctum::actingAs($user, ['update-screen']);
 
     $markup = "<div>Hello</div>{{ 'ok' }}";
 
     $this->withHeaders([
         'id' => $device->mac_address,
-        'access-token' => $device->api_key,
     ])->postJson('/api/screens', [
         'image' => [
             'content' => $markup,
