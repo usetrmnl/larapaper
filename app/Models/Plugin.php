@@ -763,6 +763,10 @@ class Plugin extends Model
         $utcOffset = (string) Carbon::now($timezone)->getOffset();
 
         return [
+            'assets' => [
+                'highcharts_js_url' => config('trmnl-blade.highcharts_js_url'),
+                'chartkick_js_url' => config('trmnl-blade.chartkick_js_url'),
+            ],
             'system' => [
                 'timestamp_utc' => now()->utc()->timestamp,
             ],
