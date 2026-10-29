@@ -138,38 +138,12 @@ class RunDeviceDisplayCycle
     {
         $plugin = $playlistItem->plugin;
 
-        try {
-            $imageUuid = $this->renderPluginImage($device, $plugin);
-        } catch (Exception $e) {
-            Log::error("Failed to render plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
-            $errorImageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'error', $plugin->name);
-            $device->update(['current_screen_image' => $errorImageUuid]);
-
-            return true;
-        }
-
-        if ($imageUuid === null) {
-            return false;
-        }
-
-        $playlistItem->update(['last_displayed_at' => now()]);
-        $device->update(['current_screen_image' => $imageUuid]);
-
-        return true;
-    }
-
-    /**
-     * Refresh the plugin's cached data for this device. Returns whether the data was
-     * stale (and so re-fetched), or null if the plugin opts out via TRMNL_SKIP_DISPLAY.
-     */
-    private function refreshPluginData(Device $device, Plugin $plugin): ?bool
-    {
         ImageGenerationService::resetIfNotCacheable($plugin, $device);
         $plugin->refresh();
 
-        $wasStale = $plugin->isDataStale();
+        $isDataStale = $plugin->isDataStale();
 
-        if ($wasStale) {
+        if ($isDataStale) {
             $plugin->updateDataPayload();
             $plugin->refresh();
         }
@@ -180,49 +154,47 @@ class RunDeviceDisplayCycle
                 'plugin_id' => $plugin->id,
             ]);
 
-            return null;
+            return false;
         }
 
-        return $wasStale;
-    }
+        $needsRender = $isDataStale || $plugin->current_image === null;
 
-    /**
-     * Render the plugin for a playlist slot into its own current_image and return the
-     * UUID, or null if it opted out (TRMNL_SKIP_DISPLAY) or produced nothing.
-     *
-     * @throws Exception when rendering fails
-     */
-    private function renderPluginImage(Device $device, Plugin $plugin): ?string
-    {
-        $wasStale = $this->refreshPluginData($device, $plugin);
+        if ($needsRender) {
+            try {
+                $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
+                $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
 
-        if ($wasStale === null) {
-            return null;
-        }
+                if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
+                    Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
+                        'device_id' => $device->id,
+                        'plugin_id' => $plugin->id,
+                    ]);
 
-        $output = $plugin->handler()?->output();
-        $needsRender = $wasStale || $plugin->current_image === null;
+                    $plugin->clearCurrentImage();
 
-        if ($needsRender && $output !== PluginOutput::ProcessedImage) {
-            $usesMarkupPipeline = $output !== PluginOutput::Image;
-            $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
+                    return false;
+                }
 
-            if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
-                Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
-                    'device_id' => $device->id,
-                    'plugin_id' => $plugin->id,
-                ]);
+                GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup);
+            } catch (Exception $e) {
+                Log::error("Failed to render plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
+                $errorImageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'error', $plugin->name);
+                $device->update(['current_screen_image' => $errorImageUuid]);
 
-                $plugin->clearCurrentImage();
-
-                return null;
+                return true;
             }
-
-            GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup);
-            $plugin->refresh();
         }
 
-        return $plugin->current_image;
+        $plugin->refresh();
+
+        if ($plugin->current_image !== null) {
+            $playlistItem->update(['last_displayed_at' => now()]);
+            $device->update(['current_screen_image' => $plugin->current_image]);
+
+            return true;
+        }
+
+        return true;
     }
 
     /**
@@ -235,7 +207,20 @@ class RunDeviceDisplayCycle
      */
     private function renderOfflineImage(Device $device, Plugin $plugin): ?string
     {
-        if ($this->refreshPluginData($device, $plugin) === null) {
+        ImageGenerationService::resetIfNotCacheable($plugin, $device);
+        $plugin->refresh();
+
+        if ($plugin->isDataStale()) {
+            $plugin->updateDataPayload();
+            $plugin->refresh();
+        }
+
+        if ($this->shouldSkipFromPayload($plugin)) {
+            Log::info('Skipping rendering because payload sets TRMNL_SKIP_DISPLAY', [
+                'device_id' => $device->id,
+                'plugin_id' => $plugin->id,
+            ]);
+
             return null;
         }
 
