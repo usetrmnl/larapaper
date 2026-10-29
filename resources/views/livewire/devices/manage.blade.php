@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ProvidesSelectablePlugins;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use Carbon\Carbon;
@@ -9,6 +10,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ProvidesSelectablePlugins;
+
     public $devices;
 
     public $showDeviceForm = false;
@@ -58,12 +61,6 @@ new class extends Component
         });
 
         return view('livewire.devices.manage');
-    }
-
-    #[Computed]
-    public function selectablePlugins()
-    {
-        return auth()->user()->plugins()->orderBy('name')->get();
     }
 
     #[Computed]

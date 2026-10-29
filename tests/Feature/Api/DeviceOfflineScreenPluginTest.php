@@ -84,8 +84,7 @@ test('sleeping device with a sleep plugin serves the rendered plugin image witho
 test('sleeping device with a markup sleep plugin renders a fresh image without touching the current screen', function (): void {
     $user = User::factory()->create();
 
-    // A recipe (markup) plugin renders through generateImageFromModel, unlike an
-    // image_webhook. This is the path that must NOT write current_screen_image.
+    // Markup plugins render via generateImageFromModel — the path that must not write current_screen_image.
     $plugin = Plugin::factory()->create([
         'user_id' => $user->id,
         'name' => 'Date Plugin',
@@ -158,8 +157,7 @@ test('paused device with a pause plugin serves the rendered plugin image without
 test('sleeping device falls back to the default sleep face when the sleep plugin opts out of display', function (): void {
     $user = User::factory()->create();
 
-    // A plugin whose payload sets TRMNL_SKIP_DISPLAY renders nothing, so the
-    // offline screen must fall back rather than throw or leave the device awake.
+    // TRMNL_SKIP_DISPLAY makes the plugin render nothing, so the offline screen must fall back.
     $plugin = Plugin::factory()->create([
         'user_id' => $user->id,
         'data_strategy' => 'polling',
@@ -198,12 +196,56 @@ test('sleeping device falls back to the default sleep face when the sleep plugin
         ->and($device->fresh()->offline_screen_image)->toBeNull();
 });
 
+test('sleeping device falls back to the default sleep face when the sleep plugin throws while rendering', function (): void {
+    $user = User::factory()->create();
+
+    // Blade markup reaching into $data[0] throws because the payload is not a list.
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Broken Sleep Plugin',
+        'data_strategy' => 'polling',
+        'polling_url' => null,
+        'data_stale_minutes' => 60,
+        'markup_language' => 'blade',
+        'render_markup' => '<div>{{ $data[0]["invalid"] }}</div>',
+        'data_payload' => ['error' => 'Failed to fetch data'],
+        'data_payload_updated_at' => now(),
+        'current_image' => null,
+    ]);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'mac_address' => '00:11:22:33:44:08',
+        'api_key' => 'sleep-throw-key',
+        'sleep_mode_enabled' => true,
+        'sleep_mode_from' => '19:00',
+        'sleep_mode_to' => '23:00',
+        'current_screen_image' => 'awake-screen',
+        'sleep_plugin_id' => $plugin->id,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2000-01-01 20:00:00'));
+
+    $response = fetchDisplay($device);
+    $response->assertOk();
+
+    $json = $response->json();
+    $servedPath = 'images/generated/'.basename((string) parse_url((string) $json['image_url'], PHP_URL_PATH));
+    $servedImage = pathinfo($servedPath, PATHINFO_FILENAME);
+
+    expect($json['filename'])->toBe(
+        app(DeviceScreenFilename::class)->make($servedPath, 'sleep', DeviceScreenFilename::PREFIX_SYSTEM)
+    )
+        ->and($servedImage)->not->toBe('awake-screen')
+        ->and($device->fresh()->current_screen_image)->toBe('awake-screen')
+        ->and($device->fresh()->offline_screen_image)->toBeNull();
+});
+
 test('paused device does not borrow the sleep plugin and shows the plain sleep face', function (): void {
     $user = User::factory()->create();
     $sleepPlugin = offlinePluginWithImage($user, 'sleep-only-image');
 
-    // Paused, with a sleep plugin configured but no pause plugin. Pause is
-    // evaluated before sleep and must not reach for the sleep plugin.
+    // Paused with a sleep plugin but no pause plugin: pause is evaluated first and must not borrow the sleep plugin.
     $device = Device::factory()->create([
         'user_id' => $user->id,
         'mac_address' => '00:11:22:33:44:04',

@@ -307,7 +307,12 @@ class RunDeviceDisplayCycle
             try {
                 $imageUuid = $this->renderOfflineImage($device, $plugin);
             } catch (Exception $e) {
-                Log::error("Failed to render offline plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
+                Log::error('Failed to render offline plugin', [
+                    'device_id' => $device->id,
+                    'plugin_id' => $plugin->id,
+                    'plugin_name' => $plugin->name,
+                    'exception' => $e->getMessage(),
+                ]);
                 $imageUuid = null;
             }
 

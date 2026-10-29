@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ProvidesSelectablePlugins;
 use App\Enums\FirmwareModel;
 use App\Jobs\FirmwareDownloadJob;
 use App\Jobs\FirmwarePollJob;
@@ -9,11 +10,12 @@ use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
 {
+    use ProvidesSelectablePlugins;
+
     private const DEFAULT_SLEEP_MODE_FROM = '22:00';
 
     private const DEFAULT_SLEEP_MODE_TO = '06:00';
@@ -82,12 +84,6 @@ new class extends Component
     public $selected_firmware_id;
 
     public $download_firmware;
-
-    #[Computed]
-    public function selectablePlugins()
-    {
-        return auth()->user()->plugins()->orderBy('name')->get();
-    }
 
     public function mount(App\Models\Device $device)
     {
