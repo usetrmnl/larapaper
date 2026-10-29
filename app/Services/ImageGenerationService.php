@@ -404,8 +404,9 @@ class ImageGenerationService
     public static function cleanupFolder(): void
     {
         $activeDeviceImageUuids = Device::pluck('current_screen_image')->filter()->toArray();
+        $activeOfflineImageUuids = Device::pluck('offline_screen_image')->filter()->toArray();
         $activePluginImageUuids = Plugin::pluck('current_image')->filter()->toArray();
-        $activeImageUuids = array_merge($activeDeviceImageUuids, $activePluginImageUuids);
+        $activeImageUuids = array_merge($activeDeviceImageUuids, $activeOfflineImageUuids, $activePluginImageUuids);
 
         $files = Storage::disk('public')->files('/images/generated/');
         foreach ($files as $file) {

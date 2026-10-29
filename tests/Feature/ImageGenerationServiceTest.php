@@ -258,6 +258,23 @@ it('cleanupFolder removes unused images', function (): void {
     Storage::disk('public')->assertMissing('/images/generated/another-inactive.png');
 });
 
+it('cleanupFolder preserves an image referenced only by a device offline_screen_image', function (): void {
+    // The offline (sleep/pause) screen lives in its own per-device column; cleanup
+    // must treat it as active even though no current_screen_image or plugin points at it.
+    Device::factory()->create([
+        'current_screen_image' => null,
+        'offline_screen_image' => 'offline-uuid',
+    ]);
+
+    Storage::disk('public')->put('/images/generated/offline-uuid.png', 'offline');
+    Storage::disk('public')->put('/images/generated/orphan-uuid.png', 'orphan');
+
+    ImageGenerationService::cleanupFolder();
+
+    Storage::disk('public')->assertExists('/images/generated/offline-uuid.png');
+    Storage::disk('public')->assertMissing('/images/generated/orphan-uuid.png');
+});
+
 it('cleanupFolder preserves .gitignore', function (): void {
     // Create gitignore file
     Storage::disk('public')->put('/images/generated/.gitignore', '*');

@@ -225,6 +225,22 @@ class Device extends Model
     }
 
     /**
+     * @return BelongsTo<Plugin, $this>
+     */
+    public function sleepPlugin(): BelongsTo
+    {
+        return $this->belongsTo(Plugin::class, 'sleep_plugin_id');
+    }
+
+    /**
+     * @return BelongsTo<Plugin, $this>
+     */
+    public function pausePlugin(): BelongsTo
+    {
+        return $this->belongsTo(Plugin::class, 'pause_plugin_id');
+    }
+
+    /**
      * @return BelongsTo<DeviceModel, $this>
      */
     public function deviceModel(): BelongsTo

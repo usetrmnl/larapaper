@@ -55,6 +55,10 @@ new class extends Component
 
     public $special_function;
 
+    public $sleep_plugin_id;
+
+    public $selectablePlugins;
+
     // Playlist properties
     public $playlists;
 
@@ -112,6 +116,8 @@ new class extends Component
         $this->sleep_mode_from = optional($device->sleep_mode_from)->format('H:i');
         $this->sleep_mode_to = optional($device->sleep_mode_to)->format('H:i');
         $this->special_function = $device->special_function;
+        $this->sleep_plugin_id = $device->sleep_plugin_id;
+        $this->selectablePlugins = auth()->user()->plugins()->orderBy('name')->get();
         $this->is_mirror = $device->mirror_device_id !== null;
         $this->mirror_device_id = $device->mirror_device_id;
 
@@ -188,6 +194,7 @@ new class extends Component
             'sleep_mode_from' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'special_function' => 'nullable|string',
+            'sleep_plugin_id' => 'nullable|exists:plugins,id',
         ], [
             'sleep_mode_from.required_if' => 'A sleep mode start time is required when sleep mode is enabled.',
             'sleep_mode_to.required_if' => 'A sleep mode end time is required when sleep mode is enabled.',
@@ -219,6 +226,7 @@ new class extends Component
             'sleep_mode_from' => $this->sleep_mode_from,
             'sleep_mode_to' => $this->sleep_mode_to,
             'special_function' => $this->special_function,
+            'sleep_plugin_id' => $this->sleep_plugin_id ?: null,
         ]);
 
         Flux::modal('edit-device')->close();
@@ -625,6 +633,16 @@ new class extends Component
                             <flux:input type="time" label="From" wire:model.fill="sleep_mode_from" />
                             <flux:input type="time" label="To" wire:model.fill="sleep_mode_to" />
                         </div>
+                        <flux:select
+                            label="Sleep Screen"
+                            wire:model="sleep_plugin_id"
+                            description="Optionally render a plugin instead of the default sleep screen."
+                        >
+                            <flux:select.option value="">Default sleep screen</flux:select.option>
+                            @foreach ($selectablePlugins as $plugin)
+                                <flux:select.option value="{{ $plugin->id }}">{{ $plugin->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
                     @endif
 
                     <div class="flex">

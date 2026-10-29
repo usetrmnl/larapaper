@@ -37,6 +37,10 @@ new class extends Component
 
     public ?string $pause_until_time = null;
 
+    public ?int $pause_plugin_id = null;
+
+    public $selectablePlugins;
+
     protected $rules = [
         'mac_address' => 'required',
         'api_key' => 'required',
@@ -54,6 +58,7 @@ new class extends Component
 
             return $isTrmnl ? '0'.$deviceModel->label : '1'.$deviceModel->label;
         });
+        $this->selectablePlugins = auth()->user()->plugins()->orderBy('name')->get();
 
         return view('livewire.devices.manage');
     }
@@ -138,8 +143,15 @@ new class extends Component
     public function pauseDevice(int $deviceId): void
     {
         $device = auth()->user()->devices()->findOrFail($deviceId);
-        $device->update(['pause_until' => $this->resolvePauseUntil()]);
-        $this->reset('pause_duration', 'pause_until_date', 'pause_until_time');
+        $this->validate([
+            'pause_plugin_id' => 'nullable|exists:plugins,id',
+        ]);
+
+        $device->update([
+            'pause_until' => $this->resolvePauseUntil(),
+            'pause_plugin_id' => $this->pause_plugin_id ?: null,
+        ]);
+        $this->reset('pause_duration', 'pause_until_date', 'pause_until_time', 'pause_plugin_id');
         Flux::modal('pause-device-'.$deviceId)->close();
         $this->devices = auth()->user()->devices()->with('deviceModel')->get();
 
@@ -150,7 +162,7 @@ new class extends Component
     public function unpauseDevice(int $deviceId): void
     {
         $device = auth()->user()->devices()->findOrFail($deviceId);
-        $device->update(['pause_until' => null]);
+        $device->update(['pause_until' => null, 'pause_plugin_id' => null]);
         Flux::modal('unpause-device-'.$deviceId)->close();
         $this->devices = auth()->user()->devices()->with('deviceModel')->get();
         Flux::toast(variant: 'success', text: 'Pause cleared. Wake your device manually to resume.');
@@ -485,6 +497,22 @@ new class extends Component
                     <flux:text class="text-zinc-500">Timezone: {{ $this->timezone }}</flux:text>
                     <flux:text class="mt-2 mb-4">The device will still ping the server every 24 hours.</flux:text>
                     <flux:error name="pause_until_date" />
+
+                    <flux:separator class="my-4" />
+
+                    <div class="mb-4">
+                        <flux:select
+                            label="Pause Screen"
+                            wire:model="pause_plugin_id"
+                            description="Optionally render a plugin instead of the default sleep screen."
+                        >
+                            <flux:select.option value="">Default sleep screen</flux:select.option>
+                            @foreach ($selectablePlugins as $plugin)
+                                <flux:select.option value="{{ $plugin->id }}">{{ $plugin->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:error name="pause_plugin_id" />
+                    </div>
 
                     <div class="flex">
                         <flux:spacer />
