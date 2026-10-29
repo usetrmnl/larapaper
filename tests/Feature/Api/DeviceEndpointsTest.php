@@ -1726,6 +1726,68 @@ test('display status update requires sleep mode times when sleep mode is enabled
         ->assertJsonValidationErrors(['sleep_mode_from']);
 });
 
+test('display status update sets the sleep and pause plugins', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $sleepPlugin = Plugin::factory()->create(['user_id' => $user->id]);
+    $pausePlugin = Plugin::factory()->create(['user_id' => $user->id]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/display/status', [
+        'device_id' => $device->id,
+        'sleep_plugin_id' => $sleepPlugin->id,
+        'pause_plugin_id' => $pausePlugin->id,
+    ])
+        ->assertOk()
+        ->assertJson([
+            'sleep_plugin_id' => $sleepPlugin->id,
+            'pause_plugin_id' => $pausePlugin->id,
+        ]);
+
+    $device->refresh();
+    expect($device->sleep_plugin_id)->toBe($sleepPlugin->id)
+        ->and($device->pause_plugin_id)->toBe($pausePlugin->id);
+});
+
+test('display status update clears the sleep and pause plugins when sent null', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create(['user_id' => $user->id]);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'sleep_plugin_id' => $plugin->id,
+        'pause_plugin_id' => $plugin->id,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/display/status', [
+        'device_id' => $device->id,
+        'sleep_plugin_id' => null,
+        'pause_plugin_id' => null,
+    ])->assertOk();
+
+    $device->refresh();
+    expect($device->sleep_plugin_id)->toBeNull()
+        ->and($device->pause_plugin_id)->toBeNull();
+});
+
+test('display status update rejects a plugin that does not exist', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/display/status', [
+        'device_id' => $device->id,
+        'sleep_plugin_id' => 999999,
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['sleep_plugin_id']);
+
+    expect($device->refresh()->sleep_plugin_id)->toBeNull();
+});
+
 test('device returns sleep.png and correct refresh time when paused', function (): void {
     $device = Device::factory()->create([
         'mac_address' => '00:11:22:33:44:55',

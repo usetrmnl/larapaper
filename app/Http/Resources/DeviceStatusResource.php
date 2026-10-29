@@ -34,8 +34,10 @@ class DeviceStatusResource extends JsonResource
             'sleep_mode_enabled' => $this->sleep_mode_enabled,
             'sleep_mode_from' => $this->sleep_mode_from,
             'sleep_mode_to' => $this->sleep_mode_to,
+            'sleep_plugin_id' => $this->sleep_plugin_id,
             'special_function' => $this->special_function,
             'pause_until' => $this->pause_until,
+            'pause_plugin_id' => $this->pause_plugin_id,
             'updated_at' => $this->updated_at,
         ];
     }

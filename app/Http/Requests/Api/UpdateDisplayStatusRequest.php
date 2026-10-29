@@ -23,7 +23,9 @@ class UpdateDisplayStatusRequest extends FormRequest
             'sleep_mode_enabled' => 'boolean',
             'sleep_mode_from' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
+            'sleep_plugin_id' => 'nullable|exists:plugins,id',
             'pause_until' => 'nullable|date|after:now',
+            'pause_plugin_id' => 'nullable|exists:plugins,id',
         ];
     }
 
@@ -38,7 +40,9 @@ class UpdateDisplayStatusRequest extends FormRequest
             'sleep_mode_enabled',
             'sleep_mode_from',
             'sleep_mode_to',
+            'sleep_plugin_id',
             'pause_until',
+            'pause_plugin_id',
         ]);
     }
 }
