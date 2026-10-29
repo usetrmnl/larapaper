@@ -9,6 +9,7 @@ use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
@@ -57,8 +58,6 @@ new class extends Component
 
     public $sleep_plugin_id;
 
-    public $selectablePlugins;
-
     // Playlist properties
     public $playlists;
 
@@ -83,6 +82,12 @@ new class extends Component
     public $selected_firmware_id;
 
     public $download_firmware;
+
+    #[Computed]
+    public function selectablePlugins()
+    {
+        return auth()->user()->plugins()->orderBy('name')->get();
+    }
 
     public function mount(App\Models\Device $device)
     {
@@ -117,7 +122,6 @@ new class extends Component
         $this->sleep_mode_to = optional($device->sleep_mode_to)->format('H:i');
         $this->special_function = $device->special_function;
         $this->sleep_plugin_id = $device->sleep_plugin_id;
-        $this->selectablePlugins = auth()->user()->plugins()->orderBy('name')->get();
         $this->is_mirror = $device->mirror_device_id !== null;
         $this->mirror_device_id = $device->mirror_device_id;
 
@@ -639,7 +643,7 @@ new class extends Component
                             description="Optionally render a plugin instead of the default sleep screen."
                         >
                             <flux:select.option value="">Default sleep screen</flux:select.option>
-                            @foreach ($selectablePlugins as $plugin)
+                            @foreach ($this->selectablePlugins as $plugin)
                                 <flux:select.option value="{{ $plugin->id }}">{{ $plugin->name }}</flux:select.option>
                             @endforeach
                         </flux:select>

@@ -39,8 +39,6 @@ new class extends Component
 
     public ?int $pause_plugin_id = null;
 
-    public $selectablePlugins;
-
     protected $rules = [
         'mac_address' => 'required',
         'api_key' => 'required',
@@ -58,9 +56,14 @@ new class extends Component
 
             return $isTrmnl ? '0'.$deviceModel->label : '1'.$deviceModel->label;
         });
-        $this->selectablePlugins = auth()->user()->plugins()->orderBy('name')->get();
 
         return view('livewire.devices.manage');
+    }
+
+    #[Computed]
+    public function selectablePlugins()
+    {
+        return auth()->user()->plugins()->orderBy('name')->get();
     }
 
     #[Computed]
@@ -507,7 +510,7 @@ new class extends Component
                             description="Optionally render a plugin instead of the default sleep screen."
                         >
                             <flux:select.option value="">Default sleep screen</flux:select.option>
-                            @foreach ($selectablePlugins as $plugin)
+                            @foreach ($this->selectablePlugins as $plugin)
                                 <flux:select.option value="{{ $plugin->id }}">{{ $plugin->name }}</flux:select.option>
                             @endforeach
                         </flux:select>
