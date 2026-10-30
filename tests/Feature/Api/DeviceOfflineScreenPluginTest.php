@@ -307,3 +307,150 @@ test('two sleeping devices sharing one sleep plugin each record their own offlin
 
     Storage::disk('public')->assertExists('images/generated/shared-sleep-image.png');
 });
+
+/**
+ * Create a device asleep at the current test time, showing a recipe plugin that has a
+ * cached image. The cached bytes differ from the fake pipeline's output, so a render
+ * can't be deduplicated back to the cached UUID: a new UUID means a render happened.
+ *
+ * @param  array<string, mixed>  $pluginAttributes
+ * @param  array<string, mixed>|null  $imageMetadata  Defaults to metadata matching the device
+ * @return array{0: Device, 1: Plugin}
+ */
+function sleepingDeviceWithCachedPlugin(array $pluginAttributes = [], ?array $imageMetadata = null): array
+{
+    Carbon::setTestNow(Carbon::parse('2000-01-01 20:00:00'));
+    Storage::disk('public')->put('images/generated/cached-sleep-image.png', 'cached-bytes');
+
+    $user = User::factory()->create();
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'polling_url' => null,
+        'data_stale_minutes' => 60,
+        'data_strategy' => 'polling',
+        'render_markup_view' => 'trmnl',
+        'data_payload_updated_at' => now(),
+        ...$pluginAttributes,
+    ]);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'sleep_mode_enabled' => true,
+        'sleep_mode_from' => '19:00',
+        'sleep_mode_to' => '23:00',
+        'current_screen_image' => 'awake-screen',
+        'sleep_plugin_id' => $plugin->id,
+    ]);
+
+    $plugin->update([
+        'current_image' => 'cached-sleep-image',
+        'current_image_metadata' => $imageMetadata ?? ImageGenerationService::buildImageMetadataFromDevice($device),
+    ]);
+
+    return [$device, $plugin];
+}
+
+test('sleeping device serves the cached plugin image when the data is fresh', function (): void {
+    [$device, $plugin] = sleepingDeviceWithCachedPlugin();
+
+    $response = fetchDisplay($device);
+
+    expect($response->json('image_url'))->toContain('images/generated/cached-sleep-image.png')
+        ->and($device->fresh()->offline_screen_image)->toBe('cached-sleep-image')
+        ->and($device->fresh()->current_screen_image)->toBe('awake-screen')
+        ->and($plugin->fresh()->current_image)->toBe('cached-sleep-image');
+});
+
+test('sleeping device caches its first render on the plugin and reuses it on the next poll', function (): void {
+    Carbon::setTestNow(Carbon::parse('2000-01-01 20:00:00'));
+
+    $user = User::factory()->create();
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'polling_url' => null,
+        'data_stale_minutes' => 60,
+        'data_strategy' => 'polling',
+        'render_markup_view' => 'trmnl',
+        'data_payload_updated_at' => null,
+    ]);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'sleep_mode_enabled' => true,
+        'sleep_mode_from' => '19:00',
+        'sleep_mode_to' => '23:00',
+        'current_screen_image' => 'awake-screen',
+        'sleep_plugin_id' => $plugin->id,
+    ]);
+
+    fetchDisplay($device)->assertOk();
+
+    $firstImage = $device->fresh()->offline_screen_image;
+
+    expect($firstImage)->not->toBeNull()
+        ->and($plugin->fresh()->current_image)->toBe($firstImage)
+        ->and($plugin->fresh()->current_image_metadata)->not->toBeNull()
+        ->and($plugin->fresh()->data_payload_updated_at->equalTo(now()))->toBeTrue()
+        ->and($device->fresh()->current_screen_image)->toBe('awake-screen');
+
+    // Changed bytes stop a second render from deduplicating back to the same UUID.
+    Storage::disk('public')->put("images/generated/{$firstImage}.png", 'cached-bytes');
+
+    $secondPoll = fetchDisplay($device);
+
+    expect($secondPoll->json('image_url'))->toContain("images/generated/{$firstImage}.png")
+        ->and($plugin->fresh()->current_image)->toBe($firstImage);
+});
+
+test('sleeping device re-renders the plugin when its data is stale', function (): void {
+    [$device, $plugin] = sleepingDeviceWithCachedPlugin([
+        'data_payload_updated_at' => Carbon::parse('2000-01-01 18:00:00'),
+    ]);
+
+    $response = fetchDisplay($device);
+
+    $renderedImage = $device->fresh()->offline_screen_image;
+
+    expect($renderedImage)->not->toBe('cached-sleep-image')
+        ->and($response->json('image_url'))->toContain("images/generated/{$renderedImage}.png")
+        ->and($plugin->fresh()->current_image)->toBe($renderedImage)
+        ->and($plugin->fresh()->data_payload_updated_at->equalTo(now()))->toBeTrue()
+        ->and($device->fresh()->current_screen_image)->toBe('awake-screen');
+    Storage::disk('public')->assertMissing('images/generated/cached-sleep-image.png');
+});
+
+test('sleeping device re-renders the plugin when the cached image was made for another screen size', function (): void {
+    [$device, $plugin] = sleepingDeviceWithCachedPlugin(imageMetadata: [
+        'width' => 1,
+        'height' => 1,
+        'rotation' => 0,
+        'palette_id' => null,
+        'mime_type' => 'image/png',
+    ]);
+
+    $response = fetchDisplay($device);
+
+    $renderedImage = $device->fresh()->offline_screen_image;
+
+    expect($renderedImage)->not->toBe('cached-sleep-image')
+        ->and($response->json('image_url'))->toContain("images/generated/{$renderedImage}.png")
+        ->and($plugin->fresh()->current_image)->toBe($renderedImage);
+});
+
+test('sleeping device clears the cached image and shows the sleep face when stale markup opts out of display', function (): void {
+    [$device, $plugin] = sleepingDeviceWithCachedPlugin([
+        'render_markup_view' => null,
+        'markup_language' => 'blade',
+        'render_markup' => '<script>window.TRMNL_SKIP_DISPLAY = true;</script>',
+        'data_payload_updated_at' => Carbon::parse('2000-01-01 18:00:00'),
+    ]);
+
+    $response = fetchDisplay($device);
+
+    expect($response->json('image_url'))->not->toContain('cached-sleep-image')
+        ->and($plugin->fresh()->current_image)->toBeNull()
+        ->and($plugin->fresh()->current_image_metadata)->toBeNull()
+        ->and($device->fresh()->offline_screen_image)->toBeNull();
+});

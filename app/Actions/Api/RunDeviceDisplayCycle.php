@@ -198,10 +198,11 @@ class RunDeviceDisplayCycle
     }
 
     /**
-     * Render the plugin as a device's offline (sleep/pause) screen and return the
-     * image UUID, or null if it opted out or produced nothing. Renders straight to a
-     * generated image so it never writes current_screen_image, unlike the playlist
-     * pipeline. Device-ready (ProcessedImage) plugins reuse their cached bytes.
+     * Resolve the plugin's image for a device's offline (sleep/pause) screen and
+     * return its UUID, or null if it opted out or produced nothing. Shares the plugin
+     * image cache with the playlist pipeline, re-rendering only when the data is stale
+     * or nothing is cached, but renders straight to a generated image so it never
+     * writes current_screen_image.
      *
      * @throws Exception when rendering fails
      */
@@ -210,7 +211,9 @@ class RunDeviceDisplayCycle
         ImageGenerationService::resetIfNotCacheable($plugin, $device);
         $plugin->refresh();
 
-        if ($plugin->isDataStale()) {
+        $isDataStale = $plugin->isDataStale();
+
+        if ($isDataStale) {
             $plugin->updateDataPayload();
             $plugin->refresh();
         }
@@ -230,6 +233,10 @@ class RunDeviceDisplayCycle
             return $plugin->current_image;
         }
 
+        if (! $isDataStale && $plugin->current_image !== null) {
+            return $plugin->current_image;
+        }
+
         $usesMarkupPipeline = $output !== PluginOutput::Image;
         $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
 
@@ -239,10 +246,12 @@ class RunDeviceDisplayCycle
                 'plugin_id' => $plugin->id,
             ]);
 
+            $plugin->clearCurrentImage();
+
             return null;
         }
 
-        return ImageGenerationService::generateImageFromModel(
+        $imageUuid = ImageGenerationService::generateImageFromModel(
             markup: $markup,
             deviceModel: $device->deviceModel,
             user: $device->user,
@@ -251,6 +260,16 @@ class RunDeviceDisplayCycle
             plugin: $plugin,
             existingImageId: $device->offline_screen_image,
         );
+
+        $plugin->update([
+            'current_image' => $imageUuid,
+            'current_image_metadata' => ImageGenerationService::buildImageMetadataFromDevice($device),
+            'data_payload_updated_at' => now(),
+        ]);
+
+        ImageGenerationService::cleanupFolder();
+
+        return $imageUuid;
     }
 
     private function renderMashup(Device $device, PlaylistItem $playlistItem): void
