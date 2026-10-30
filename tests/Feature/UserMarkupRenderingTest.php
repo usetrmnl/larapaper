@@ -27,12 +27,10 @@ test('single-user blade markup is executed', function (): void {
     expect($plugin->render(standalone: false))->toBe('ok');
 });
 
-test('multi-user blade markup is executed when insecure php execution is enabled', function (): void {
-    config([
-        'app.multiuser_registration.enabled' => true,
-        'app.blade.allow_php_execution' => true,
-    ]);
+test('blade markup is executed when another user exists and insecure php execution is enabled', function (): void {
+    config(['app.blade.allow_php_execution' => true]);
 
+    User::factory()->create();
     $user = User::factory()->create();
     $plugin = Plugin::factory()->for($user)->create([
         'plugin_type' => 'recipe',
@@ -44,9 +42,8 @@ test('multi-user blade markup is executed when insecure php execution is enabled
     expect($plugin->render(standalone: false))->toBe('ok');
 });
 
-test('multi-user blade recipes are not executed', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('blade recipes are not executed when another user exists', function (): void {
+    User::factory()->create();
     $user = User::factory()->create();
     $plugin = Plugin::factory()->for($user)->create([
         'plugin_type' => 'recipe',
@@ -59,11 +56,10 @@ test('multi-user blade recipes are not executed', function (): void {
         ->toThrow(InvalidArgumentException::class, UserBladeExecution::DISABLED_MESSAGE);
 });
 
-test('display update passes markup through without executing blade when multi-user mode is on', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('display update passes markup through without executing blade when another user exists', function (): void {
     Bus::fake();
 
+    User::factory()->create();
     $user = User::factory()->create();
     $device = Device::factory()->create(['user_id' => $user->id]);
 
@@ -99,11 +95,10 @@ test('display update executes blade markup for a single-user instance', function
     });
 });
 
-test('screen update passes markup through without executing blade when multi-user mode is on', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('screen update passes markup through without executing blade when another user exists', function (): void {
     Bus::fake();
 
+    User::factory()->create();
     $user = User::factory()->create();
     $device = Device::factory()->create([
         'user_id' => $user->id,
@@ -127,9 +122,8 @@ test('screen update passes markup through without executing blade when multi-use
     });
 });
 
-test('markup playground lets users write blade but does not generate a screen when multi-user mode is on', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('markup playground lets users write blade but does not generate a screen when another user exists', function (): void {
+    User::factory()->create();
     $user = User::factory()->create();
     Device::factory()->create(['user_id' => $user->id]);
 
@@ -145,8 +139,7 @@ test('markup playground lets users write blade but does not generate a screen wh
 });
 
 test('recipe editor can switch a recipe to blade when rendering is disabled', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -175,9 +168,8 @@ test('recipe editor can switch a recipe to blade when rendering is disabled', fu
         ->and($plugin->render_markup)->toBe($markup);
 });
 
-test('recipe editor keeps blade and warns when multi-user mode is on', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('recipe editor keeps blade and warns when another user exists', function (): void {
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -204,8 +196,7 @@ test('recipe editor keeps blade and warns when multi-user mode is on', function 
 });
 
 test('recipe editor preview does not parse blade as liquid when blade is disabled', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -226,8 +217,7 @@ test('recipe editor preview does not parse blade as liquid when blade is disable
 });
 
 test('recipe editor does not render a preview image for blade when blade is disabled', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -248,8 +238,7 @@ test('recipe editor does not render a preview image for blade when blade is disa
 });
 
 test('recipe editor still previews liquid when blade rendering is disabled', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -270,8 +259,7 @@ test('recipe editor still previews liquid when blade rendering is disabled', fun
 });
 
 test('recipe editor treats example view recipes as blade when blade is disabled', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+    User::factory()->create();
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -295,11 +283,10 @@ test('recipe editor treats example view recipes as blade when blade is disabled'
         ->assertNotDispatched('preview-error');
 });
 
-test('mcp can store blade markup when multi-user mode is on', function (): void {
-    config(['app.multiuser_registration.enabled' => true]);
-
+test('mcp can store blade markup when another user exists', function (): void {
     Toggle::enable('mcp');
 
+    User::factory()->create();
     $user = User::factory()->create();
 
     McpServer::actingAs($user)
