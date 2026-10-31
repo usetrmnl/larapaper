@@ -261,3 +261,14 @@ test('configure playlist item name links to the native plugin instance', functio
         ->assertSee('Camera Feed')
         ->assertSee(route('plugins.type-instance', ['type' => 'image_webhook', 'plugin' => $plugin]), false);
 });
+
+test('mirror url defaults to mirror mode and switches to display mode with the toggle', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id, 'api_key' => 'device-key']);
+
+    Livewire::actingAs($user)
+        ->test('devices.configure', ['device' => $device])
+        ->assertSee('/mirror/index.html?api_key=device-key&amp;mode=mirror', false)
+        ->set('simulate_physical_device', true)
+        ->assertSee('/mirror/index.html?api_key=device-key&amp;mode=display', false);
+});

@@ -46,6 +46,8 @@ new class extends Component
 
     public $mirror_device_id = null;
 
+    public bool $simulate_physical_device = false;
+
     // Signal to device to use high compatibility approaches when redrawing content
     public $maximum_compatibility = false;
 
@@ -731,7 +733,10 @@ new class extends Component
 
             <flux:modal name="mirror-url" class="md:w-96">
                 @php
-                    $mirrorUrl = url('/mirror/index.html').'?api_key='.urlencode($device->api_key);
+                    $mirrorUrl = url('/mirror/index.html').'?'.http_build_query([
+                        'api_key' => $device->api_key,
+                        'mode' => $simulate_physical_device ? 'display' : 'mirror',
+                    ]);
                 @endphp
 
                 <div class="space-y-6">
@@ -741,6 +746,12 @@ new class extends Component
                             >Mirror this device onto older devices with a web browser — Safari is supported back to iOS
                             9.</flux:subheading>
                     </div>
+
+                    <flux:switch
+                        wire:model.live="simulate_physical_device"
+                        label="Simulate physical device"
+                        description="WebUI acts as the device itself, rendering screens and advancing its playlist. Only use this when no physical device uses this API key."
+                    />
 
                     <flux:input label="Mirror URL" value="{{ $mirrorUrl }}" readonly copyable />
                 </div>

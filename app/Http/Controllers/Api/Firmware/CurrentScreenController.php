@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Firmware;
 
 use App\Actions\Api\ResolveDeviceByApiKey;
 use App\Http\Controllers\Controller;
+use App\Models\Device;
 use App\Models\Plugin;
 use App\Services\DeviceImageResolver;
 use App\Services\DeviceScreenFilename;
@@ -31,9 +32,13 @@ class CurrentScreenController extends Controller
             ], 404);
         }
 
-        $imageUuid = $device->current_screen_image;
+        $source = $device->mirrorDevice ?? $device;
+        $imageUuid = $source->current_screen_image;
+        $offlineImagePath = $this->offlineImagePath($device, $source);
 
-        if (! $imageUuid) {
+        if ($offlineImagePath !== null) {
+            $imagePath = $offlineImagePath;
+        } elseif (! $imageUuid) {
             $imagePath = ImageGenerationService::getDeviceSpecificDefaultImage($device, 'setup-logo');
             if (! $imagePath) {
                 $imageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'setup-logo');
@@ -45,14 +50,15 @@ class CurrentScreenController extends Controller
 
         // Same naming rules as /api/display, keyed off whichever plugin owns this
         // image so both endpoints land on the same history slot for one screen.
-        $owner = $imageUuid ? Plugin::where('current_image', $imageUuid)->first() : null;
+        $owner = $offlineImagePath === null && $imageUuid ? Plugin::where('current_image', $imageUuid)->first() : null;
+        $identity = $owner ? 'plugin:'.$owner->id : 'device:'.$device->id;
 
         $response = [
             'status' => 200,
             'image_url' => $imagePath ? Storage::disk('public')->url($imagePath) : null,
             'filename' => $this->screenFilename->make(
                 $imagePath,
-                $owner ? 'plugin:'.$owner->id : 'device:'.$device->id,
+                $offlineImagePath !== null ? 'sleep' : $identity,
                 $owner ? DeviceScreenFilename::PREFIX_PLUGIN : DeviceScreenFilename::PREFIX_SYSTEM,
             ),
             'refresh_rate' => $device->default_refresh_interval,
@@ -67,5 +73,27 @@ class CurrentScreenController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Resolve the screen a paused or sleeping source device is showing, without
+     * rendering: this endpoint only reports state, so it never generates a plugin image.
+     * Returns null while the source is awake, or if no sleep image exists yet.
+     */
+    private function offlineImagePath(Device $device, Device $source): ?string
+    {
+        if ($source->isPauseActive()) {
+            $plugin = $source->pausePlugin;
+        } elseif ($source->isSleepModeActive()) {
+            $plugin = $source->sleepPlugin;
+        } else {
+            return null;
+        }
+
+        if ($plugin instanceof Plugin && $source->offline_screen_image) {
+            return $this->imageResolver->resolve($device, $source->offline_screen_image);
+        }
+
+        return ImageGenerationService::getDeviceSpecificDefaultImage($device, 'sleep');
     }
 }

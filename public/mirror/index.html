@@ -43,6 +43,7 @@
         trmnl.ui.displayModeSelect.value = data.display_mode || "";
         trmnl.ui.fullscreenToggle.checked = !!data.fullscreen;
         trmnl.ui.wakeLockToggle.checked = !!trmnl.wakeLock || !!data.wake_lock;
+        trmnl.ui.simulateDeviceToggle.checked = data.mode === "display";
 
         trmnl.ui.setup.style.display = "flex";
       },
@@ -55,6 +56,7 @@
         var displayMode = trmnl.ui.displayModeSelect.value;
         var fullscreenEnabled = trmnl.ui.fullscreenToggle.checked;
         var wakeLockEnabled = trmnl.ui.wakeLockToggle.checked;
+        var mode = trmnl.ui.simulateDeviceToggle.checked ? "display" : "mirror";
 
         if (!apiKey) {
           return;
@@ -65,7 +67,8 @@
           base_url: baseURL,
           display_mode: displayMode,
           fullscreen: fullscreenEnabled,
-          wake_lock: wakeLockEnabled
+          wake_lock: wakeLockEnabled,
+          mode: mode
         });
 
         if (wakeLockEnabled) {
@@ -251,7 +254,10 @@
           "Access-Token": apiKey
         };
 
-        var url = baseURL + "/api/display";
+        // Mirror reads the current screen; display runs the cycle like a physical device
+        var isDisplayMode = setup.mode === "display";
+        var url = baseURL + (isDisplayMode ? "/api/display" : "/api/current_screen");
+        var successStatus = isDisplayMode ? 0 : 200;
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
@@ -268,7 +274,7 @@
               var data = JSON.parse(xhr.responseText);
               console.log("Display response:", data);
 
-              if (data.status !== 0) {
+              if (data.status !== successStatus) {
                 trmnl.showStatus(
                   "Error: " + (data.error || data.message || data.status)
                 );
@@ -369,6 +375,11 @@
             hasOverrides = true;
           }
 
+          if (key === "mode" && (value === "display" || value === "mirror")) {
+            newSettings.mode = value;
+            hasOverrides = true;
+          }
+
         }
 
         if (hasOverrides) {
@@ -435,6 +446,7 @@
         trmnl.ui.displayModeSelect = document.getElementById("display_mode");
         trmnl.ui.fullscreenToggle = document.getElementById("fullscreenToggle");
         trmnl.ui.wakeLockToggle = document.getElementById("wakeLockToggle");
+        trmnl.ui.simulateDeviceToggle = document.getElementById("simulateDeviceToggle");
         trmnl.ui.setup = document.getElementById("setup");
 
         // Sync fullscreen state
@@ -801,13 +813,6 @@
       pointer-events: auto;
     }
 
-    .setting-hint {
-      font-size: 0.75em;
-      color: #f41414;
-      margin-top: 0.2em;
-      margin-left: 0.5em;
-    }
-
     /* Fallback for iOS 9 */
     @media screen and (max-width: 1024px) and (-webkit-min-device-pixel-ratio: 1) {
       .setting-row {
@@ -828,10 +833,6 @@
         width: auto;
         min-width: 52px;
         height: 28px;
-      }
-
-      .setting-hint {
-        display: none !important;
       }
     }
   </style>
@@ -881,6 +882,16 @@
           </div>
           <label class="switch">
             <input type="checkbox" id="wakeLockToggle">
+            <span class="slider"></span>
+          </label>
+        </fieldset>
+
+        <fieldset class="setting-row">
+          <div>
+            <span class="toggle-label">Simulate physical device</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="simulateDeviceToggle">
             <span class="slider"></span>
           </label>
         </fieldset>
