@@ -186,9 +186,8 @@ test('recipe editor keeps blade and warns when another user exists', function ()
 
     Livewire::test('plugins.recipe', ['plugin' => $plugin])
         ->assertSet('markup_language', 'blade')
-        ->assertSee('You can still write and save Blade markup')
+        ->assertSee('Blade markup is disabled')
         ->assertSee('INSECURE_BLADE_ALLOW_PHP_EXECUTION')
-        ->assertSee('remote code execution')
         ->call('saveMarkup')
         ->assertHasNoErrors();
 

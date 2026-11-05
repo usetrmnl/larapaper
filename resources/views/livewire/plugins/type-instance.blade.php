@@ -5,6 +5,7 @@ use App\Models\Plugin;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -128,6 +129,7 @@ new class extends Component
     {
         $this->validate([
             'checked_devices' => 'required|array|min:1',
+            'checked_devices.*' => [Rule::exists('devices', 'id')->where('user_id', auth()->id())],
         ]);
 
         $this->validateHandlerConfiguration();
@@ -158,7 +160,7 @@ new class extends Component
                     'active_until' => $this->device_active_until[$deviceId] ?? null,
                 ]);
             } else {
-                $playlist = Playlist::findOrFail($this->device_playlists[$deviceId]);
+                $playlist = Playlist::where('device_id', $deviceId)->findOrFail($this->device_playlists[$deviceId]);
             }
 
             $maxOrder = $playlist->items()->max('order') ?? 0;
@@ -183,7 +185,7 @@ new class extends Component
 
     public function getDevicePlaylists($deviceId)
     {
-        return Playlist::where('device_id', $deviceId)->get();
+        return auth()->user()->devices()->findOrFail($deviceId)->playlists()->get();
     }
 
     public function deletePlugin(): void
@@ -257,6 +259,7 @@ new class extends Component
                                 @php
                                     $device = auth()->user()->devices->find($deviceId);
                                 @endphp
+                                @continue(! $device)
                                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
                                     <div class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                         {{ $device->name }}

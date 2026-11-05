@@ -7,6 +7,7 @@ use App\Services\PluginExportService;
 use App\Support\UserBladeExecution;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Keepsuit\Liquid\Exceptions\LiquidException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -405,8 +406,10 @@ new class extends Component
     {
         $this->validate([
             'checked_devices' => 'required|array|min:1',
+            'checked_devices.*' => [Rule::exists('devices', 'id')->where('user_id', auth()->id())],
             'mashup_layout' => 'required|string',
             'mashup_plugins' => 'required_if:mashup_layout,1Lx1R,1Lx2R,2Lx1R,1Tx1B,2Tx1B,1Tx2B,2x2|array',
+            'mashup_plugins.*' => [Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
         ]);
 
         // Validate that each checked device has a playlist selected
@@ -440,7 +443,7 @@ new class extends Component
                     'active_until' => $this->device_active_until[$deviceId] ?? null,
                 ]);
             } else {
-                $playlist = App\Models\Playlist::findOrFail($this->device_playlists[$deviceId]);
+                $playlist = App\Models\Playlist::where('device_id', $deviceId)->findOrFail($this->device_playlists[$deviceId]);
             }
 
             // Add plugin to playlist
@@ -480,7 +483,7 @@ new class extends Component
 
     public function getDevicePlaylists($deviceId)
     {
-        return App\Models\Playlist::where('device_id', $deviceId)->get();
+        return auth()->user()->devices()->findOrFail($deviceId)->playlists()->get();
     }
 
     public function getConfigurationValue($key, $default = null)
@@ -891,6 +894,7 @@ HTML;
                                 @php
                                     $device = auth()->user()->devices->find($deviceId);
                                 @endphp
+                                @continue(! $device)
                                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
                                     <div class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                         {{ $device->name }}
@@ -1492,11 +1496,10 @@ HTML;
                 <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4 mb-4">
                     <flux:callout.heading>Blade markup is disabled</flux:callout.heading>
                     <flux:callout.text>
-                        You can still write and save Blade markup. Preview and device rendering are disabled because
-                        Blade executes PHP. Built-in example views still preview and render. To compile user Blade, set
-                        <code>INSECURE_BLADE_ALLOW_PHP_EXECUTION=true</code>
-                        in the environment. That flag is remote code execution for every registered user — leave it
-                        false on a shared instance.
+                        Preview and device rendering of Blade templates are disabled because Blade executes PHP. To
+                        compile user authored Blade, set <code>INSECURE_BLADE_ALLOW_PHP_EXECUTION=true</code> in the
+                        environment. This should only be allowed if all users on the server are trusted, as PHP code can
+                        access data across users.
                     </flux:callout.text>
                 </flux:callout>
             @endif

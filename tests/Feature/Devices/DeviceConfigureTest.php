@@ -272,3 +272,72 @@ test('mirror url defaults to mirror mode and switches to display mode with the t
         ->set('simulate_physical_device', true)
         ->assertSee('/mirror/index.html?api_key=device-key&amp;mode=display', false);
 });
+
+test('configure rejects another users plugin as sleep screen', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $foreignPlugin = Plugin::factory()->create(['user_id' => User::factory()->create()->id]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('sleep_plugin_id', $foreignPlugin->id)
+        ->call('updateDevice')
+        ->assertHasErrors(['sleep_plugin_id']);
+
+    expect($device->fresh()->sleep_plugin_id)->toBeNull();
+});
+
+test('configure accepts own plugin as sleep screen', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'width' => 800,
+        'height' => 480,
+        'rotate' => 0,
+        'image_format' => 'png',
+        'maximum_compatibility' => false,
+    ]);
+    $plugin = Plugin::factory()->create(['user_id' => $user->id]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('sleep_plugin_id', $plugin->id)
+        ->call('updateDevice')
+        ->assertHasNoErrors();
+
+    expect($device->fresh()->sleep_plugin_id)->toBe($plugin->id);
+});
+
+test('configure forbids managing playlists of another users device', function (string $method): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $foreignPlaylist = Playlist::factory()->create([
+        'device_id' => Device::factory()->create(['user_id' => User::factory()->create()->id])->id,
+        'name' => 'Foreign',
+        'is_active' => true,
+    ]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('playlist_name', 'Hijacked')
+        ->call($method, $foreignPlaylist->id)
+        ->assertForbidden();
+
+    expect($foreignPlaylist->fresh())
+        ->name->toBe('Foreign')
+        ->is_active->toBeTrue();
+})->with(['togglePlaylistActive', 'editPlaylist', 'preparePlaylistEdit']);
+
+test('configure forbids toggling playlist items of another users device', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $foreignPlaylist = Playlist::factory()->for(Device::factory()->for(User::factory()))->create();
+    $foreignItem = PlaylistItem::factory()->for($foreignPlaylist)->create(['is_active' => true]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->call('togglePlaylistItemActive', $foreignItem->id)
+        ->assertForbidden();
+
+    expect($foreignItem->fresh()->is_active)->toBeTrue();
+});

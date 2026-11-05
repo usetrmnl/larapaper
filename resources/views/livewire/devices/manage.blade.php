@@ -5,6 +5,7 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -154,7 +155,7 @@ new class extends Component
     {
         $device = auth()->user()->devices()->findOrFail($deviceId);
         $this->validate([
-            'pause_plugin_id' => 'nullable|exists:plugins,id',
+            'pause_plugin_id' => ['nullable', Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
         ]);
 
         $device->update([
@@ -369,9 +370,7 @@ new class extends Component
                         {{ $this->devicesAwaitingActivation->pluck('name')->join(', ') }} {{ $this->devicesAwaitingActivation->count() === 1 ? 'has' : 'have' }} not
                         connected yet. Point the device at this server to finish setup. The first setup request
                         activates the device and hands out its API key. Until then, anyone who knows its MAC address can
-                        claim the key, so activate the device soon. After activation, setup can only run again while
-                        Auto-Join is permitted, which lasts {{ \App\Models\User::AUTO_JOIN_WINDOW_MINUTES }} minutes
-                        after enabling it.
+                        claim the key. After activation, setup can only run again while Auto-Join is permitted.
                     </flux:callout.text>
                 </flux:callout>
             @endif

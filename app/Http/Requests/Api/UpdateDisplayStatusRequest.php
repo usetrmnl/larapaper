@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateDisplayStatusRequest extends FormRequest
 {
@@ -23,9 +24,9 @@ class UpdateDisplayStatusRequest extends FormRequest
             'sleep_mode_enabled' => 'boolean',
             'sleep_mode_from' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
-            'sleep_plugin_id' => 'nullable|exists:plugins,id',
+            'sleep_plugin_id' => ['nullable', Rule::exists('plugins', 'id')->where('user_id', $this->user()->id)],
             'pause_until' => 'nullable|date|after:now',
-            'pause_plugin_id' => 'nullable|exists:plugins,id',
+            'pause_plugin_id' => ['nullable', Rule::exists('plugins', 'id')->where('user_id', $this->user()->id)],
         ];
     }
 

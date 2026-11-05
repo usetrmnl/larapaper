@@ -2,6 +2,7 @@
 
 use App\Models\Device;
 use App\Models\DeviceModel;
+use App\Models\Plugin;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -281,4 +282,19 @@ test('device management page shows no activation warning when all devices are ac
 
     Livewire::test('devices.manage')
         ->assertDontSee('Awaiting activation');
+});
+
+test('user cannot pause device with another users plugin as pause screen', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $foreignPlugin = Plugin::factory()->create(['user_id' => User::factory()->create()->id]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->set('pause_duration', 60)
+        ->set('pause_plugin_id', $foreignPlugin->id)
+        ->call('pauseDevice', $device->id)
+        ->assertHasErrors(['pause_plugin_id']);
+
+    expect($device->fresh()->pause_plugin_id)->toBeNull();
 });

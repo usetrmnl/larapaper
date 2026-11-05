@@ -138,3 +138,31 @@ test('instance page 404s when plugin type does not match route type', function (
 
     $this->get("/plugins/type/screenshot/{$plugin->id}")->assertNotFound();
 });
+
+test('instance cannot be added to another users device or playlist', function (): void {
+    $user = User::factory()->create();
+    $ownDevice = Device::factory()->for($user)->create();
+    $foreignDevice = Device::factory()->for(User::factory())->create();
+    $foreignPlaylist = Playlist::factory()->for($foreignDevice)->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'image_webhook',
+        'data_strategy' => 'static',
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('plugins.type-instance', ['type' => 'image_webhook', 'plugin' => $plugin])
+        ->set('checked_devices', [(string) $foreignDevice->id])
+        ->set('device_playlists.'.$foreignDevice->id, (string) $foreignPlaylist->id)
+        ->call('addToPlaylist')
+        ->assertHasErrors(['checked_devices.0']);
+
+    Livewire::test('plugins.type-instance', ['type' => 'image_webhook', 'plugin' => $plugin])
+        ->set('checked_devices', [(string) $ownDevice->id])
+        ->set('device_playlists.'.$ownDevice->id, (string) $foreignPlaylist->id)
+        ->call('addToPlaylist')
+        ->assertNotFound();
+
+    expect($foreignPlaylist->fresh()->items)->toBeEmpty()
+        ->and($ownDevice->playlists()->count())->toBe(0);
+});

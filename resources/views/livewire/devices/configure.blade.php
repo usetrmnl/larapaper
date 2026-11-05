@@ -196,7 +196,7 @@ new class extends Component
             'sleep_mode_from' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'special_function' => 'nullable|string',
-            'sleep_plugin_id' => 'nullable|exists:plugins,id',
+            'sleep_plugin_id' => ['nullable', Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
         ], [
             'sleep_mode_from.required_if' => 'A sleep mode start time is required when sleep mode is enabled.',
             'sleep_mode_to.required_if' => 'A sleep mode end time is required when sleep mode is enabled.',
@@ -268,6 +268,8 @@ new class extends Component
 
     public function togglePlaylistActive(Playlist $playlist)
     {
+        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+
         $playlist->update(['is_active' => ! $playlist->is_active]);
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
     }
@@ -297,6 +299,8 @@ new class extends Component
 
     public function togglePlaylistItemActive(PlaylistItem $item)
     {
+        abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
+
         $item->update(['is_active' => ! $item->is_active]);
         $this->playlists = $this->device->playlists()->with('items.plugin')->orderBy('created_at')->get();
     }
@@ -342,6 +346,8 @@ new class extends Component
 
     public function editPlaylist(Playlist $playlist)
     {
+        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+
         $this->validate([
             'playlist_name' => 'required|string|max:255',
             'selected_weekdays' => 'nullable|array',
@@ -379,6 +385,8 @@ new class extends Component
 
     public function preparePlaylistEdit(Playlist $playlist)
     {
+        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+
         $this->playlist_name = $playlist->name;
         $this->selected_weekdays = $playlist->weekdays ?? null;
         $this->active_from = optional($playlist->active_from)->format('H:i');

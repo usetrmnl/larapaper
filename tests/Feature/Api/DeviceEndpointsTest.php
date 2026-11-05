@@ -1874,6 +1874,26 @@ test('display status update sets the sleep and pause plugins', function (): void
         ->and($device->pause_plugin_id)->toBe($pausePlugin->id);
 });
 
+test('display status update rejects another users sleep and pause plugins', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $foreignPlugin = Plugin::factory()->create(['user_id' => User::factory()->create()->id]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/display/status', [
+        'device_id' => $device->id,
+        'sleep_plugin_id' => $foreignPlugin->id,
+        'pause_plugin_id' => $foreignPlugin->id,
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['sleep_plugin_id', 'pause_plugin_id']);
+
+    $device->refresh();
+    expect($device->sleep_plugin_id)->toBeNull()
+        ->and($device->pause_plugin_id)->toBeNull();
+});
+
 test('display status update clears the sleep and pause plugins when sent null', function (): void {
     $user = User::factory()->create();
     $plugin = Plugin::factory()->create(['user_id' => $user->id]);
