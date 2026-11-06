@@ -11,6 +11,7 @@ use App\Services\Plugin\Parsers\ResponseParserRegistry;
 use App\Services\Plugin\Transform\TransformException;
 use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginImportService;
+use App\Support\CustomFieldConditions;
 use App\Support\UserBladeExecution;
 use Carbon\Carbon;
 use Closure;
@@ -228,6 +229,7 @@ class Plugin extends Model
                 'custom_fields' => ['required', 'array'],
                 'custom_fields.*.field_type' => ['required', 'string'],
                 'custom_fields.*.name' => ['required', 'string'],
+                'custom_fields.*.group' => ['nullable', 'string'],
             ],
             [
                 'custom_fields.*.field_type.required' => 'Each custom field must have a field_type.',
@@ -251,6 +253,9 @@ class Plugin extends Model
                 if (isset($field['help_text'])) {
                     $field['help_text'] = Purify::clean($field['help_text']);
                 }
+                if (isset($field['group'])) {
+                    $field['group'] = is_string($field['group']) ? mb_trim(Purify::clean($field['group'])) : $field['group'];
+                }
             }
             unset($field);
 
@@ -258,42 +263,50 @@ class Plugin extends Model
         }
     }
 
-    public function hasMissingRequiredConfigurationFields(): bool
+    /**
+     * Informational field types are never required. All other fields are required unless marked optional.
+     *
+     * @param  array<string, mixed>  $field
+     */
+    public static function isCustomFieldRequired(array $field): bool
     {
-        if (! isset($this->configuration_template['custom_fields']) || empty($this->configuration_template['custom_fields'])) {
+        if (in_array($field['field_type'] ?? null, ['author_bio', 'copyable', 'copyable_webhook_url'], true)) {
             return false;
         }
 
-        foreach ($this->configuration_template['custom_fields'] as $field) {
-            // Skip fields as they are informational only
-            if ($field['field_type'] === 'author_bio') {
+        return ! isset($field['optional']) || $field['optional'] !== true;
+    }
+
+    public function hasMissingRequiredConfigurationFields(): bool
+    {
+        $fields = $this->configuration_template['custom_fields'] ?? null;
+
+        if (! is_array($fields) || $fields === []) {
+            return false;
+        }
+
+        $configuration = is_array($this->configuration) ? $this->configuration : [];
+
+        foreach ($fields as $field) {
+            if (! is_array($field) || ! CustomFieldConditions::isRequired($field, $fields, $configuration)) {
                 continue;
             }
 
-            if ($field['field_type'] === 'copyable') {
+            $fieldKey = CustomFieldConditions::fieldKey($field);
+
+            if ($fieldKey === null) {
                 continue;
             }
 
-            if ($field['field_type'] === 'copyable_webhook_url') {
-                continue;
-            }
+            $currentValue = $configuration[$fieldKey] ?? null;
 
-            $fieldKey = $field['keyname'] ?? $field['key'] ?? $field['name'];
-
-            // Check if field is required (not marked as optional)
-            $isRequired = ! isset($field['optional']) || $field['optional'] !== true;
-
-            if ($isRequired) {
-                $currentValue = $this->configuration[$fieldKey] ?? null;
-
-                // If the field has a default value and no current value is set, it's not missing
-                if ((in_array($currentValue, [null, '', []], true)) && ! isset($field['default'])) {
-                    return true; // Found a required field that is not set and has no default
-                }
+            // If the field has a default value and no current value is set, it's not missing
+            if (in_array($currentValue, [null, '', []], true) && ! isset($field['default'])) {
+                return true;
             }
         }
 
-        return false; // All required fields are set
+        return false;
     }
 
     /**

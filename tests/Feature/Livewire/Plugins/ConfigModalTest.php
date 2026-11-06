@@ -310,3 +310,492 @@ test('config modal clears cached current_image and current_image_metadata on sav
         ->and($freshPlugin->current_image)->toBeNull()
         ->and($freshPlugin->current_image_metadata)->toBeNull();
 });
+
+test('config modal shows a required badge on required field labels', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Required Field Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'api_key',
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                ],
+                [
+                    'keyname' => 'nickname',
+                    'field_type' => 'string',
+                    'name' => 'Nickname',
+                    'optional' => true,
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('API Key')
+        ->assertSee('Required')
+        ->assertSee('Nickname');
+});
+
+test('config modal does not show a required badge when every field is optional', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Optional Field Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'nickname',
+                    'field_type' => 'string',
+                    'name' => 'Nickname',
+                    'optional' => true,
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('Nickname')
+        ->assertDontSee('Required');
+});
+
+test('config modal shows a required badge on groups that contain a required field', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Required Group Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'api_key',
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                    'group' => 'Authentication',
+                ],
+                [
+                    'keyname' => 'environment',
+                    'field_type' => 'string',
+                    'name' => 'Environment',
+                    'optional' => true,
+                    'group' => 'Authentication',
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('Authentication')
+        ->assertSee('Required')
+        ->assertSee('API Key');
+});
+
+test('config modal does not show a required badge on groups with only optional fields', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Optional Group Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'notes',
+                    'field_type' => 'text',
+                    'name' => 'Notes',
+                    'optional' => true,
+                    'group' => 'Advanced',
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('Advanced')
+        ->assertSee('Notes')
+        ->assertDontSee('Required');
+});
+
+test('config modal renders collapsible group headings for grouped custom fields', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Grouped Settings Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'api_key',
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                    'group' => 'Authentication',
+                ],
+                [
+                    'keyname' => 'refresh_interval',
+                    'field_type' => 'number',
+                    'name' => 'Refresh Interval',
+                    'group' => 'Display Settings',
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('Authentication')
+        ->assertSee('Display Settings')
+        ->assertSee('API Key')
+        ->assertSee('Refresh Interval');
+});
+
+test('config modal renders ungrouped fields outside collapsible groups', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Mixed Fields Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'general_title',
+                    'field_type' => 'string',
+                    'name' => 'General Title',
+                ],
+                [
+                    'keyname' => 'api_secret',
+                    'field_type' => 'password',
+                    'name' => 'API Secret',
+                    'group' => 'Advanced Settings',
+                ],
+            ],
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSee('General Title')
+        ->assertSee('Advanced Settings')
+        ->assertSee('API Secret');
+});
+
+test('config modal saves values for fields inside groups', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Grouped Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'headline',
+                    'field_type' => 'string',
+                    'name' => 'Headline',
+                ],
+                [
+                    'keyname' => 'api_key',
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                    'group' => 'Credentials',
+                ],
+                [
+                    'keyname' => 'tags',
+                    'field_type' => 'multi_string',
+                    'name' => 'Tags',
+                    'group' => 'Credentials',
+                ],
+            ],
+        ],
+        'configuration' => [
+            'headline' => 'Initial Headline',
+            'api_key' => 'old_key',
+            'tags' => 'tag1',
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->set('configuration.headline', 'New Headline')
+        ->set('configuration.api_key', 'new_key')
+        ->set('multiValues.tags.0', 'updated_tag')
+        ->call('saveConfiguration')
+        ->assertDispatched('config-updated')
+        ->assertHasNoErrors();
+
+    $freshPlugin = $plugin->fresh();
+    expect($freshPlugin->configuration['headline'])->toBe('New Headline')
+        ->and($freshPlugin->configuration['api_key'])->toBe('new_key')
+        ->and($freshPlugin->configuration['tags'])->toBe('updated_tag');
+});
+
+test('config modal hides fields for the default strategy and reveals them when the strategy changes', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Strategy Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'strategy',
+                    'field_type' => 'select',
+                    'name' => 'Strategy',
+                    'options' => ['Polling', 'Webhook', 'Static'],
+                    'default' => 'polling',
+                    'conditional_validation' => [
+                        ['when' => 'polling', 'hidden' => ['static_data', 'webhook_url']],
+                        ['when' => 'webhook', 'hidden' => ['polling_url', 'static_data']],
+                        ['when' => 'static', 'hidden' => ['polling_url', 'webhook_url']],
+                    ],
+                ],
+                [
+                    'keyname' => 'polling_url',
+                    'field_type' => 'string',
+                    'name' => 'Polling URL',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'webhook_url',
+                    'field_type' => 'string',
+                    'name' => 'Webhook URL',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'static_data',
+                    'field_type' => 'string',
+                    'name' => 'Static Data',
+                    'optional' => true,
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSet('configuration.strategy', 'polling')
+        ->assertSee('wire:model.live="configuration.strategy"', false)
+        ->assertSee('Polling URL')
+        ->assertDontSee('Webhook URL')
+        ->assertDontSee('Static Data')
+        ->set('configuration.strategy', 'webhook')
+        ->assertSee('Webhook URL')
+        ->assertDontSee('Polling URL')
+        ->assertDontSee('Static Data')
+        ->set('configuration.strategy', 'static')
+        ->assertSee('Static Data')
+        ->assertDontSee('Polling URL')
+        ->assertDontSee('Webhook URL');
+});
+
+test('config modal shows a required badge only on the field the data provider requires', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Weather Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'data_provider',
+                    'field_type' => 'select',
+                    'name' => 'Data Provider',
+                    'options' => ['Tempest', 'WeatherAPI'],
+                    'default' => 'tempest',
+                    'optional' => true,
+                    'conditional_validation' => [
+                        ['when' => 'tempest', 'required' => ['lat_lon']],
+                        ['when' => 'weatherapi', 'required' => ['location']],
+                    ],
+                ],
+                [
+                    'keyname' => 'lat_lon',
+                    'field_type' => 'string',
+                    'name' => 'Latitude and Longitude',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'location',
+                    'field_type' => 'string',
+                    'name' => 'City',
+                    'optional' => true,
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    $component = Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSet('configuration.data_provider', 'tempest')
+        ->assertSeeInOrder(['Latitude and Longitude', 'Required', 'City']);
+
+    expect(mb_substr_count($component->html(), 'Required'))->toBe(1);
+
+    $component->set('configuration.data_provider', 'weatherapi')
+        ->assertSeeInOrder(['Latitude and Longitude', 'City', 'Required']);
+
+    expect(mb_substr_count($component->html(), 'Required'))->toBe(1);
+});
+
+test('config modal omits a group whose fields are all hidden', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Hidden Group Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'strategy',
+                    'field_type' => 'select',
+                    'name' => 'Strategy',
+                    'options' => ['Polling', 'Webhook'],
+                    'default' => 'polling',
+                    'conditional_validation' => [
+                        ['when' => 'polling', 'hidden' => ['webhook_url']],
+                    ],
+                ],
+                [
+                    'keyname' => 'webhook_url',
+                    'field_type' => 'string',
+                    'name' => 'Webhook URL',
+                    'optional' => true,
+                    'group' => 'Webhook Settings',
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertDontSee('Webhook Settings')
+        ->assertDontSee('Webhook URL')
+        ->set('configuration.strategy', 'webhook')
+        ->assertSee('Webhook Settings')
+        ->assertSee('Webhook URL');
+});
+
+test('config modal shows a required badge on a group while its visible field is conditionally required', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Conditional Group Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'mode',
+                    'field_type' => 'select',
+                    'name' => 'Mode',
+                    'options' => ['Simple', 'Detailed', 'Plain'],
+                    'default' => 'plain',
+                    'optional' => true,
+                    'conditional_validation' => [
+                        ['when' => 'simple', 'hidden' => ['api_key']],
+                        ['when' => 'detailed', 'required' => ['api_key']],
+                    ],
+                ],
+                [
+                    'keyname' => 'api_key',
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                    'optional' => true,
+                    'group' => 'Credentials',
+                ],
+            ],
+        ],
+        'configuration' => ['mode' => 'detailed'],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSeeInOrder(['Credentials', 'Required', 'API Key'])
+        ->set('configuration.mode', 'plain')
+        ->assertSee('Credentials')
+        ->assertSee('API Key')
+        ->assertDontSee('Required');
+});
+
+test('config modal keeps a hidden field value when saving', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Preserve Hidden Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'strategy',
+                    'field_type' => 'select',
+                    'name' => 'Strategy',
+                    'options' => ['Polling', 'Static'],
+                    'default' => 'polling',
+                    'conditional_validation' => [
+                        ['when' => 'polling', 'hidden' => ['static_data']],
+                    ],
+                ],
+                [
+                    'keyname' => 'polling_url',
+                    'field_type' => 'string',
+                    'name' => 'Polling URL',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'static_data',
+                    'field_type' => 'string',
+                    'name' => 'Static Data',
+                    'optional' => true,
+                ],
+            ],
+        ],
+        'configuration' => [
+            'strategy' => 'polling',
+            'polling_url' => 'https://example.com/poll',
+            'static_data' => '{"kept":true}',
+        ],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->set('configuration.polling_url', 'https://example.com/updated')
+        ->call('saveConfiguration')
+        ->assertHasNoErrors();
+
+    expect($plugin->fresh()->configuration)->toMatchArray([
+        'strategy' => 'polling',
+        'polling_url' => 'https://example.com/updated',
+        'static_data' => '{"kept":true}',
+    ]);
+});

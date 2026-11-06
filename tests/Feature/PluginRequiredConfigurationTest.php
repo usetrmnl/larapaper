@@ -341,3 +341,90 @@ test('hasMissingRequiredConfigurationFields returns true when required multi_str
 
     expect($plugin->hasMissingRequiredConfigurationFields())->toBeTrue();
 });
+
+test('hasMissingRequiredConfigurationFields ignores a required field hidden by the selected strategy', function (): void {
+    $user = User::factory()->create();
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'strategy',
+                    'field_type' => 'select',
+                    'name' => 'Strategy',
+                    'default' => 'polling',
+                    'conditional_validation' => [
+                        ['when' => 'polling', 'hidden' => ['static_data']],
+                        ['when' => 'static', 'hidden' => ['polling_url']],
+                    ],
+                ],
+                [
+                    'keyname' => 'polling_url',
+                    'field_type' => 'string',
+                    'name' => 'Polling URL',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'static_data',
+                    'field_type' => 'string',
+                    'name' => 'Static Data',
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    expect($plugin->hasMissingRequiredConfigurationFields())->toBeFalse();
+
+    $plugin->update(['configuration' => ['strategy' => 'static']]);
+
+    expect($plugin->fresh()->hasMissingRequiredConfigurationFields())->toBeTrue();
+});
+
+test('hasMissingRequiredConfigurationFields requires the field selected by the data provider', function (): void {
+    $user = User::factory()->create();
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'data_provider',
+                    'field_type' => 'select',
+                    'name' => 'Data Provider',
+                    'default' => 'tempest',
+                    'optional' => true,
+                    'conditional_validation' => [
+                        ['when' => 'tempest', 'required' => ['lat_lon']],
+                        ['when' => 'weatherapi', 'required' => ['location']],
+                    ],
+                ],
+                [
+                    'keyname' => 'lat_lon',
+                    'field_type' => 'string',
+                    'name' => 'Latitude/Longitude',
+                    'optional' => true,
+                ],
+                [
+                    'keyname' => 'location',
+                    'field_type' => 'string',
+                    'name' => 'Location',
+                    'optional' => true,
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    expect($plugin->hasMissingRequiredConfigurationFields())->toBeTrue();
+
+    $plugin->update([
+        'configuration' => [
+            'data_provider' => 'weatherapi',
+            'location' => 'Atlanta, GA, USA',
+        ],
+    ]);
+
+    expect($plugin->fresh()->hasMissingRequiredConfigurationFields())->toBeFalse();
+});

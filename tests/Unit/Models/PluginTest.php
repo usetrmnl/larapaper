@@ -1272,3 +1272,46 @@ test('getMarkupForSize prepends shared markup and falls back from empty size mar
 
     expect($plugin->getMarkupForSize('half_horizontal'))->toBe("<div>shared</div>\n<div>full</div>");
 });
+
+test('isCustomFieldRequired treats informational and optional fields as not required', function (array $field, bool $expected): void {
+    expect(Plugin::isCustomFieldRequired($field))->toBe($expected);
+})->with([
+    'string without optional' => [['field_type' => 'string', 'name' => 'API Key'], true],
+    'string marked optional' => [['field_type' => 'string', 'name' => 'Title', 'optional' => true], false],
+    'string optional false' => [['field_type' => 'string', 'name' => 'Title', 'optional' => false], true],
+    'author_bio' => [['field_type' => 'author_bio', 'name' => 'About'], false],
+    'copyable' => [['field_type' => 'copyable', 'name' => 'URL'], false],
+    'copyable_webhook_url' => [['field_type' => 'copyable_webhook_url', 'name' => 'Webhook'], false],
+]);
+
+test('validateCustomFieldsList allows optional group attribute', function (): void {
+    Plugin::validateCustomFieldsList([
+        [
+            'field_type' => 'string',
+            'name' => 'API Key',
+            'group' => 'Authentication',
+        ],
+        [
+            'field_type' => 'boolean',
+            'name' => 'Dark Mode',
+        ],
+    ]);
+
+    expect(true)->toBeTrue();
+});
+
+test('sanitizeTemplate sanitizes group property', function (): void {
+    $plugin = Plugin::factory()->create([
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'field_type' => 'string',
+                    'name' => 'API Key',
+                    'group' => '  <strong>Auth Group</strong> <script>alert(1)</script>  ',
+                ],
+            ],
+        ],
+    ]);
+
+    expect($plugin->configuration_template['custom_fields'][0]['group'])->toBe('<strong>Auth Group</strong>');
+});
