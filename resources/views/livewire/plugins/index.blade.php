@@ -357,7 +357,9 @@ new class extends Component
                                     fully supported.</flux:text>
                             </li>
                             <li>
-                                <flux:text>Transform/Serverless is not yet supported</flux:text>
+                                <flux:text
+                                    >Polling transforms are optional; imports remain inactive until reviewed. Full
+                                    Serverless parity is not yet supported.</flux:text>
                             </li>
                             <li>
                                 <flux:text>There are limitations in payload size (Data Payload, Template).</flux:text>

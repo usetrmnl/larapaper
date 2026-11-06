@@ -113,6 +113,14 @@ php artisan db:seed --class=ExampleRecipesSeeder
 * Home Assistant
 * Sunrise/Sunset
 
+### Polling transforms
+
+Optional per-recipe transforms reshape fetched JSON before Liquid renders it.
+The bundled PHP provider needs no extra service; an HTTP provider supports
+external runners. Server execution defaults off, and imported scripts require
+explicit recipe activation. See [polling transforms](docs/docs/usage/transforms.md)
+for setup, limits, network access and the external runner contract.
+
 ### Usage
 
 #### Environment Variables

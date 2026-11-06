@@ -7,6 +7,8 @@ use App\Liquid\PluginLiquidEnvironment;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
 use App\Services\Plugin\Parsers\ResponseParserRegistry;
+use App\Services\Plugin\Transform\TransformException;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\PluginImportService;
 use App\Support\UserBladeExecution;
 use Carbon\Carbon;
@@ -27,6 +29,7 @@ use InvalidArgumentException;
 use Keepsuit\Liquid\Exceptions\LiquidException;
 use Stevebauman\Purify\Facades\Purify;
 use Symfony\Component\Yaml\Yaml;
+use Throwable;
 
 class Plugin extends Model
 {
@@ -48,6 +51,8 @@ class Plugin extends Model
         'plugin_type' => 'string',
         'alias' => 'boolean',
         'current_image_metadata' => 'array',
+        'transform_language' => 'string',
+        'transform_enabled' => 'boolean',
     ];
 
     protected static function boot()
@@ -82,6 +87,8 @@ class Plugin extends Model
                 'data_payload',
                 'preferred_renderer',
                 'framework_version',
+                'transform_code',
+                'transform_enabled',
                 'transform_language',
             ])) {
                 $model->current_image = null;
@@ -384,6 +391,39 @@ class Plugin extends Model
         return ['error' => 'Data payload exceeds maximum allowed size'];
     }
 
+    /** Reshape fetched data only after the server and recipe explicitly opt in. */
+    private function applyTransform(mixed $payload): mixed
+    {
+        if (! is_array($payload) || ! config('services.transform.enabled', false) || ! $this->transform_enabled) {
+            return $payload;
+        }
+
+        $code = is_string($this->transform_code) ? mb_trim($this->transform_code) : '';
+        $language = is_string($this->transform_language) ? mb_strtolower(mb_trim($this->transform_language)) : '';
+        if ($code === '' || $language === '') {
+            throw new TransformException('Transform code and language are required');
+        }
+        try {
+            $context = $this->trmnlContext();
+            unset($context['system'], $context['sensors']);
+            $result = app(TransformService::class)->execute($language, $code, [...$payload, 'trmnl' => $context]);
+        } catch (Throwable) {
+            throw new TransformException('Transform execution failed');
+        }
+        if (! $result->succeeded()) {
+            // User output may contain credentials or household data: do not log it.
+            throw new TransformException(
+                $result->error ?? 'Transform execution failed',
+                mb_substr($result->stderr, 0, 4096),
+            );
+        }
+        if (! self::dataPayloadWithinWireLimit($result->output)) {
+            throw new TransformException('Transform output exceeds maximum allowed size');
+        }
+
+        return $result->output;
+    }
+
     /** Supported TRMNL webhook merge strategies for recipe plugins. */
     public static function webhookMergeStrategies(): array
     {
@@ -538,6 +578,8 @@ class Plugin extends Model
 
         // unwrap IDX_0 if only one URL
         $finalPayload = (count($urls) === 1) ? reset($combinedResponse) : $combinedResponse;
+
+        $finalPayload = $this->applyTransform($finalPayload);
 
         if (! self::dataPayloadWithinWireLimit($finalPayload)) {
             Log::warning("Plugin {$this->id} data_payload exceeded wire size limit; storing error placeholder");
