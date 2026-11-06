@@ -144,13 +144,16 @@ return [
     |--------------------------------------------------------------------------
     |
     | User-authored Blade is compiled to PHP. In multi-user mode that is remote
-    | code execution for every registered user. Leave this false unless that
-    | risk is accepted. Single-user mode already runs Blade in-process.
+    | code execution for every registered user. When unset, Blade is allowed
+    | for a single user and disabled once a second user exists. Set true or
+    | false to force it on or off regardless of the number of users.
     |
     */
 
     'blade' => [
-        'allow_php_execution' => filter_var(env('INSECURE_BLADE_ALLOW_PHP_EXECUTION', false), FILTER_VALIDATE_BOOLEAN),
+        'allow_php_execution' => in_array(env('INSECURE_BLADE_ALLOW_PHP_EXECUTION'), [null, ''], true)
+            ? null
+            : filter_var(env('INSECURE_BLADE_ALLOW_PHP_EXECUTION'), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /*

@@ -123,7 +123,7 @@ php artisan db:seed --class=ExampleRecipesSeeder
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often should the server fetch new images from native service                                                                            | 15                |
 | `TRMNL_BLADE_FRAMEWORK_BASE_URL` | Base URL for versioned TRMNL framework CSS/JS used when rendering recipes                                                                | https://trmnl.com |
 | `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade. See the security note below.                            | 0                 |
-| `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | In multi-user mode, compile user Blade as PHP. This is remote code execution for every registered user.                              | 0                 |
+| `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | Force compiling user Blade as PHP on (`1`) or off (`0`). Unset: on for a single user, off for multi-user. `1` in multi-user mode is remote code execution for every registered user. | auto              |
 | `PASSKEYS_ENABLED`            | Enable Passkeys for login (requires HTTPS)                                                                                                  | 0                 |
 | `SSL_MODE`                    | SSL Mode, if not using a Reverse Proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off`             |
 | `FORCE_HTTPS`                 | If your server handles SSL termination, enforce HTTPS. Alternative: `TRUSTED_PROXIES`.                                                      | 0                 |
@@ -138,7 +138,7 @@ php artisan db:seed --class=ExampleRecipesSeeder
 If your environment is local, you can access the server at `http://localhost:4567` and login with user / password
 `admin@example.com` / `admin@example.com`, otherwise register the first account. Further signup stays closed unless `MULTIUSER_REGISTRATION_ENABLED=1`.
 
-**Security:** Turning on multi-user registration disables user-authored Blade unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. That insecure flag lets any registered user execute PHP on the server, potentially accessing other users' data).
+**Security:** Turning on multi-user registration disables user-authored Blade unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. That insecure flag lets any registered user execute PHP on the server, potentially accessing other users' data. Set `INSECURE_BLADE_ALLOW_PHP_EXECUTION=0` to disable Blade on a single-user server too.
 
 ### ➕ Add Your TRMNL Device
 

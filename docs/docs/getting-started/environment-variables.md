@@ -10,7 +10,7 @@ description: LaraPaper environment configuration reference.
 | `TRMNL_PROXY_BASE_URL` | Base URL of the native TRMNL service | `https://trmnl.app` |
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often to fetch new images from the cloud service | `15` |
 | `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade | `0` |
-| `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | In multi-user mode, compile user-authored Blade as PHP | `0` |
+| `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | Force compiling user-authored Blade as PHP on (`1`) or off (`0`). Unset: on for a single user, off for multi-user | auto |
 | `PASSKEYS_ENABLED` | Enable passkeys (requires HTTPS). See [Authentication](/getting-started/authentication#passkeys) | `0` |
 | `SSL_MODE` | SSL mode when not behind a reverse proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off` |
 | `FORCE_HTTPS` | Enforce HTTPS when the server terminates SSL | `0` |
@@ -50,4 +50,4 @@ The redirect URI is `{APP_URL}/auth/oidc/callback`. It is not a separate variabl
 
 The first account can always be created. After that, signup stays closed unless `MULTIUSER_REGISTRATION_ENABLED` is on.
 
-User-authored Blade templates are compiled to PHP. In single-user mode that stays available, because the only account is the person running the server. In multi-user mode Blade is not compiled unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. Turning that flag on means any registered user can execute PHP as the web server user. That includes reading `.env`, configuration, and other users' data. Liquid templates stay available either way.
+User-authored Blade templates are compiled to PHP. In single-user mode that stays available, because the only account is the person running the server. In multi-user mode Blade is not compiled unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. Setting `INSECURE_BLADE_ALLOW_PHP_EXECUTION=0` disables Blade in single-user mode as well. Turning the flag on means any registered user can execute PHP as the web server user. That includes reading `.env`, configuration, and other users' data. Liquid templates stay available either way.

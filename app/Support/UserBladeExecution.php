@@ -6,14 +6,19 @@ use App\Models\User;
 
 class UserBladeExecution
 {
-    public const string DISABLED_MESSAGE = 'Blade markup is disabled while multi-user mode is enabled. Use Liquid, or set INSECURE_BLADE_ALLOW_PHP_EXECUTION=true.';
+    public const string DISABLED_MESSAGE = 'Blade markup is disabled on this server. Use Liquid, or set INSECURE_BLADE_ALLOW_PHP_EXECUTION=true.';
 
+    /**
+     * Explicit INSECURE_BLADE_ALLOW_PHP_EXECUTION wins; otherwise Blade is only allowed for a single user.
+     */
     public static function allowed(): bool
     {
-        if (User::query()->count() < 2) {
-            return true;
+        $configured = config('app.blade.allow_php_execution');
+
+        if ($configured !== null) {
+            return (bool) $configured;
         }
 
-        return (bool) config('app.blade.allow_php_execution');
+        return User::query()->count() < 2;
     }
 }

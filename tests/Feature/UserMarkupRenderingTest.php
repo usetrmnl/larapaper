@@ -27,6 +27,21 @@ test('single-user blade markup is executed', function (): void {
     expect($plugin->render(standalone: false))->toBe('ok');
 });
 
+test('single-user blade markup is not executed when insecure php execution is explicitly disabled', function (): void {
+    config(['app.blade.allow_php_execution' => false]);
+
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->for($user)->create([
+        'plugin_type' => 'recipe',
+        'markup_language' => 'blade',
+        'render_markup' => "{{ 'ok' }}",
+        'data_strategy' => 'static',
+    ]);
+
+    expect(fn () => $plugin->render(standalone: false))
+        ->toThrow(InvalidArgumentException::class, UserBladeExecution::DISABLED_MESSAGE);
+});
+
 test('blade markup is executed when another user exists and insecure php execution is enabled', function (): void {
     config(['app.blade.allow_php_execution' => true]);
 
