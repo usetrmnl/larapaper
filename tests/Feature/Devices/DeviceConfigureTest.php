@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\FirmwareModel;
+use App\Enums\ScaleLevel;
 use App\Models\Device;
 use App\Models\Firmware;
 use App\Models\Playlist;
@@ -102,6 +103,73 @@ test('enabling sleep mode applies default times when none are set', function ():
         ->set('sleep_mode_enabled', true)
         ->assertSet('sleep_mode_from', '22:00')
         ->assertSet('sleep_mode_to', '06:00');
+});
+
+test('configure update saves the device scale level', function (): void {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'width' => 800,
+        'height' => 480,
+        'rotate' => 0,
+        'image_format' => 'png',
+        'maximum_compatibility' => false,
+        'scale_level' => null,
+    ]);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('scale_level', 'regular')
+        ->call('updateDevice')
+        ->assertHasNoErrors();
+
+    expect($device->refresh()->scale_level)->toBe(ScaleLevel::REGULAR);
+});
+
+test('configure update clears the device scale level when automatic is picked', function (): void {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'width' => 800,
+        'height' => 480,
+        'rotate' => 0,
+        'image_format' => 'png',
+        'maximum_compatibility' => false,
+        'scale_level' => ScaleLevel::LARGE,
+    ]);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSet('scale_level', 'large')
+        ->set('scale_level', '')
+        ->call('updateDevice')
+        ->assertHasNoErrors();
+
+    expect($device->refresh()->scale_level)->toBeNull();
+});
+
+test('configure update rejects an unknown scale level', function (): void {
+    $user = User::factory()->create();
+    actingAs($user);
+
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'width' => 800,
+        'height' => 480,
+        'rotate' => 0,
+        'image_format' => 'png',
+        'maximum_compatibility' => false,
+        'scale_level' => ScaleLevel::LARGE,
+    ]);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('scale_level', 'huge')
+        ->call('updateDevice')
+        ->assertHasErrors(['scale_level' => 'The selected scale level is invalid.']);
+
+    expect($device->refresh()->scale_level)->toBe(ScaleLevel::LARGE);
 });
 
 test('sortPlaylistItem reorders playlist items by zero-based position', function (): void {

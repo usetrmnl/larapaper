@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\ScaleLevel;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
@@ -122,6 +123,66 @@ test('render preview dispatches screen dimensions from selected device model', f
             && $params['screenHeight'] === 1404
             && is_string($params['preview'] ?? null)
             && $params['preview'] !== '');
+});
+
+test('render preview uses the scale of the user\'s device with the selected model', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $deviceModel = DeviceModel::factory()->create([
+        'kind' => 'trmnl',
+        'width' => 1872,
+        'height' => 1404,
+    ]);
+
+    Device::factory()->create([
+        'user_id' => $user->id,
+        'device_model_id' => $deviceModel->id,
+        'scale_level' => ScaleLevel::REGULAR,
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->set('preview_device_model_id', $deviceModel->id)
+        ->call('renderPreview', 'full')
+        ->assertDispatched('preview-updated', fn (string $name, array $params): bool => str_contains($params['preview'], 'screen--scale-regular'));
+});
+
+test('render preview uses the device model\'s scale when the user has no device with it', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $deviceModel = DeviceModel::factory()->create([
+        'kind' => 'trmnl',
+        'width' => 1872,
+        'height' => 1404,
+    ]);
+
+    Device::factory()->create([
+        'user_id' => User::factory(),
+        'device_model_id' => $deviceModel->id,
+        'scale_level' => ScaleLevel::REGULAR,
+    ]);
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'plugin_type' => 'recipe',
+        'data_strategy' => 'static',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="title">Preview</div>',
+    ]);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->set('preview_device_model_id', $deviceModel->id)
+        ->call('renderPreview', 'full')
+        ->assertDispatched('preview-updated', fn (string $name, array $params): bool => str_contains($params['preview'], 'screen--scale-xxlarge'));
 });
 
 test('add to playlist modal gates layout block with alpine using wire state', function (): void {
