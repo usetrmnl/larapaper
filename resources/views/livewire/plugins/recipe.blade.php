@@ -3,6 +3,7 @@
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Plugin;
+use App\Services\Plugin\Transform\TransformException;
 use App\Services\PluginExportService;
 use App\Support\UserBladeExecution;
 use Illuminate\Support\Arr;
@@ -41,6 +42,12 @@ new class extends Component
     public ?string $polling_header;
 
     public ?string $polling_body;
+
+    public bool $transform_active = false;
+
+    public ?string $transform_code = null;
+
+    public ?string $transform_language = null;
 
     public $data_payload;
 
@@ -153,6 +160,9 @@ new class extends Component
         $this->polling_verb = $this->plugin->polling_verb;
         $this->polling_header = $this->plugin->polling_header;
         $this->polling_body = $this->plugin->polling_body;
+        $this->transform_active = (bool) $this->plugin->transform_enabled;
+        $this->transform_code = $this->plugin->transform_code;
+        $this->transform_language = $this->plugin->transform_language ?: 'php';
         $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
     }
 
@@ -312,7 +322,21 @@ new class extends Component
             'device_active_until' => 'array',
             'no_bleed' => 'boolean',
             'dark_mode' => 'boolean',
+            'transform_active' => 'boolean',
+            'transform_code' => 'nullable|string|max:200000',
+            'transform_language' => ['nullable', \Illuminate\Validation\Rule::in(['php', 'python', 'node'])],
         ];
+    }
+
+    public function renderTransformExample(): void
+    {
+        abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
+        abort_unless(config('services.transform.enabled', false), 403);
+        $this->transform_code = match ($this->transform_language) {
+            'python' => "def run(input):\n    return input\n",
+            'node' => "export function run(input) {\n    return input;\n}\n",
+            default => "function run(\$input) {\n    return \$input;\n}\n",
+        };
     }
 
     public function editSettings()
@@ -323,6 +347,21 @@ new class extends Component
         $this->validatePollingUrl();
 
         $validated = $this->validate();
+        if (! config('services.transform.enabled', false)) {
+            unset($validated['transform_active'], $validated['transform_code'], $validated['transform_language']);
+        } else {
+            $validated['transform_enabled'] = Arr::pull($validated, 'transform_active', false);
+            if ($validated['transform_enabled'] && ! in_array($validated['transform_language'] ?? null, app(\App\Services\Plugin\Transform\TransformService::class)->languages(), true)) {
+                $this->addError('transform_language', 'The configured provider does not support this language.');
+
+                return;
+            }
+            if ($validated['transform_enabled'] && blank($validated['transform_code'] ?? null)) {
+                $this->addError('transform_code', 'Transform code is required when enabled.');
+
+                return;
+            }
+        }
         $dataPayloadString = (string) Arr::get($validated, 'data_payload', '');
         $decodedPayload = json_decode($dataPayloadString, true);
 
@@ -375,7 +414,11 @@ new class extends Component
                 $this->data_payload_updated_at = $this->plugin->data_payload_updated_at;
 
             } catch (Exception $e) {
-                $this->dispatch('data-update-error', message: $e->getMessage().$e->getPrevious()?->getMessage());
+                $message = $e->getMessage().$e->getPrevious()?->getMessage();
+                if ($e instanceof TransformException && filled($e->diagnostics)) {
+                    $message .= "\n".$e->diagnostics;
+                }
+                $this->dispatch('data-update-error', message: $message);
             }
         }
     }
@@ -1395,6 +1438,27 @@ HTML;
                                 </div>
                             </div>
                         </div>
+
+                        @if (config('services.transform.enabled', false))
+                            <div class="mt-4 space-y-3">
+                                <flux:heading>Transform script</flux:heading>
+                                <flux:checkbox wire:model="transform_active" label="Enable this recipe’s transform" />
+                                <flux:description
+                                    >Reshape fetched JSON before it reaches your Liquid template. Define run(input) and
+                                    return an object or array.</flux:description>
+                                <flux:select wire:model="transform_language" label="Transform language">
+                                    @foreach (app(\App\Services\Plugin\Transform\TransformService::class)->languages() as $language)
+                                        <flux:select.option :value="$language">
+                                            {{ strtoupper($language) }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                                <flux:textarea wire:model="transform_code" label="Transform code" rows="12" />
+                                <flux:button type="button" wire:click="renderTransformExample"
+                                    >Insert example</flux:button>
+                                <flux:error name="transform_code" />
+                                <flux:error name="transform_language" />
+                            </div>
+                        @endif
                     @elseif ($data_strategy === 'webhook')
                         <div class="mb-4">
                             <flux:field>

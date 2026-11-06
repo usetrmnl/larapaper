@@ -46,6 +46,20 @@ return [
         'liquid_path' => env('TRMNL_LIQUID_PATH', '/usr/local/bin/trmnl-liquid-cli'),
     ],
 
+    'transform' => [
+        'enabled' => env('TRANSFORM_ENABLED', false),
+        'provider' => env('TRANSFORM_PROVIDER', 'local'),
+        'allow_network' => env('TRANSFORM_ALLOW_NETWORK', false),
+        'runner_url' => env('TRANSFORM_RUNNER_URL'),
+        'runner_token' => env('TRANSFORM_RUNNER_TOKEN'),
+        'max_output_bytes' => 1048576,
+        'timeout_seconds' => env('TRANSFORM_TIMEOUT_SECONDS', 5),
+        'memory_limit_mb' => env('TRANSFORM_MEMORY_LIMIT_MB', 128),
+        'binaries' => [
+            'php' => env('TRANSFORM_BIN_PHP', 'php'),
+        ],
+    ],
+
     'webhook' => [
         'notifications' => [
             'url' => env('WEBHOOK_NOTIFICATION_URL', null),
