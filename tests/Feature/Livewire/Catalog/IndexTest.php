@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Settings\CatalogSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -230,4 +231,26 @@ it('purifies catalog author bio html', function (): void {
         ->assertDontSee('<script>alert(1)</script>', false)
         ->call('previewPlugin', 'test-plugin')
         ->assertSee('<strong>Hello</strong>', false);
+});
+
+it('shows the 3rd party warning until it is dismissed', function (): void {
+    Http::fake([
+        config('app.catalog_url') => Http::response('', 200),
+    ]);
+
+    $this->actingAs(User::factory()->create());
+
+    Livewire::withoutLazyLoading();
+
+    Livewire::test('catalog.index')
+        ->assertSee('Recipes are not reviewed')
+        ->call('dismissOssWarning')
+        ->assertDontSee('Recipes are not reviewed');
+
+    expect(app(CatalogSettings::class)->oss_3rd_party_warning_dismissed)->toBeTrue();
+
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test('catalog.index')
+        ->assertDontSee('Recipes are not reviewed');
 });

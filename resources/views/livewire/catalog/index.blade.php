@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\PluginImportService;
+use App\Settings\CatalogSettings;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -22,9 +23,22 @@ class extends Component
 
     public array $previewData = [];
 
-    public function mount(): void
+    public bool $ossWarningDismissed = false;
+
+    public function mount(CatalogSettings $catalogSettings): void
     {
+        $this->ossWarningDismissed = $catalogSettings->oss_3rd_party_warning_dismissed;
         $this->loadCatalogPlugins();
+    }
+
+    public function dismissOssWarning(CatalogSettings $catalogSettings): void
+    {
+        abort_unless(auth()->user() !== null, 403);
+
+        $catalogSettings->oss_3rd_party_warning_dismissed = true;
+        $catalogSettings->save();
+
+        $this->ossWarningDismissed = true;
     }
 
     public function placeholder()
@@ -151,6 +165,19 @@ class extends Component
 }; ?>
 
 <div class="space-y-4">
+    @unless($ossWarningDismissed)
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:callout.heading>Recipes are not reviewed</flux:callout.heading>
+            <flux:callout.text>
+                Recipes in the OSS Catalog come from third parties and are not reviewed.
+                They may contain malicious code. Review the code in the linked Git repository before installing.
+            </flux:callout.text>
+            <x-slot name="controls">
+                <flux:button icon="x-mark" variant="ghost" wire:click="dismissOssWarning" />
+            </x-slot>
+        </flux:callout>
+    @endunless
+
     @if(empty($catalogPlugins))
         <div class="text-center py-8">
             <flux:icon name="exclamation-triangle" class="mx-auto h-12 w-12 text-zinc-400" />
