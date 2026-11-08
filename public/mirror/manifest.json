@@ -1,7 +1,21 @@
 {
-  "name": "TRMNL BYOS Laravel Mirror",
-  "short_name": "TRMNL BYOS",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff"
+  "name": "LaraPaper Mirror",
+  "short_name": "LaraPaper",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "assets/apple-touch-icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/logo--brand.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }
