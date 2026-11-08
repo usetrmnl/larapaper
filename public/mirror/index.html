@@ -45,16 +45,24 @@
         trmnl.ui.errorContainer.style.display = "none";
       },
 
+      // The form always shows the saved settings: changes apply only on Save
       showSetupForm: function () {
         var data = trmnl.getSettings();
         trmnl.ui.apiKeyInput.value = data.api_key || "";
         trmnl.ui.baseURLInput.value = data.base_url || "";
         trmnl.ui.displayModeSelect.value = data.display_mode || "";
-        trmnl.ui.fullscreenToggle.checked = !!data.fullscreen;
-        trmnl.ui.wakeLockToggle.checked = !!trmnl.wakeLock || !!data.wake_lock;
+        trmnl.ui.fullscreenToggle.checked = trmnl.isFullscreenSupported() && !!data.fullscreen;
+        trmnl.ui.wakeLockToggle.checked = !!trmnl.isWakeLockSupported() && !!data.wake_lock;
         trmnl.ui.simulateDeviceToggle.checked = data.mode === "display";
 
+        // Nothing to go back to until a device is configured
+        trmnl.ui.cancelButton.style.display = data.api_key ? "block" : "none";
+
         trmnl.ui.setup.style.display = "flex";
+      },
+
+      cancelSetup: function () {
+        trmnl.hideSetupForm();
       },
 
       saveSetup: function (event) {
@@ -80,19 +88,19 @@
           mode: mode
         });
 
-        if (wakeLockEnabled) {
-          trmnl.acquireWakeLock().then(function () {
-            trmnl.ui.wakeLockToggle.checked = !!trmnl.wakeLock;
-          }).catch(function (err) {
-            console.warn("Wake Lock request failed:", err);
-            trmnl.ui.wakeLockToggle.checked = false;
-          });
+        // Still inside the Save tap, so fullscreen is allowed by the browser
+        if (fullscreenEnabled) {
+          if (!trmnl.isFullscreenActive()) {
+            trmnl.enterFullscreen();
+          }
         } else {
-          trmnl.releaseWakeLock().then(function () {
-            trmnl.ui.wakeLockToggle.checked = false;
-          }).catch(function (err) {
-            console.warn("Wake Lock release failed:", err);
-          });
+          trmnl.exitFullscreen();
+        }
+
+        if (wakeLockEnabled) {
+          trmnl.acquireWakeLock();
+        } else {
+          trmnl.releaseWakeLock();
         }
 
         trmnl.fetchDisplay();
@@ -160,11 +168,6 @@
         }
       },
 
-      syncFullscreenToggle: function () {
-        var active = trmnl.isFullscreenActive();
-        trmnl.ui.fullscreenToggle.checked = active;
-      },
-
       isWakeLockSupported: function () {
         return (
           window.isSecureContext &&
@@ -174,46 +177,34 @@
       },
 
       acquireWakeLock: function () {
-
-        if (!trmnl.isWakeLockSupported()) {
-          return {
-            then: function () { return this; },
-            catch: function () { return this; }
-          };
+        if (!trmnl.isWakeLockSupported() || trmnl.wakeLock) {
+          return;
         }
 
-        if (trmnl.wakeLock) {
-          return Promise.resolve();
-        }
-
-        return navigator.wakeLock.request("screen")
+        navigator.wakeLock.request("screen")
           .then(function (sentinel) {
-
             trmnl.wakeLock = sentinel;
 
+            // The browser releases the lock when the page is hidden; the
+            // visibilitychange handler takes it again from the saved setting
             sentinel.addEventListener("release", function () {
               trmnl.wakeLock = null;
-              trmnl.ui.wakeLockToggle.checked = false;
             });
 
             console.log("Wake Lock active");
-
           })
           .catch(function (err) {
             console.warn("Wake Lock failed:", err);
             trmnl.wakeLock = null;
-            trmnl.ui.wakeLockToggle.checked = false;
           });
       },
 
-
       releaseWakeLock: function () {
-
         if (!trmnl.wakeLock) {
-          return Promise.resolve();
+          return;
         }
 
-        return trmnl.wakeLock.release()
+        trmnl.wakeLock.release()
           .then(function () {
             trmnl.wakeLock = null;
             console.log("Wake Lock released");
@@ -222,20 +213,6 @@
             console.warn("Release failed:", err);
             trmnl.wakeLock = null;
           });
-      },
-
-
-      toggleWakeLock: function () {
-        if (!trmnl.isWakeLockSupported()) return;
-        if (trmnl.wakeLock) {
-          trmnl.releaseWakeLock().then(function () {
-            trmnl.ui.wakeLockToggle.checked = false;
-          });
-        } else {
-          trmnl.acquireWakeLock().then(function () {
-            trmnl.ui.wakeLockToggle.checked = !!trmnl.wakeLock;
-          });
-        }
       },
 
 
@@ -579,27 +556,13 @@
         trmnl.ui.wakeLockToggle = document.getElementById("wakeLockToggle");
         trmnl.ui.simulateDeviceToggle = document.getElementById("simulateDeviceToggle");
         trmnl.ui.setup = document.getElementById("setup");
+        trmnl.ui.cancelButton = document.getElementById("cancelSetup");
 
-        // Sync fullscreen state
-        document.addEventListener("fullscreenchange", trmnl.syncFullscreenToggle);
-        document.addEventListener("webkitfullscreenchange", trmnl.syncFullscreenToggle);
-        document.addEventListener("msfullscreenchange", trmnl.syncFullscreenToggle);
-
-        // Fullscreen toggle
+        // Fullscreen toggle (applied on Save)
         if (!trmnl.isFullscreenSupported()) {
           trmnl.ui.fullscreenToggle.disabled = true;
           trmnl.ui.fullscreenToggle.parentElement.style.opacity = "0.5";
           trmnl.ui.fullscreenToggle.parentElement.style.cursor = "not-allowed";
-        } else {
-          trmnl.ui.fullscreenToggle.addEventListener("change", function (e) {
-            e.stopPropagation();
-
-            if (e.target.checked) {
-              trmnl.enterFullscreen();
-            } else {
-              trmnl.exitFullscreen();
-            }
-          });
         }
 
         // Catch up on refreshes missed while the page was hidden / the iPad was locked
@@ -616,7 +579,7 @@
 
         var wakeLockHint = document.getElementById("wakeLockHint");
 
-        // Wake Lock toggle
+        // Wake Lock toggle (applied on Save)
         if (trmnl.isWakeLockSupported()) {
 
           trmnl.ui.wakeLockToggle.disabled = false;
@@ -625,14 +588,11 @@
 
           if (wakeLockHint) wakeLockHint.style.display = "none";
 
-          trmnl.ui.wakeLockToggle.addEventListener("change", function () {
-            trmnl.toggleWakeLock();
-          });
-
+          // The lock is dropped while the page is hidden: take it again
           document.addEventListener("visibilitychange", function () {
             if (
               document.visibilityState === "visible" &&
-              trmnl.ui.wakeLockToggle.checked
+              trmnl.getSettings().wake_lock
             ) {
               trmnl.acquireWakeLock();
             }
@@ -678,20 +638,13 @@
         // Auto Wake Lock at first click/touch if option enabled
         if (settings.wake_lock && trmnl.isWakeLockSupported()) {
           var acquireWakeLockOnce = function () {
-            trmnl.acquireWakeLock().then(function () {
-              trmnl.ui.wakeLockToggle.checked = !!trmnl.wakeLock;
-            }).catch(function (err) {
-              console.warn("Wake Lock request failed:", err);
-              trmnl.ui.wakeLockToggle.checked = false;
-            });
+            trmnl.acquireWakeLock();
             document.removeEventListener("click", acquireWakeLockOnce);
             document.removeEventListener("touchstart", acquireWakeLockOnce);
           };
           document.addEventListener("click", acquireWakeLockOnce);
           document.addEventListener("touchstart", acquireWakeLockOnce);
         }
-
-        trmnl.syncFullscreenToggle();
       } //init end
 
     };
@@ -849,8 +802,25 @@
     }
 
     .btn-clear {
+      background-color: #c0392b;
+    }
+
+    /* Cancel + Clear side by side; no flex `gap` (unsupported on iOS 9) */
+    .btn-row {
+      display: flex;
       margin-top: 1em;
-      background-color: #777;
+    }
+
+    .btn-row .btn {
+      flex: 1;
+      width: auto;
+      padding-left: 0.5em;
+      padding-right: 0.5em;
+    }
+
+    /* margin on Cancel, so Clear has none when Cancel is hidden */
+    #cancelSetup {
+      margin-left: 0.5em;
     }
 
     #error-container .btn {
@@ -891,6 +861,10 @@
     .setting-row .switch {
       width: auto;
       min-width: 52px;
+    }
+
+    /* fixed height only on the switch: the select needs room for its padding */
+    .setting-row .switch {
       height: 28px;
     }
 
@@ -984,9 +958,6 @@
       .setting-row select,
       .setting-row .switch {
         float: right;
-        width: auto;
-        min-width: 52px;
-        height: 28px;
       }
     }
   </style>
@@ -1053,7 +1024,11 @@
         </fieldset>
 
         <button class="btn">Save</button>
-        <button class="btn btn-clear" type="button" onclick="trmnl.clearSettings()">Clear settings</button>
+        <div class="btn-row">
+          <button class="btn btn-clear" type="button" onclick="trmnl.clearSettings()">Clear settings</button>
+          <button class="btn btn-secondary" type="button" id="cancelSetup"
+            onclick="trmnl.cancelSetup()" style="display: none;">Cancel</button>
+        </div>
 
       </form>
     </div>
