@@ -19,7 +19,7 @@
         "bnussbau/epaper-pipeline-php": "^1.1",
         "bnussbau/laravel-trmnl-blade": "^3.4",
         "hammerstone/sidecar": "^0.8.0",
-        "keepsuit/laravel-liquid": "^0.6",
+        "keepsuit/laravel-liquid": "^0.7",
         "laravel/fortify": "^1.37",
         "laravel/framework": "^13.0",
         "laravel/mcp": "^1.0",

@@ -582,7 +582,7 @@ class Plugin extends Model
         // Apply basic replacements
         $template = str_replace(array_keys($replacements), array_values($replacements), $template);
 
-        // Convert Ruby/strftime date formats to PHP date formats
+        // Convert l_date formats from strftime to PHP date tokens.
         $template = $this->convertDateFormats($template);
 
         // Convert {% render "template" with %} syntax to {% render "template", %} syntax
@@ -612,24 +612,12 @@ class Plugin extends Model
     }
 
     /**
-     * Convert Ruby/strftime date formats to PHP date formats in Liquid templates
+     * Convert l_date formats from strftime to PHP date tokens.
+     *
+     * The built-in date filter speaks strftime natively. l_date still formats with Carbon.
      */
     private function convertDateFormats(string $template): string
     {
-        // Handle date filter formats: date: "format" or date: 'format'
-        $template = preg_replace_callback(
-            '/date:\s*(["\'])([^"\']+)\1/',
-            function (array $matches): string {
-                $quote = $matches[1];
-                $format = $matches[2];
-                $convertedFormat = \App\Liquid\Utils\ExpressionUtils::strftimeToPhpFormat($format);
-
-                return 'date: '.$quote.$convertedFormat.$quote;
-            },
-            $template
-        );
-
-        // Handle l_date filter formats: l_date: "format" or l_date: 'format'
         $template = preg_replace_callback(
             '/l_date:\s*(["\'])([^"\']+)\1/',
             function (array $matches): string {

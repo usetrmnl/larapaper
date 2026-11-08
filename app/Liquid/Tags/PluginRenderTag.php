@@ -32,9 +32,7 @@ class PluginRenderTag extends RenderTag
             }
         }
 
-        foreach ($variables as $key => $value) {
-            $partialContext->set($key, $value);
-        }
+        $partialContext->merge($variables);
 
         foreach ($this->attributes as $key => $value) {
             $partialContext->set($key, $rootContext->evaluate($value));
