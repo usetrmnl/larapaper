@@ -28,7 +28,6 @@
       nextRefreshAt: 0,
       requestId: 0,
       failures: 0,
-      renderedAt: 0,
       memoryStore: null,
       storageBroken: false,
       ui: {},
@@ -197,7 +196,7 @@
               trmnl.ui.wakeLockToggle.checked = false;
             });
 
-            console.log("Wake Lock attivo");
+            console.log("Wake Lock active");
 
           })
           .catch(function (err) {
@@ -217,7 +216,7 @@
         return trmnl.wakeLock.release()
           .then(function () {
             trmnl.wakeLock = null;
-            console.log("Wake Lock rilasciato");
+            console.log("Wake Lock released");
           })
           .catch(function (err) {
             console.warn("Release failed:", err);
@@ -399,7 +398,6 @@
             if (!isCurrent()) return;
 
             trmnl.showScreen(data.image_url);
-            trmnl.renderedAt = new Date();
             trmnl.failures = 0;
 
             var refreshRate = parseInt(data.refresh_rate, 10);
@@ -664,6 +662,8 @@
           trmnl.fetchDisplay();
         }
 
+        // One-shot listeners are removed by hand: iOS 9 reads an options
+        // object ({ once: true }) as useCapture = true
         // Auto fullscreen at first click/touch if option enabled
         if (settings.fullscreen && trmnl.isFullscreenSupported()) {
           var activateFullscreenOnce = function () {
@@ -671,8 +671,8 @@
             document.removeEventListener("click", activateFullscreenOnce);
             document.removeEventListener("touchstart", activateFullscreenOnce);
           };
-          document.addEventListener("click", activateFullscreenOnce, { once: true });
-          document.addEventListener("touchstart", activateFullscreenOnce, { once: true });
+          document.addEventListener("click", activateFullscreenOnce);
+          document.addEventListener("touchstart", activateFullscreenOnce);
         }
 
         // Auto Wake Lock at first click/touch if option enabled
@@ -687,8 +687,8 @@
             document.removeEventListener("click", acquireWakeLockOnce);
             document.removeEventListener("touchstart", acquireWakeLockOnce);
           };
-          document.addEventListener("click", acquireWakeLockOnce, { once: true });
-          document.addEventListener("touchstart", acquireWakeLockOnce, { once: true });
+          document.addEventListener("click", acquireWakeLockOnce);
+          document.addEventListener("touchstart", acquireWakeLockOnce);
         }
 
         trmnl.syncFullscreenToggle();
@@ -723,11 +723,21 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      overflow-y: scroll;
+      overflow-y: auto;
     }
 
+    /*
+     * Panel centred with auto margins instead of justify-content: when it is
+     * taller than the viewport (iPad landscape) it starts at the top and can be
+     * scrolled, instead of being clipped above the fold.
+     */
     #setup {
+      justify-content: flex-start;
+      padding: 1em;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
       background-color: #3d3d3e;
+      z-index: 2;
     }
 
     #setup-panel {
@@ -737,7 +747,7 @@
       justify-content: center;
       background-color: #ffffff;
       padding: 2em;
-      margin: 1em;
+      margin: auto;
       border-radius: 1em;
       box-shadow: 0 0.5em 2em rgba(0, 0, 0, 1);
     }
@@ -752,11 +762,11 @@
       height: 100vh;
       object-fit: contain;
       background-color: #000000;
-      z-index: 1;
     }
 
     body.dark #screen,
     body.night #screen {
+      -webkit-filter: invert(1) hue-rotate(180deg); /* iOS < 9.3 */
       filter: invert(1) hue-rotate(180deg);
       background-color: #ffffff;
     }
@@ -799,10 +809,6 @@
       margin-bottom: 1em;
     }
 
-    #setup {
-      z-index: 2;
-    }
-
     .form-control {
       font-size: 1.25em;
       width: 14em;
@@ -813,13 +819,10 @@
     }
 
     label {
+      display: block;
       font-size: 1.25em;
       margin-bottom: 0.5em;
       cursor: pointer;
-    }
-
-    label {
-      display: block;
     }
 
     fieldset {
@@ -955,15 +958,17 @@
       background-color: #ffffff;
     }
 
-    .toggle-label {
-      font-size: 1.25em;
-      margin: 0;
-      cursor: default;
-      pointer-events: auto;
+    .setting-hint {
+      font-size: 0.85em;
+      color: #777;
+      margin-top: 0.25em;
     }
 
-    /* Fallback for iOS 9 */
-    @media screen and (max-width: 1024px) and (-webkit-min-device-pixel-ratio: 1) {
+    /*
+     * Float layout for old Safari (iOS 9). `inset` support (Safari 14.1+) is
+     * used as a marker so modern small screens keep the flex layout.
+     */
+    @supports not (inset: 0) {
       .setting-row {
         display: block;
         overflow: hidden;
@@ -990,7 +995,7 @@
 <body>
   <div id="setup" style="display: none;">
     <div id="setup-panel">
-      <img src="assets/logo--brand.svg" alt="TRMNL Logo" />
+      <img src="assets/logo--brand.svg" alt="LaraPaper" />
 
       <form onsubmit="return trmnl.saveSetup(event)">
 
