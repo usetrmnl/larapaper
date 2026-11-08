@@ -19,8 +19,18 @@
   <script>
     var trmnl = {
       STORAGE_KEY: "byos_laravel_mirror_settings",
+      REQUEST_TIMEOUT: 20000, // ms, for both the API call and the image download
+      DEFAULT_REFRESH_RATE: 300, // seconds, used when the server sends no refresh_rate
+      RETRY_BASE_DELAY: 15, // seconds, doubled on every consecutive failure...
+      RETRY_MAX_DELAY: 300, // ...up to this cap
+      MAX_SILENT_FAILURES: 3, // keep showing the last good screen for this many failures
       refreshTimer: null,
+      nextRefreshAt: 0,
+      requestId: 0,
+      failures: 0,
       renderedAt: 0,
+      memoryStore: null,
+      storageBroken: false,
       ui: {},
       wakeLock: null,
 
@@ -231,17 +241,94 @@
 
 
 
+      scheduleRefresh: function (seconds) {
+        clearTimeout(trmnl.refreshTimer);
+        trmnl.nextRefreshAt = Date.now() + seconds * 1000;
+        console.log("Refreshing in " + seconds + " seconds...");
+        trmnl.refreshTimer = setTimeout(function () {
+          trmnl.fetchDisplay({ quiet: true });
+        }, seconds * 1000);
+      },
+
+      // iOS freezes timers while the page is hidden or the screen is locked:
+      // when we come back, refresh right away if the scheduled time has passed.
+      resumeRefresh: function () {
+        if (!trmnl.nextRefreshAt) return;
+
+        var remaining = trmnl.nextRefreshAt - Date.now();
+        if (remaining <= 1000) {
+          trmnl.fetchDisplay({ quiet: true });
+        } else {
+          clearTimeout(trmnl.refreshTimer);
+          trmnl.refreshTimer = setTimeout(function () {
+            trmnl.fetchDisplay({ quiet: true });
+          }, remaining);
+        }
+      },
+
+      handleFailure: function (message) {
+        trmnl.failures++;
+
+        var delay = Math.min(
+          trmnl.RETRY_BASE_DELAY * Math.pow(2, trmnl.failures - 1),
+          trmnl.RETRY_MAX_DELAY
+        );
+        var hasScreen = trmnl.ui.img.style.display === "block";
+
+        console.warn(message + " (failure #" + trmnl.failures + ")");
+
+        // On a wall display a stale screen is better than an error for a short hiccup
+        if (!hasScreen || trmnl.failures >= trmnl.MAX_SILENT_FAILURES) {
+          trmnl.showStatus(message + " (retrying in " + delay + "s)");
+        }
+
+        trmnl.scheduleRefresh(delay);
+      },
+
+      // Download the image off-screen first, so the visible one is swapped only when ready
+      loadImage: function (src, onLoad, onError) {
+        var loader = new Image();
+        var done = false;
+        var timer;
+
+        var finish = function (callback) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          loader.onload = null;
+          loader.onerror = null;
+          callback();
+        };
+
+        timer = setTimeout(function () { finish(onError); }, trmnl.REQUEST_TIMEOUT);
+        loader.onload = function () { finish(onLoad); };
+        loader.onerror = function () { finish(onError); };
+        loader.src = src;
+      },
+
       fetchDisplay: function (opts) {
         opts = opts || {};
         clearTimeout(trmnl.refreshTimer);
+        trmnl.refreshTimer = null;
+        trmnl.nextRefreshAt = 0;
+
+        // Responses of older requests are ignored
+        var requestId = ++trmnl.requestId;
+        var isCurrent = function () { return requestId === trmnl.requestId; };
+
+        var setup = trmnl.getSettings();
+        var apiKey = setup.api_key;
+
+        if (!apiKey) {
+          trmnl.showSetupForm();
+          return;
+        }
 
         if (!opts.quiet) {
           trmnl.hideSetupForm();
           trmnl.showStatus("Loading...");
         }
 
-        var setup = trmnl.getSettings();
-        var apiKey = setup.api_key;
         var displayMode = setup.display_mode;
         var baseURL = setup.base_url || "https://your-byos-trmnl.com";
 
@@ -262,6 +349,12 @@
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
 
+        try {
+          xhr.timeout = trmnl.REQUEST_TIMEOUT;
+        } catch (e) {
+          // very old WebKit: no XHR timeout, the image timeout still applies
+        }
+
         for (var headerName in headers) {
           if (headers.hasOwnProperty(headerName)) {
             xhr.setRequestHeader(headerName, headers[headerName]);
@@ -269,55 +362,95 @@
         }
 
         xhr.onload = function () {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              console.log("Display response:", data);
+          if (!isCurrent()) return;
 
-              if (data.status !== successStatus) {
-                trmnl.showStatus(
-                  "Error: " + (data.error || data.message || data.status)
-                );
-                return;
-              }
-
-              trmnl.showScreen(data.image_url);
-              trmnl.renderedAt = new Date();
-
-              if (data.refresh_rate) {
-                var refreshRate = 30;
-                refreshRate = data.refresh_rate;
-
-                console.log("Refreshing in " + refreshRate + " seconds...");
-                trmnl.refreshTimer = setTimeout(
-                  function () { trmnl.fetchDisplay({ quiet: true }); },
-                  1000 * refreshRate
-                );
-              }
-            } catch (e) {
-              trmnl.showStatus("Error processing response: " + e.message);
-            }
-          } else {
-            var msg = xhr.statusText
+          if (xhr.status < 200 || xhr.status >= 300) {
+            var msg = xhr.statusText;
             if (xhr.status == 404) {
               msg = "Maybe wrong API key";
             }
-            trmnl.showStatus(
-              "Failed to fetch screen: " + xhr.status + " " + msg
-            );
+            trmnl.handleFailure("Failed to fetch screen: " + xhr.status + " " + msg);
+            return;
           }
+
+          var data;
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch (e) {
+            trmnl.handleFailure("Error processing response: " + e.message);
+            return;
+          }
+
+          console.log("Display response:", data);
+
+          if (!data || data.status !== successStatus) {
+            trmnl.handleFailure(
+              "Error: " + (data && (data.error || data.message || data.status))
+            );
+            return;
+          }
+
+          if (!data.image_url) {
+            trmnl.handleFailure("No screen available yet");
+            return;
+          }
+
+          trmnl.loadImage(data.image_url, function () {
+            if (!isCurrent()) return;
+
+            trmnl.showScreen(data.image_url);
+            trmnl.renderedAt = new Date();
+            trmnl.failures = 0;
+
+            var refreshRate = parseInt(data.refresh_rate, 10);
+            if (!(refreshRate > 0)) {
+              refreshRate = trmnl.DEFAULT_REFRESH_RATE;
+            }
+            trmnl.scheduleRefresh(refreshRate);
+          }, function () {
+            if (!isCurrent()) return;
+            trmnl.handleFailure("Failed to load screen image");
+          });
         };
 
         xhr.onerror = function () {
-          trmnl.showStatus("Network error: Failed to connect or request was blocked.");
+          if (!isCurrent()) return;
+          trmnl.handleFailure("Network error: Failed to connect or request was blocked.");
+        };
+
+        xhr.ontimeout = function () {
+          if (!isCurrent()) return;
+          trmnl.handleFailure("Network error: request timed out.");
         };
 
         xhr.send();
       },
 
+      // localStorage throws on iOS <= 10 private browsing: fall back to memory
+      readStorage: function () {
+        if (trmnl.storageBroken) return trmnl.memoryStore;
+        try {
+          return localStorage.getItem(trmnl.STORAGE_KEY);
+        } catch (e) {
+          trmnl.storageBroken = true;
+          return trmnl.memoryStore;
+        }
+      },
+
+      writeStorage: function (value) {
+        trmnl.memoryStore = value;
+        if (trmnl.storageBroken) return;
+        try {
+          localStorage.setItem(trmnl.STORAGE_KEY, value);
+        } catch (e) {
+          trmnl.storageBroken = true;
+          console.warn("localStorage unavailable: settings kept in memory only");
+        }
+      },
+
       getSettings: function () {
         try {
-          return JSON.parse(localStorage.getItem(trmnl.STORAGE_KEY)) || {};
+          return JSON.parse(trmnl.readStorage()) || {};
         } catch (e) {
           return {};
         }
@@ -332,7 +465,7 @@
           }
         }
 
-        localStorage.setItem(trmnl.STORAGE_KEY, JSON.stringify(settings));
+        trmnl.writeStorage(JSON.stringify(settings));
         console.log("Settings saved:", settings);
       },
 
@@ -415,11 +548,11 @@
       },
 
       clearSettings: function () {
+        trmnl.memoryStore = null;
         try {
           localStorage.removeItem(trmnl.STORAGE_KEY);
         } catch (e) {
-          // fallback ultra-safe
-          localStorage.setItem(trmnl.STORAGE_KEY, "{}");
+          // storage unavailable: nothing persisted to remove
         }
         console.log("Settings cleared");
         window.location.reload();
@@ -470,6 +603,18 @@
             }
           });
         }
+
+        // Catch up on refreshes missed while the page was hidden / the iPad was locked
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") {
+            trmnl.resumeRefresh();
+          }
+        });
+        window.addEventListener("pageshow", function (e) {
+          if (e.persisted) {
+            trmnl.resumeRefresh();
+          }
+        });
 
         var wakeLockHint = document.getElementById("wakeLockHint");
 
@@ -762,7 +907,11 @@
     .slider {
       position: absolute;
       cursor: pointer;
-      inset: 0;
+      /* no `inset` shorthand: unsupported before Safari 14.1 */
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
       background-color: #ccc;
       border-radius: 28px;
       transition: background-color 0.2s ease;
@@ -848,12 +997,14 @@
         <fieldset>
           <label for="base_url">Custom Server URL</label>
           <input name="base_url" id="base_url" type="text" placeholder="https://your-byos-trmnl.com"
-            class="form-control" value="" />
+            class="form-control" value="" autocapitalize="off" autocorrect="off" autocomplete="off"
+            spellcheck="false" />
         </fieldset>
 
         <fieldset>
           <label for="api_key">Device API Key</label>
-          <input name="api_key" id="api_key" type="text" placeholder="API Key" class="form-control" required />
+          <input name="api_key" id="api_key" type="text" placeholder="API Key" class="form-control" required
+            autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" />
         </fieldset>
 
         <fieldset class="setting-row">
