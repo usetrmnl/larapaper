@@ -9,6 +9,7 @@ use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 
@@ -340,4 +341,34 @@ test('configure forbids toggling playlist items of another users device', functi
         ->assertForbidden();
 
     expect($foreignItem->fresh()->is_active)->toBeTrue();
+});
+
+test('configure menu includes pause screen generation with the other device actions', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSee('Pause Screen Generation')
+        ->assertSee('Update Firmware')
+        ->assertSee('Show Logs')
+        ->assertSee('Mirror URL')
+        ->assertSee('Delete Device');
+});
+
+test('user can pause screen generation from the device page', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    actingAs($user);
+
+    Carbon::setTestNow('2026-08-04 12:00:00');
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->set('pause_duration', 60)
+        ->call('pauseDevice', $device->id)
+        ->assertHasNoErrors();
+
+    expect($device->fresh()->pause_until?->equalTo(now()->addMinutes(60)))->toBeTrue();
+
+    Carbon::setTestNow();
 });

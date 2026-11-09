@@ -1,11 +1,8 @@
 <?php
 
+use App\Concerns\ManagesDeviceActions;
 use App\Concerns\ProvidesSelectablePlugins;
-use App\Enums\FirmwareModel;
-use App\Jobs\FirmwareDownloadJob;
-use App\Jobs\FirmwarePollJob;
 use App\Models\DeviceModel;
-use App\Models\Firmware;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Plugin;
@@ -14,6 +11,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ManagesDeviceActions;
     use ProvidesSelectablePlugins;
 
     private const DEFAULT_SLEEP_MODE_FROM = '22:00';
@@ -46,8 +44,6 @@ new class extends Component
 
     public $mirror_device_id = null;
 
-    public bool $simulate_physical_device = false;
-
     // Signal to device to use high compatibility approaches when redrawing content
     public $maximum_compatibility = false;
 
@@ -78,15 +74,6 @@ new class extends Component
     // Device model properties
     public $deviceModels;
 
-    // Firmware properties
-    public $firmwares;
-
-    public $selected_firmware_model;
-
-    public $selected_firmware_id;
-
-    public $download_firmware;
-
     public function mount(App\Models\Device $device)
     {
         abort_unless(auth()->user()->devices->contains($device), 403);
@@ -113,8 +100,7 @@ new class extends Component
             return $isTrmnl ? '0'.$deviceModel->label : '1'.$deviceModel->label;
         });
         $this->playlists = $device->playlists()->with('items.plugin')->orderBy('created_at')->get();
-        $this->selected_firmware_model = FirmwareModel::forDevice($device)->value;
-        $this->refreshFirmwareList();
+        $this->prepareFirmwareUpdate($device->id);
         $this->sleep_mode_enabled = $device->sleep_mode_enabled ?? false;
         $this->sleep_mode_from = optional($device->sleep_mode_from)->format('H:i');
         $this->sleep_mode_to = optional($device->sleep_mode_to)->format('H:i');
@@ -393,63 +379,6 @@ new class extends Component
         $this->active_until = optional($playlist->active_until)->format('H:i');
         $this->refresh_time = $playlist->refresh_time;
     }
-
-    public function updatedSelectedFirmwareModel(): void
-    {
-        $this->selectLatestFirmwareForModel();
-    }
-
-    public function checkFirmwareUpdates(): void
-    {
-        abort_unless(auth()->user()->devices->contains($this->device), 403);
-
-        FirmwarePollJob::dispatchSync();
-
-        $this->refreshFirmwareList();
-    }
-
-    private function refreshFirmwareList(): void
-    {
-        $this->firmwares = Firmware::query()->orderedForSelection()->get();
-        $this->selectLatestFirmwareForModel();
-    }
-
-    private function selectLatestFirmwareForModel(): void
-    {
-        $this->selected_firmware_id = $this->firmwares
-            ->where('model', $this->selected_firmware_model)
-            ->where('latest', true)
-            ->first()?->id;
-    }
-
-    public function updateFirmware()
-    {
-        abort_unless(auth()->user()->devices->contains($this->device), 403);
-
-        $this->validate([
-            'selected_firmware_model' => ['required', Rule::enum(FirmwareModel::class)],
-            'selected_firmware_id' => 'required|exists:firmware,id',
-        ]);
-
-        $firmware = Firmware::findOrFail($this->selected_firmware_id);
-        $selectedModel = FirmwareModel::from($this->selected_firmware_model);
-
-        if ($firmware->model !== $selectedModel) {
-            $this->addError('selected_firmware_id', 'The selected firmware does not match the selected device model.');
-
-            return;
-        }
-
-        if ($this->download_firmware) {
-            FirmwareDownloadJob::dispatchSync($firmware);
-        }
-
-        $this->device->update([
-            'update_firmware_id' => $this->selected_firmware_id,
-        ]);
-
-        Flux::modal('update-firmware')->close();
-    }
 }
 ?>
 
@@ -533,24 +462,12 @@ new class extends Component
                             <flux:button icon="pencil-square" aria-label="Edit device" />
                         </flux:modal.trigger>
 
-                        <flux:dropdown>
-                            <flux:button icon="ellipsis-horizontal" variant="subtle" aria-label="Device actions" />
-                            <flux:menu>
-                                <flux:modal.trigger name="update-firmware">
-                                    <flux:menu.item icon="arrow-up-circle">Update Firmware</flux:menu.item>
-                                </flux:modal.trigger>
-                                <flux:menu.item icon="bars-3" href="{{ route('devices.logs', $device) }}" wire:navigate>
-                                    Show Logs
-                                </flux:menu.item>
-                                <flux:modal.trigger name="mirror-url">
-                                    <flux:menu.item icon="link">Mirror URL</flux:menu.item>
-                                </flux:modal.trigger>
-                                <flux:menu.separator />
-                                <flux:modal.trigger name="delete-device">
-                                    <flux:menu.item icon="trash" variant="danger">Delete Device</flux:menu.item>
-                                </flux:modal.trigger>
-                            </flux:menu>
-                        </flux:dropdown>
+                        <x-devices.actions-menu :device="$device" show-pause>
+                            <flux:menu.separator />
+                            <flux:modal.trigger name="delete-device">
+                                <flux:menu.item icon="trash" variant="danger">Delete Device</flux:menu.item>
+                            </flux:modal.trigger>
+                        </x-devices.actions-menu>
                     </div>
                 </flux:card.actions>
             </flux:card.header>
@@ -665,63 +582,6 @@ new class extends Component
                 </div>
             </flux:modal>
 
-            <flux:modal name="update-firmware" class="md:w-96">
-                <div class="space-y-6">
-                    <div>
-                        <flux:heading size="lg">Update Firmware</flux:heading>
-                        <flux:subheading>Select a firmware version to update to</flux:subheading>
-                    </div>
-
-                    <form wire:submit="updateFirmware">
-                        <flux:callout variant="warning" icon="exclamation-triangle" class="mb-4">
-                            <flux:callout.heading>TRMNL devices only</flux:callout.heading>
-                            <flux:callout.text>
-                                OTA firmware updates are currently available only for TRMNL devices. Applying firmware
-                                to other device models may break your device.</flux:callout.text>
-                        </flux:callout>
-
-                        <flux:button
-                            variant="subtle"
-                            icon="arrow-path"
-                            wire:click="checkFirmwareUpdates"
-                            class="mb-4 w-full"
-                        >
-                            Check for new firmware versions
-                        </flux:button>
-
-                        <div class="mb-4">
-                            <flux:select label="Device Model" wire:model.live="selected_firmware_model" required>
-                                @foreach (FirmwareModel::cases() as $firmwareModel)
-                                    <flux:select.option value="{{ $firmwareModel->value }}">
-                                        {{ $firmwareModel->label() }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </div>
-
-                        <div class="mb-4">
-                            <flux:select label="Firmware Version" wire:model="selected_firmware_id" required>
-                                @foreach ($firmwares->where('model', $selected_firmware_model) as $firmware)
-                                    <flux:select.option value="{{ $firmware->id }}">
-                                        {{ $firmware->version_tag }} {{ $firmware->latest ? '(Latest)' : '' }}
-                                    </flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </div>
-
-                        <div class="mb-4">
-                            <flux:checkbox wire:model="download_firmware" label="Cache Firmware on BYOS">
-                            </flux:checkbox>
-                            <flux:text class="mt-2 text-xs">Check if the Device has no internet connection.</flux:text>
-                        </div>
-
-                        <div class="flex">
-                            <flux:spacer />
-                            <flux:button type="submit" variant="primary">Update Firmware</flux:button>
-                        </div>
-                    </form>
-                </div>
-            </flux:modal>
-
             <flux:modal name="delete-device" class="min-w-[22rem] space-y-6">
                 <div>
                     <flux:heading size="lg">Delete {{ $device->name }}?</flux:heading>
@@ -739,31 +599,14 @@ new class extends Component
                 </div>
             </flux:modal>
 
-            <flux:modal name="mirror-url" class="md:w-96">
-                @php
-                    $mirrorUrl = url('/mirror/index.html').'?'.http_build_query([
-                        'api_key' => $device->api_key,
-                        'mode' => $simulate_physical_device ? 'display' : 'mirror',
-                    ]);
-                @endphp
-
-                <div class="space-y-6">
-                    <div>
-                        <flux:heading size="lg">Mirror WebUI</flux:heading>
-                        <flux:subheading
-                            >Mirror this device onto older devices with a web browser — Safari is supported back to iOS
-                            9.</flux:subheading>
-                    </div>
-
-                    <flux:switch
-                        wire:model.live="simulate_physical_device"
-                        label="Simulate physical device"
-                        description="WebUI acts as the device itself, rendering screens and advancing its playlist. Only use this when no physical device uses this API key."
-                    />
-
-                    <flux:input label="Mirror URL" value="{{ $mirrorUrl }}" readonly copyable />
-                </div>
-            </flux:modal>
+            <x-devices.action-modals
+                :device="$device"
+                :firmwares="$this->firmwares"
+                :selected-firmware-model="$this->selected_firmware_model"
+                :simulate-physical-device="$this->simulate_physical_device"
+                :timezone="$this->timezone"
+                :selectable-plugins="$this->selectablePlugins"
+            />
 
             <flux:card.body class="space-y-6">
                 @if (! $device->mirror_device_id)

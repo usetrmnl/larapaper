@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\FirmwareModel;
 use App\Models\Device;
 use App\Models\DeviceModel;
+use App\Models\Firmware;
 use App\Models\Plugin;
 use App\Models\User;
 use Carbon\Carbon;
@@ -297,4 +299,81 @@ test('user cannot pause device with another users plugin as pause screen', funct
         ->assertHasErrors(['pause_plugin_id']);
 
     expect($device->fresh()->pause_plugin_id)->toBeNull();
+});
+
+test('device list shows remaining pause time when a device is paused', function (): void {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'pause_until' => now()->addHour(),
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->assertSee('Device paused until: '.$device->pause_until->diffForHumans())
+        ->assertDontSee('Pause screen generation');
+});
+
+test('device list offers pause screen generation when a device is not paused', function (): void {
+    $user = User::factory()->create();
+    Device::factory()->create(['user_id' => $user->id]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->assertSee('Pause screen generation')
+        ->assertDontSee('Device paused until');
+});
+
+test('device list shows firmware, logs, and mirror actions', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'api_key' => 'list-device-key',
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->assertDontSee('Pause Screen Generation')
+        ->assertSee('Update Firmware')
+        ->assertSee('Show Logs')
+        ->assertSee('Mirror URL')
+        ->assertSee('End pause')
+        ->assertSee(route('devices.logs', $device), false)
+        ->assertSee('/mirror/index.html?api_key=list-device-key&amp;mode=mirror', false);
+});
+
+test('user can queue a firmware update from the device list', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $firmware = Firmware::factory()->trmnl()->latest()->create([
+        'version_tag' => '1.2.3',
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->call('prepareFirmwareUpdate', $device->id)
+        ->set('selected_firmware_model', FirmwareModel::Trmnl->value)
+        ->set('selected_firmware_id', $firmware->id)
+        ->call('updateFirmware', $device->id)
+        ->assertHasNoErrors();
+
+    expect($device->fresh()->update_firmware_id)->toBe($firmware->id);
+});
+
+test('user cannot queue a firmware update for another users device', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => User::factory()->create()->id]);
+    $firmware = Firmware::factory()->trmnl()->latest()->create([
+        'version_tag' => '9.9.9',
+    ]);
+    $this->actingAs($user);
+
+    Livewire::test('devices.manage')
+        ->set('selected_firmware_model', FirmwareModel::Trmnl->value)
+        ->set('selected_firmware_id', $firmware->id)
+        ->call('updateFirmware', $device->id)
+        ->assertNotFound();
+
+    expect($device->fresh()->update_firmware_id)->toBeNull();
 });
