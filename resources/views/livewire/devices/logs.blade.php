@@ -1,19 +1,62 @@
 <?php
 
 use App\Models\Device;
+use Flux\Flux;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
 
 new class extends Component
 {
     public Device $device;
 
+    public string $search = '';
+
     public $logs;
 
-    public function mount(Device $device)
+    public function mount(Device $device): void
     {
         abort_unless(auth()->user()->devices->contains($device), 403);
         $this->device = $device;
-        $this->logs = $device->logs()->latest('device_timestamp')->take(50)->get();
+        $this->loadLogs();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->loadLogs();
+    }
+
+    public function clearLogs(): void
+    {
+        abort_unless(auth()->user()->devices->contains($this->device), 403);
+
+        $this->device->logs()->delete();
+        $this->loadLogs();
+
+        Flux::modal('clear-device-logs')->close();
+    }
+
+    private function loadLogs(): void
+    {
+        $search = mb_trim($this->search);
+
+        $this->logs = $this->device->logs()
+            ->latest('device_timestamp')
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+                $grammar = $query->getQuery()->getGrammar();
+
+                $query->where(function (Builder $query) use ($term, $operator, $grammar): void {
+                    foreach (['message', 'log_message'] as $key) {
+                        $query->orWhereRaw(
+                            $grammar->wrap('log_entry->'.$key).' '.$operator.' ? escape ?',
+                            [$term, '\\'],
+                        );
+                    }
+                });
+            })
+            ->take(50)
+            ->get();
     }
 }
 
@@ -22,9 +65,47 @@ new class extends Component
 <div>
     <div class="py-12">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <div class="mb-6 flex items-center justify-between">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-2xl font-semibold dark:text-gray-100">Device Logs - {{ $device->name }}</h2>
+
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <flux:input
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Search messages"
+                        icon="magnifying-glass"
+                        clearable
+                        class="w-full sm:w-72"
+                    />
+
+                    <flux:modal.trigger name="clear-device-logs">
+                        <flux:button icon="trash">Clear logs</flux:button>
+                    </flux:modal.trigger>
+                </div>
             </div>
+
+            @if ($logs->isEmpty())
+                <p class="mb-6 text-sm text-zinc-500 dark:text-zinc-300">No logs found.</p>
+            @endif
+
+            <flux:modal name="clear-device-logs" class="min-w-[22rem] space-y-6">
+                <div>
+                    <flux:heading size="lg">Clear logs for {{ $device->name }}?</flux:heading>
+
+                    <flux:text class="mt-2">
+                        Every log for this device will be permanently deleted. This cannot be undone.
+                    </flux:text>
+                </div>
+
+                <div class="flex gap-2">
+                    <flux:spacer />
+
+                    <flux:modal.close>
+                        <flux:button variant="ghost">Cancel</flux:button>
+                    </flux:modal.close>
+
+                    <flux:button wire:click="clearLogs" variant="danger">Clear logs</flux:button>
+                </div>
+            </flux:modal>
 
             <table
                 class="min-w-full table-fixed divide-y divide-zinc-800/10 text-zinc-800 dark:divide-white/20"
