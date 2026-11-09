@@ -196,3 +196,27 @@ test('device without device_model_id and image_format bmp3_1bit_srgb returns bmp
     expect($device->image_format)->toBe(ImageFormat::BMP3_1BIT_SRGB->value)
         ->and($device->device_model_id)->toBeNull();
 });
+
+test('display falls back to the setup image when the mirrored source file is missing', function (): void {
+    Storage::disk('public')->put('images/setup-logo.bmp', 'setup');
+    $source = Device::factory()->create(['current_screen_image' => 'deleted-screen']);
+    $mirror = Device::factory()->create([
+        'mac_address' => 'AA:BB:CC:DD:EE:FF',
+        'api_key' => 'mirror-api-key',
+        'mirror_device_id' => $source->id,
+        'current_screen_image' => null,
+    ]);
+
+    $response = $this->withHeaders([
+        'id' => $mirror->mac_address,
+        'access-token' => $mirror->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.5.2',
+    ])->get('/api/display');
+
+    $response->assertOk();
+    expect($response->json('image_url'))
+        ->toContain('images/setup-logo.bmp')
+        ->not->toContain('deleted-screen');
+});

@@ -130,3 +130,30 @@ test('a device whose pause has ended reports its current screen', function (): v
 
     expect($response->json('image_url'))->toContain('images/generated/source-screen.png');
 });
+
+test('a device whose current screen file is missing reports the setup image instead of a dead url', function (): void {
+    Storage::disk('public')->put('images/setup-logo.bmp', 'setup');
+    $device = Device::factory()->create(['current_screen_image' => 'deleted-screen']);
+
+    $response = fetchCurrentScreen($device);
+
+    $response->assertOk();
+    expect($response->json('image_url'))
+        ->toContain('images/setup-logo.bmp')
+        ->not->toContain('deleted-screen');
+});
+
+test('a mirror device whose source screen file is missing reports the setup image', function (): void {
+    Storage::disk('public')->put('images/setup-logo.bmp', 'setup');
+    $user = User::factory()->create();
+    $source = Device::factory()->create(['user_id' => $user->id, 'current_screen_image' => 'deleted-screen']);
+    $mirror = Device::factory()->create([
+        'user_id' => $user->id,
+        'mirror_device_id' => $source->id,
+        'current_screen_image' => null,
+    ]);
+
+    $response = fetchCurrentScreen($mirror);
+
+    expect($response->json('image_url'))->toContain('images/setup-logo.bmp');
+});

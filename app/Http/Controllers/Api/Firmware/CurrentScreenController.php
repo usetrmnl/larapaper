@@ -36,16 +36,21 @@ class CurrentScreenController extends Controller
         $imageUuid = $source->current_screen_image;
         $offlineImagePath = $this->offlineImagePath($device, $source);
 
-        if ($offlineImagePath !== null) {
-            $imagePath = $offlineImagePath;
-        } elseif (! $imageUuid) {
+        $imagePath = $offlineImagePath;
+
+        if ($imagePath === null && $imageUuid) {
+            $imagePath = $this->imageResolver->resolve($device, $imageUuid);
+            if ($imagePath === null) {
+                $imageUuid = null;
+            }
+        }
+
+        if ($imagePath === null) {
             $imagePath = ImageGenerationService::getDeviceSpecificDefaultImage($device, 'setup-logo');
             if (! $imagePath) {
                 $imageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'setup-logo');
                 $imagePath = 'images/generated/'.$imageUuid.'.png';
             }
-        } else {
-            $imagePath = $this->imageResolver->resolve($device, $imageUuid);
         }
 
         // Same naming rules as /api/display, keyed off whichever plugin owns this
@@ -91,7 +96,10 @@ class CurrentScreenController extends Controller
         }
 
         if ($plugin instanceof Plugin && $source->offline_screen_image) {
-            return $this->imageResolver->resolve($device, $source->offline_screen_image);
+            $imagePath = $this->imageResolver->resolve($device, $source->offline_screen_image);
+            if ($imagePath !== null) {
+                return $imagePath;
+            }
         }
 
         return ImageGenerationService::getDeviceSpecificDefaultImage($device, 'sleep');

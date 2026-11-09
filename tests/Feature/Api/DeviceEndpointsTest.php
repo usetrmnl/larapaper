@@ -29,6 +29,8 @@ test('device can fetch display data with valid credentials', function (): void {
         'current_screen_image' => 'test-image',
     ]);
 
+    Storage::disk('public')->put('images/generated/test-image.bmp', 'fake bmp content');
+
     $response = $this->withHeaders([
         'id' => $device->mac_address,
         'access-token' => $device->api_key,
@@ -152,6 +154,8 @@ test('new device is auto-assigned and mirrors specified device', function (): vo
     $user = User::factory()->autoJoinEnabled()->create([
         'assign_new_device_id' => $sourceDevice->id,
     ]);
+
+    Storage::disk('public')->put('images/generated/source-image.bmp', 'fake bmp content');
 
     // Make request from new device
     $response = $this->withHeaders([
@@ -588,6 +592,8 @@ test('device can mirror another device', function (): void {
         'api_key' => 'mirror-api-key',
         'mirror_device_id' => $sourceDevice->id,
     ]);
+
+    Storage::disk('public')->put('images/generated/source-image.bmp', 'fake bmp content');
 
     // Make request from mirror device
     $response = $this->withHeaders([
@@ -1813,6 +1819,8 @@ test('device not in sleep mode returns normal image', function (): void {
     // Freeze time to 18:00 (outside sleep window)
     Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2000-01-01 18:00:00'));
 
+    Storage::disk('public')->put('images/generated/test-image.bmp', 'fake bmp content');
+
     $response = $this->withHeaders([
         'id' => $device->mac_address,
         'access-token' => $device->api_key,
@@ -2147,6 +2155,8 @@ test('display endpoint matches MAC address case-insensitively', function (): voi
         'api_key' => 'test-api-key',
         'current_screen_image' => 'test-image',
     ]);
+
+    Storage::disk('public')->put('images/generated/test-image.bmp', 'fake bmp content');
 
     // Request with uppercase MAC address should still match
     $response = $this->withHeaders([

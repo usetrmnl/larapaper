@@ -50,19 +50,21 @@ class RunDeviceDisplayCycle
 
         $refreshTimeOverride = null;
         $imageUuid = $device->mirrorDevice?->current_screen_image;
+        $imagePath = $imageUuid ? $this->imageResolver->resolve($device, $imageUuid) : null;
         // A mirrored device shows whatever its source shows; treat that as one
         // screen rather than inheriting the source's per-plugin identities.
         $identity = 'mirror:'.$device->mirror_device_id;
         $prefix = DeviceScreenFilename::PREFIX_SYSTEM;
 
-        if (! $imageUuid) {
+        if ($imagePath === null) {
             ['refresh_time_override' => $refreshTimeOverride, 'identity' => $identity, 'prefix' => $prefix]
                 = $this->processPlaylist($device);
             $device->refresh();
             $imageUuid = $device->current_screen_image;
+            $imagePath = $imageUuid ? $this->imageResolver->resolve($device, $imageUuid) : null;
         }
 
-        if (! $imageUuid) {
+        if ($imagePath === null) {
             return [
                 'image_path' => $this->defaultImagePath($device, 'setup-logo'),
                 'refresh_time_override' => $refreshTimeOverride,
@@ -72,7 +74,7 @@ class RunDeviceDisplayCycle
         }
 
         return [
-            'image_path' => $this->imageResolver->resolve($device, $imageUuid),
+            'image_path' => $imagePath,
             'refresh_time_override' => $refreshTimeOverride,
             'screen_identity' => $identity,
             'screen_prefix' => $prefix,
@@ -338,7 +340,10 @@ class RunDeviceDisplayCycle
             if ($imageUuid !== null) {
                 $device->update(['offline_screen_image' => $imageUuid]);
 
-                return $this->imageResolver->resolve($device, $imageUuid);
+                $imagePath = $this->imageResolver->resolve($device, $imageUuid);
+                if ($imagePath !== null) {
+                    return $imagePath;
+                }
             }
         }
 

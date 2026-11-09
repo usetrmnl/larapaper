@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Device;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DeviceImageResolver
@@ -11,9 +12,10 @@ class DeviceImageResolver
      * Resolve the best available image path for a device given a generated image UUID.
      *
      * Picks png or bmp depending on the device model / firmware, and falls back to
-     * whichever format exists on disk.
+     * whichever format exists on disk. Returns null when neither file exists, so
+     * callers never hand out a URL that 404s.
      */
-    public function resolve(Device $device, string $imageUuid): string
+    public function resolve(Device $device, string $imageUuid): ?string
     {
         $preferred = 'png';
 
@@ -36,6 +38,11 @@ class DeviceImageResolver
             }
         }
 
-        return "images/generated/{$imageUuid}.bmp";
+        Log::warning('Generated image missing on disk', [
+            'device_id' => $device->id,
+            'image_uuid' => $imageUuid,
+        ]);
+
+        return null;
     }
 }
