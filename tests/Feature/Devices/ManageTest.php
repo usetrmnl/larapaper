@@ -7,6 +7,8 @@ use App\Models\Firmware;
 use App\Models\Plugin;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 test('device management page can be rendered', function (): void {
@@ -98,27 +100,40 @@ test('user can generate a credential when adding a device', function (string $ac
 ]);
 
 test('user can toggle proxy cloud for their device', function (): void {
+    Http::preventStrayRequests();
+    config(['services.trmnl.proxy_base_url' => 'https://example.com']);
+    Http::fake([
+        'https://example.com/api/display' => Http::response(['status' => 0], 200),
+    ]);
+
     $user = User::factory()->create();
     $this->actingAs($user);
     $device = Device::factory()->create([
         'user_id' => $user->id,
         'proxy_cloud' => false,
+        'api_key' => 'device-key',
     ]);
 
     $response = Livewire::test('devices.manage')
         ->call('toggleProxyCloud', $device);
 
     $response->assertHasNoErrors();
-    expect($device->fresh()->proxy_cloud)->toBeTrue();
+    expect($device->fresh()->proxy_cloud)->toBeTrue()
+        ->and($device->fresh()->proxy_cloud_api_key)->toBeNull();
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://example.com/api/display'
+        && $request->hasHeader('access-token', 'device-key'));
 
-    // Toggle back to false
     $response = Livewire::test('devices.manage')
         ->call('toggleProxyCloud', $device);
 
     expect($device->fresh()->proxy_cloud)->toBeFalse();
+    Http::assertSentCount(1);
 });
 
 test('user cannot toggle proxy cloud for other users devices', function (): void {
+    Http::preventStrayRequests();
+    Http::fake();
+
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -132,7 +147,168 @@ test('user cannot toggle proxy cloud for other users devices', function (): void
         ->call('toggleProxyCloud', $device);
 
     $response->assertStatus(403);
+    Http::assertNothingSent();
     expect($device->fresh()->proxy_cloud)->toBeFalse();
+});
+
+test('turning proxy on prompts for a cloud api key when the cloud device is not found', function (): void {
+    Http::preventStrayRequests();
+    config(['services.trmnl.proxy_base_url' => 'https://example.com']);
+    Http::fake([
+        'https://example.com/api/display' => Http::response([
+            'status' => 500,
+            'error' => 'Device not found',
+            'reset_firmware' => true,
+        ], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'proxy_cloud' => false,
+    ]);
+
+    Livewire::test('devices.manage')
+        ->call('toggleProxyCloud', $device)
+        ->assertHasNoErrors()
+        ->assertSet('proxyKeyDeviceId', $device->id)
+        ->assertDispatched('modal-show', name: 'proxy-cloud-api-key');
+
+    expect($device->fresh()->proxy_cloud)->toBeFalse()
+        ->and($device->fresh()->proxy_cloud_api_key)->toBeNull();
+});
+
+test('user can enable proxy with a cloud api key after the cloud device is not found', function (): void {
+    Http::preventStrayRequests();
+    config(['services.trmnl.proxy_base_url' => 'https://example.com']);
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'proxy_cloud' => false,
+        'api_key' => 'device-key',
+    ]);
+
+    Http::fake(function (Request $request) {
+        if ($request->hasHeader('access-token', 'cloud-key')) {
+            return Http::response(['status' => 0, 'filename' => 'screen'], 200);
+        }
+
+        return Http::response([
+            'status' => 500,
+            'error' => 'Device not found',
+            'reset_firmware' => true,
+        ], 200);
+    });
+
+    Livewire::test('devices.manage')
+        ->call('toggleProxyCloud', $device)
+        ->assertSet('proxyKeyDeviceId', $device->id)
+        ->set('proxy_cloud_api_key', 'cloud-key')
+        ->call('saveProxyCloudApiKey')
+        ->assertHasNoErrors()
+        ->assertSet('proxyKeyDeviceId', null);
+
+    $device->refresh();
+
+    expect($device->proxy_cloud)->toBeTrue()
+        ->and($device->proxy_cloud_api_key)->toBe('cloud-key');
+
+    Http::assertSent(fn (Request $request): bool => $request->hasHeader('access-token', 'cloud-key')
+        && $request->url() === 'https://example.com/api/display');
+});
+
+test('a cloud api key for an unknown device does not enable proxy', function (): void {
+    Http::preventStrayRequests();
+    config(['services.trmnl.proxy_base_url' => 'https://example.com']);
+    Http::fake([
+        'https://example.com/api/display' => Http::response([
+            'status' => 500,
+            'error' => 'Device not found',
+            'reset_firmware' => true,
+        ], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'proxy_cloud' => false,
+    ]);
+
+    Livewire::test('devices.manage')
+        ->set('proxyKeyDeviceId', $device->id)
+        ->set('proxy_cloud_api_key', 'still-denied')
+        ->call('saveProxyCloudApiKey')
+        ->assertHasErrors('proxy_cloud_api_key');
+
+    expect($device->fresh()->proxy_cloud)->toBeFalse()
+        ->and($device->fresh()->proxy_cloud_api_key)->toBeNull();
+});
+
+test('cloud api key is required to enable proxy after the cloud device is not found', function (): void {
+    Http::preventStrayRequests();
+    Http::fake();
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'proxy_cloud' => false,
+    ]);
+
+    Livewire::test('devices.manage')
+        ->set('proxyKeyDeviceId', $device->id)
+        ->set('proxy_cloud_api_key', '')
+        ->call('saveProxyCloudApiKey')
+        ->assertHasErrors(['proxy_cloud_api_key' => 'required']);
+
+    Http::assertNothingSent();
+    expect($device->fresh()->proxy_cloud)->toBeFalse();
+});
+
+test('user cannot save a proxy cloud api key for another users device', function (): void {
+    Http::preventStrayRequests();
+    Http::fake();
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'proxy_cloud' => false,
+    ]);
+
+    Livewire::test('devices.manage')
+        ->set('proxyKeyDeviceId', $device->id)
+        ->set('proxy_cloud_api_key', 'cloud-key')
+        ->call('saveProxyCloudApiKey')
+        ->assertStatus(403);
+
+    Http::assertNothingSent();
+    expect($device->fresh()->proxy_cloud)->toBeFalse()
+        ->and($device->fresh()->proxy_cloud_api_key)->toBeNull();
+});
+
+test('turning proxy off does not call the cloud api', function (): void {
+    Http::preventStrayRequests();
+    Http::fake();
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'proxy_cloud' => true,
+        'proxy_cloud_api_key' => 'cloud-key',
+    ]);
+
+    Livewire::test('devices.manage')
+        ->call('toggleProxyCloud', $device);
+
+    Http::assertNothingSent();
+    expect($device->fresh()->proxy_cloud)->toBeFalse()
+        ->and($device->fresh()->proxy_cloud_api_key)->toBe('cloud-key');
 });
 
 test('user can pause device with preset duration', function (): void {

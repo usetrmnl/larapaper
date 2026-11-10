@@ -3,11 +3,11 @@
 namespace App\Jobs;
 
 use App\Models\Device;
+use App\Services\ProxyCloudService;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -20,9 +20,9 @@ class FetchProxyCloudResponses implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(): void
+    public function handle(ProxyCloudService $proxyCloud): void
     {
-        Device::where('proxy_cloud', true)->each(function ($device): void {
+        Device::where('proxy_cloud', true)->each(function (Device $device) use ($proxyCloud): void {
             if ($device->getNextPlaylistItem()) {
                 Log::info("Skipping device: {$device->mac_address} as it has a pending playlist item.");
 
@@ -30,13 +30,26 @@ class FetchProxyCloudResponses implements ShouldQueue
             }
 
             try {
-                $response = $this->fetchDisplayResponse($device);
+                $response = $proxyCloud->fetchDisplay($device);
+
+                if ($proxyCloud->deviceNotFound($response)) {
+                    throw new Exception($proxyCloud->errorMessage($response) ?? 'Device not found');
+                }
+
+                if (! $proxyCloud->accepted($response)) {
+                    $error = $proxyCloud->errorMessage($response);
+
+                    if ($error !== null) {
+                        throw new Exception($error);
+                    }
+                }
+
                 $device->update([
                     'proxy_cloud_response' => $response->json(),
                 ]);
 
                 $this->processImage($device, $response);
-                $this->uploadLogRequest($device);
+                $this->uploadLogRequest($device, $proxyCloud);
 
                 Log::info("Successfully updated proxy cloud response for device: {$device->mac_address}");
             } catch (Exception $e) {
@@ -45,42 +58,6 @@ class FetchProxyCloudResponses implements ShouldQueue
                 ]);
             }
         });
-    }
-
-    /**
-     * @throws ConnectionException
-     */
-    private function fetchDisplayResponse(Device $device): Response
-    {
-        /** @var Response $response */
-        $response = Http::withHeaders($this->getDeviceHeaders($device))
-            ->get(config('services.trmnl.proxy_base_url').'/api/display');
-
-        if (! in_array($response->status(), [0, 200], true)) {
-            $error = $response->json('error');
-
-            if (is_string($error) && $error !== '') {
-                throw new Exception($error);
-            }
-        }
-
-        return $response;
-    }
-
-    private function getDeviceHeaders(Device $device): array
-    {
-        return [
-            'id' => $device->mac_address,
-            'access-token' => $device->api_key,
-            'width' => 800,
-            'height' => 480,
-            'rssi' => $device->last_rssi_level,
-            'battery_voltage' => $device->last_battery_voltage,
-            'refresh-rate' => $device->default_refresh_interval,
-            'fw-version' => $device->last_firmware_version,
-            'accept-encoding' => 'identity;q=1,chunked;q=0.1,*;q=0',
-            'user-agent' => 'ESP32HTTPClient',
-        ];
     }
 
     private function processImage(Device $device, Response $response): void
@@ -134,14 +111,14 @@ class FetchProxyCloudResponses implements ShouldQueue
         return $imageType === 'image/png' ? 'png' : 'bmp';
     }
 
-    private function uploadLogRequest(Device $device): void
+    private function uploadLogRequest(Device $device, ProxyCloudService $proxyCloud): void
     {
         if (! $device->last_log_request) {
             return;
         }
 
         try {
-            Http::withHeaders($this->getDeviceHeaders($device))
+            Http::withHeaders($proxyCloud->headers($device))
                 ->post(config('services.trmnl.proxy_base_url').'/api/log', $device->last_log_request);
 
             $device->update([

@@ -2,6 +2,7 @@
 
 use App\Jobs\FetchProxyCloudResponses;
 use App\Models\Device;
+use App\Services\ProxyCloudService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -53,7 +54,7 @@ test('it fetches and processes proxy cloud responses for devices', function (): 
         'https://example.com/test-image.bmp' => Http::response('fake-image-content'),
     ]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     assertDeviceHeaders($device);
     $device->refresh();
@@ -81,7 +82,7 @@ test('it handles log requests when present', function (): void {
         config('services.trmnl.proxy_base_url').'/api/log' => Http::response(null, 200),
     ]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     Http::assertSent(fn ($request): bool => $request->url() === config('services.trmnl.proxy_base_url').'/api/log' &&
         $request->hasHeader('id', $device->mac_address) &&
@@ -98,7 +99,7 @@ test('it handles API errors gracefully', function (): void {
         config('services.trmnl.proxy_base_url').'/api/display' => Http::response(null, 500),
     ]);
 
-    expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(Exception::class);
+    expect(fn () => (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class)))->not->toThrow(Exception::class);
 });
 
 test('it handles proxy cloud 500 errors with error message gracefully', function (): void {
@@ -112,7 +113,7 @@ test('it handles proxy cloud 500 errors with error message gracefully', function
         ], 500),
     ]);
 
-    expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(Exception::class);
+    expect(fn () => (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class)))->not->toThrow(Exception::class);
 
     $device->refresh();
     expect($device->proxy_cloud_response)->toBeNull();
@@ -123,7 +124,7 @@ test('it only processes proxy cloud enabled devices', function (): void {
     $enabledDevice = Device::factory()->create(['proxy_cloud' => true]);
     $disabledDevice = Device::factory()->create(['proxy_cloud' => false]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     Http::assertSent(fn ($request) => $request->hasHeader('id', $enabledDevice->mac_address));
     Http::assertNotSent(fn ($request) => $request->hasHeader('id', $disabledDevice->mac_address));
@@ -140,7 +141,7 @@ test('it fetches and processes proxy cloud responses for devices with BMP images
         'https://example.com/test-image.bmp?response-content-type=image/bmp' => Http::response('fake-image-content'),
     ]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     assertDeviceHeaders($device);
     $device->refresh();
@@ -165,7 +166,7 @@ test('it fetches and processes proxy cloud responses for devices with PNG images
         'https://example.com/test-image.png?response-content-type=image/png' => Http::response('fake-image-content'),
     ]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     assertDeviceHeaders($device);
     $device->refresh();
@@ -190,7 +191,7 @@ test('it handles missing content type in image URL gracefully', function (): voi
         'https://example.com/test-image.bmp' => Http::response('fake-image-content'),
     ]);
 
-    (new FetchProxyCloudResponses)->handle();
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
 
     $device->refresh();
 
@@ -213,7 +214,7 @@ test('it handles null image URL gracefully', function (): void {
         ]),
     ]);
 
-    expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(TypeError::class);
+    expect(fn () => (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class)))->not->toThrow(TypeError::class);
 
     $device->refresh();
     expect($device->proxy_cloud_response)->toBe([
@@ -235,12 +236,53 @@ test('it handles malformed image URL gracefully', function (): void {
         ]),
     ]);
 
-    expect(fn () => (new FetchProxyCloudResponses)->handle())->not->toThrow(TypeError::class);
+    expect(fn () => (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class)))->not->toThrow(TypeError::class);
 
     $device->refresh();
     expect($device->proxy_cloud_response)->toBe([
         'image_url' => 'not-a-valid-url://',
         'filename' => 'test-image',
     ])
+        ->and($device->current_screen_image)->toBeNull();
+});
+
+test('it sends the proxy cloud api key as the access token', function (): void {
+    $device = createTestDevice([
+        'api_key' => 'device-api-key',
+        'proxy_cloud_api_key' => 'cloud-api-key',
+        'last_log_request' => ['message' => 'test log'],
+    ]);
+
+    Http::fake([
+        config('services.trmnl.proxy_base_url').'/api/display' => Http::response([
+            'image_url' => null,
+            'filename' => 'test-image',
+        ]),
+        config('services.trmnl.proxy_base_url').'/api/log' => Http::response(null, 200),
+    ]);
+
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
+
+    Http::assertSent(fn ($request): bool => $request->url() === config('services.trmnl.proxy_base_url').'/api/display'
+        && $request->hasHeader('access-token', 'cloud-api-key'));
+    Http::assertSent(fn ($request): bool => $request->url() === config('services.trmnl.proxy_base_url').'/api/log'
+        && $request->hasHeader('access-token', 'cloud-api-key')
+        && $request->hasHeader('id', $device->mac_address));
+});
+
+test('it does not store a display response when the cloud device is not found', function (): void {
+    $device = createTestDevice();
+
+    Http::fake([
+        config('services.trmnl.proxy_base_url').'/api/display' => Http::response([
+            'status' => 500,
+            'error' => 'Device not found',
+            'reset_firmware' => true,
+        ], 200),
+    ]);
+
+    (new FetchProxyCloudResponses)->handle(app(ProxyCloudService::class));
+
+    expect($device->fresh()->proxy_cloud_response)->toBeNull()
         ->and($device->current_screen_image)->toBeNull();
 });

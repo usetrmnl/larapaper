@@ -4,6 +4,8 @@ use App\Concerns\ManagesDeviceActions;
 use App\Concerns\ProvidesSelectablePlugins;
 use App\Models\Device;
 use App\Models\DeviceModel;
+use App\Services\ProxyCloudService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -34,6 +36,10 @@ new class extends Component
     public $device_model_id = null;
 
     public $deviceModels;
+
+    public ?int $proxyKeyDeviceId = null;
+
+    public string $proxy_cloud_api_key = '';
 
     protected $rules = [
         'mac_address' => 'required',
@@ -116,16 +122,86 @@ new class extends Component
         Flux::toast(variant: 'success', text: 'Device created successfully.');
     }
 
-    public function toggleProxyCloud(Device $device): void
+    public function toggleProxyCloud(Device $device, ProxyCloudService $proxyCloud): void
     {
         abort_unless(auth()->user()->devices->contains($device), 403);
+
+        if ($device->proxy_cloud) {
+            $device->update([
+                'proxy_cloud' => false,
+            ]);
+            $this->devices = auth()->user()->devices()->with('deviceModel')->get();
+
+            return;
+        }
+
+        try {
+            $response = $proxyCloud->fetchDisplay($device);
+        } catch (ConnectionException) {
+            Flux::toast(variant: 'danger', text: 'Could not reach TRMNL cloud.');
+
+            return;
+        }
+
+        if ($proxyCloud->deviceNotFound($response)) {
+            $this->proxyKeyDeviceId = $device->id;
+            $this->proxy_cloud_api_key = '';
+            $this->resetValidation('proxy_cloud_api_key');
+            Flux::modal('proxy-cloud-api-key')->show();
+
+            return;
+        }
+
+        if (! $proxyCloud->accepted($response)) {
+            Flux::toast(variant: 'danger', text: $proxyCloud->errorMessage($response) ?? 'TRMNL cloud rejected the proxy request.');
+
+            return;
+        }
+
         $device->update([
-            'proxy_cloud' => ! $device->proxy_cloud,
+            'proxy_cloud' => true,
+        ]);
+        $this->devices = auth()->user()->devices()->with('deviceModel')->get();
+    }
+
+    public function saveProxyCloudApiKey(ProxyCloudService $proxyCloud): void
+    {
+        $device = auth()->user()->devices()->find($this->proxyKeyDeviceId);
+        abort_unless($device instanceof Device, 403);
+
+        $this->validate([
+            'proxy_cloud_api_key' => ['required', 'string', 'max:255'],
         ]);
 
-        // if ($device->proxy_cloud) {
-        //     \App\Jobs\FetchProxyCloudResponses::dispatch();
-        // }
+        try {
+            $response = $proxyCloud->fetchDisplay($device, $this->proxy_cloud_api_key);
+        } catch (ConnectionException) {
+            $this->addError('proxy_cloud_api_key', 'Could not reach TRMNL cloud.');
+
+            return;
+        }
+
+        if ($proxyCloud->deviceNotFound($response)) {
+            $this->addError('proxy_cloud_api_key', 'TRMNL cloud could not find a device for this API key.');
+
+            return;
+        }
+
+        if (! $proxyCloud->accepted($response)) {
+            $this->addError('proxy_cloud_api_key', $proxyCloud->errorMessage($response) ?? 'TRMNL cloud rejected this API key.');
+
+            return;
+        }
+
+        $device->update([
+            'proxy_cloud_api_key' => $this->proxy_cloud_api_key,
+            'proxy_cloud' => true,
+        ]);
+
+        $this->reset('proxy_cloud_api_key', 'proxyKeyDeviceId');
+        Flux::modal('proxy-cloud-api-key')->close();
+        $this->devices = auth()->user()->devices()->with('deviceModel')->get();
+        Flux::toast(variant: 'success', text: 'Proxy enabled.');
     }
 }
 
@@ -414,6 +490,28 @@ new class extends Component
             </table>
         </div>
     </div>
+
+    <flux:modal name="proxy-cloud-api-key" class="md:w-96">
+        <form wire:submit="saveProxyCloudApiKey" class="space-y-6">
+            <div>
+                <flux:heading size="lg">Cloud API key</flux:heading>
+                <flux:text class="mt-2">
+                    TRMNL cloud could not find this device. Enter the cloud device API key from Device Settings →
+                    Developer Perks.
+                </flux:text>
+            </div>
+
+            <flux:input label="Cloud API key" wire:model="proxy_cloud_api_key" type="text" name="proxy_cloud_api_key" />
+
+            <div class="flex">
+                <flux:spacer />
+                <flux:modal.close>
+                    <flux:button variant="ghost" type="button">Cancel</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="primary">Save</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     @foreach ($devices as $device)
         <x-devices.action-modals
