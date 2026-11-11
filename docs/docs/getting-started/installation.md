@@ -40,6 +40,7 @@ docker compose up -d
 | --- | --- |
 | **VPS + Dokploy** | [Template search](https://templates.dokploy.com/?q=trmnl+byos+laravel) for quick deploy without manual Docker setup. |
 | **PikaPods** | Vote for a template: [feedback.pikapods.com](https://feedback.pikapods.com/posts/842/add-app-trmnl-byos-laravel) |
+| **Home Assistant** | [LaraPaper (BYOS) add-on](/getting-started/home-assistant). Repository: [usetrmnl/trmnl-home-assistant](https://github.com/usetrmnl/trmnl-home-assistant). |
 | **Umbrel** | Community store: [umbrel-store](https://github.com/bnussbau/umbrel-store) |
 | **Laravel Forge / bare metal** | PHP 8.4+, Nginx or Apache, see [Requirements](/getting-started/requirements). |
 

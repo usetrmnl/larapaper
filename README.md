@@ -84,6 +84,9 @@ You can vote for LaraPaper to be included as PikaPods Template here: [feedback.p
 #### Umbrel
 Umbrel is supported through a community store, [see](http://github.com/bnussbau/umbrel-store).
 
+#### Home Assistant
+Run LaraPaper as the **LaraPaper (BYOS)** add-on. See [Home Assistant](https://usetrmnl.github.io/larapaper/getting-started/home-assistant/) and [usetrmnl/trmnl-home-assistant](https://github.com/usetrmnl/trmnl-home-assistant).
+
 #### Other Hosting Options
 Laravel Forge, or bare metal PHP server with Nginx or Apache is also supported.
 

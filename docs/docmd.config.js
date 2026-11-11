@@ -66,6 +66,7 @@ export default defineConfig({
       collapsible: true,
       children: [
         { title: 'Hosting', path: '/getting-started/installation', icon: 'download' },
+        { title: 'Home Assistant', path: '/getting-started/home-assistant', icon: 'house' },
         { title: 'Requirements (Bare-Metal)', path: '/getting-started/requirements', icon: 'list-checks' },
         {
           title: 'Environment variables',

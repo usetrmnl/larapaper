@@ -39,3 +39,4 @@ Deploy LaraPaper with Docker or run it locally for development.
 - [epaper-pipeline-php](https://github.com/bnussbau/epaper-pipeline-php) — Browser rendering and image conversion with TRMNL Models API support.
 - [laravel-trmnl-blade](https://github.com/bnussbau/laravel-trmnl-blade) — Blade components for the TRMNL design system.
 - [trmnl-recipe-catalog](https://github.com/bnussbau/trmnl-recipe-catalog) — Community recipe catalog.
+- [trmnl-home-assistant](https://github.com/usetrmnl/trmnl-home-assistant) — Home Assistant add-on that runs LaraPaper. See [Home Assistant](/getting-started/home-assistant).
