@@ -58,6 +58,8 @@ new class extends Component
 
     public $sleep_plugin_id;
 
+    public string $proxy_cloud_api_key = '';
+
     // Playlist properties
     public $playlists;
 
@@ -106,6 +108,7 @@ new class extends Component
         $this->sleep_mode_to = optional($device->sleep_mode_to)->format('H:i');
         $this->special_function = $device->special_function;
         $this->sleep_plugin_id = $device->sleep_plugin_id;
+        $this->proxy_cloud_api_key = $device->proxy_cloud_api_key ?? '';
         $this->is_mirror = $device->mirror_device_id !== null;
         $this->mirror_device_id = $device->mirror_device_id;
 
@@ -183,6 +186,7 @@ new class extends Component
             'sleep_mode_to' => 'nullable|required_if:sleep_mode_enabled,true|date_format:H:i',
             'special_function' => 'nullable|string',
             'sleep_plugin_id' => ['nullable', Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
+            'proxy_cloud_api_key' => 'nullable|string|max:255',
         ], [
             'sleep_mode_from.required_if' => 'A sleep mode start time is required when sleep mode is enabled.',
             'sleep_mode_to.required_if' => 'A sleep mode end time is required when sleep mode is enabled.',
@@ -215,6 +219,7 @@ new class extends Component
             'sleep_mode_to' => $this->sleep_mode_to,
             'special_function' => $this->special_function,
             'sleep_plugin_id' => $this->sleep_plugin_id ?: null,
+            'proxy_cloud_api_key' => $this->proxy_cloud_api_key !== '' ? $this->proxy_cloud_api_key : null,
         ]);
 
         Flux::modal('edit-device')->close();
@@ -571,6 +576,15 @@ new class extends Component
                             @endforeach
                         </flux:select>
                     @endif
+
+                    <flux:separator class="my-4" text="Cloud Proxy" />
+                    <flux:input
+                        label="Cloud API key"
+                        wire:model="proxy_cloud_api_key"
+                        type="password"
+                        viewable
+                        description="Used instead of the device API key when proxying TRMNL cloud. Leave blank to use the device API key."
+                    />
 
                     <div class="flex">
                         <flux:spacer />

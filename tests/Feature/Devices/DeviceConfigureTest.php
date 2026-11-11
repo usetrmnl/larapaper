@@ -372,3 +372,32 @@ test('user can pause screen generation from the device page', function (): void 
 
     Carbon::setTestNow();
 });
+
+test('configure update stores and clears the cloud proxy api key', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create([
+        'user_id' => $user->id,
+        'width' => 800,
+        'height' => 480,
+        'rotate' => 0,
+        'image_format' => 'png',
+        'maximum_compatibility' => false,
+        'proxy_cloud_api_key' => null,
+    ]);
+    actingAs($user);
+
+    Livewire::test('devices.configure', ['device' => $device])
+        ->assertSee('Cloud Proxy')
+        ->set('proxy_cloud_api_key', 'cloud-key')
+        ->call('updateDevice')
+        ->assertHasNoErrors();
+
+    expect($device->fresh()->proxy_cloud_api_key)->toBe('cloud-key');
+
+    Livewire::test('devices.configure', ['device' => $device->fresh()])
+        ->set('proxy_cloud_api_key', '')
+        ->call('updateDevice')
+        ->assertHasNoErrors();
+
+    expect($device->fresh()->proxy_cloud_api_key)->toBeNull();
+});
