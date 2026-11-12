@@ -10,6 +10,7 @@ use App\Plugins\Enums\PluginOutput;
 use App\Services\DeviceImageResolver;
 use App\Services\DeviceScreenFilename;
 use App\Services\ImageGenerationService;
+use App\Services\Plugin\Transform\TransformException;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -146,8 +147,16 @@ class RunDeviceDisplayCycle
         $isDataStale = $plugin->isDataStale();
 
         if ($isDataStale) {
-            $plugin->updateDataPayload();
-            $plugin->refresh();
+            try {
+                $plugin->updateDataPayload();
+                $plugin->refresh();
+            } catch (TransformException) {
+                Log::warning('Transform failed; retaining cached screen', ['plugin_id' => $plugin->id]);
+                if ($plugin->current_image === null) {
+                    return false;
+                }
+                $isDataStale = false;
+            }
         }
 
         if ($this->shouldSkipFromPayload($plugin)) {
@@ -216,8 +225,12 @@ class RunDeviceDisplayCycle
         $isDataStale = $plugin->isDataStale();
 
         if ($isDataStale) {
-            $plugin->updateDataPayload();
-            $plugin->refresh();
+            try {
+                $plugin->updateDataPayload();
+                $plugin->refresh();
+            } catch (TransformException) {
+                return $plugin->current_image;
+            }
         }
 
         if ($this->shouldSkipFromPayload($plugin)) {
@@ -281,7 +294,13 @@ class RunDeviceDisplayCycle
         foreach ($plugins as $plugin) {
             ImageGenerationService::resetIfNotCacheable($plugin);
             if ($plugin->isDataStale() || $plugin->current_image === null) {
-                $plugin->updateDataPayload();
+                try {
+                    $plugin->updateDataPayload();
+                } catch (TransformException) {
+                    Log::warning('Transform failed; retaining current mashup screen', ['plugin_id' => $plugin->id]);
+
+                    return;
+                }
             }
         }
 

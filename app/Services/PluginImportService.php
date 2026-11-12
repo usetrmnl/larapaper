@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
@@ -89,6 +90,7 @@ class PluginImportService
         $yamlParts = preg_split('/^---[ \t]*\r?\n/m', $settingsYaml, 2);
         $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
+        $transform = $this->readTransform($filePaths['settingsYamlPath'], $settings);
 
         // Determine markup language from the first available file
         $markupLanguage = 'blade';
@@ -185,6 +187,7 @@ class PluginImportService
                 'configuration_template' => $configurationTemplate,
                 'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
                 'framework_version' => $settings['framework_version'] ?? null,
+                ...$transform,
                 'no_bleed' => ($settings['no_screen_padding'] ?? null) === 'yes',
                 'dark_mode' => ($settings['dark_mode'] ?? null) === 'yes',
             ]);
@@ -261,6 +264,7 @@ class PluginImportService
         $yamlParts = preg_split('/^---[ \t]*\r?\n/m', $settingsYaml, 2);
         $settings = Yaml::parse(count($yamlParts) > 1 ? $yamlParts[1] : $settingsYaml);
         $this->validateYAML($settings);
+        $transform = $this->readTransform($filePaths['settingsYamlPath'], $settings);
 
         // Determine markup language from the first available file
         $markupLanguage = 'blade';
@@ -368,6 +372,7 @@ class PluginImportService
                 'data_payload' => json_decode($settings['static_data'] ?? '{}', true),
                 'preferred_renderer' => $preferredRenderer,
                 'framework_version' => $settings['framework_version'] ?? null,
+                ...$transform,
                 'icon_url' => $iconUrl,
                 'no_bleed' => ($settings['no_screen_padding'] ?? null) === 'yes',
                 'dark_mode' => ($settings['dark_mode'] ?? null) === 'yes',
@@ -389,6 +394,43 @@ class PluginImportService
         $plugin['trmnlp_yaml'] = $settingsYaml;
 
         return $plugin;
+    }
+
+    /** Import source without enabling execution of third-party code. */
+    private function readTransform(string $settingsPath, array $settings): array
+    {
+        $result = ['transform_code' => null, 'transform_language' => null, 'transform_enabled' => false];
+        $directory = dirname($settingsPath);
+        $extensions = ['php' => 'php', 'python' => 'py', 'node' => 'js'];
+        $language = $settings['serverless_language'] ?? null;
+        if ($language === 'none') {
+            return $result;
+        }
+        $found = [];
+        foreach ($extensions as $key => $extension) {
+            $path = $directory.'/transform.'.$extension;
+            if (is_file($path) && ! is_link($path)) {
+                $found[$key] = $path;
+            }
+        }
+        if ($language === null && $found === []) {
+            return $result;
+        }
+        if ($language === null && count($found) === 1) {
+            $language = array_key_first($found);
+        }
+        if (! is_string($language) || ! isset($found[$language])) {
+            throw new InvalidArgumentException('Missing or ambiguous transform language/file');
+        }
+        if (filesize($found[$language]) > 200000) {
+            throw new InvalidArgumentException('Transform code exceeds maximum allowed size');
+        }
+
+        return [
+            'transform_code' => File::get($found[$language]),
+            'transform_language' => $language,
+            'transform_enabled' => false,
+        ];
     }
 
     private function findRequiredFiles(string $tempDir, ?string $zipEntryPath = null): array
@@ -608,6 +650,13 @@ class PluginImportService
                         $extension = pathinfo((string) $quadrantLiquidPath, PATHINFO_EXTENSION);
                         File::copy($quadrantLiquidPath, $newSrcDir.'/quadrant.'.$extension);
                         $quadrantLiquidPath = $newSrcDir.'/quadrant.'.$extension;
+                    }
+
+                    foreach (['php', 'py', 'js'] as $extension) {
+                        $transformPath = $srcDir.'/transform.'.$extension;
+                        if (is_file($transformPath) && ! is_link($transformPath)) {
+                            File::copy($transformPath, $newSrcDir.'/transform.'.$extension);
+                        }
                     }
 
                     // Update the paths
