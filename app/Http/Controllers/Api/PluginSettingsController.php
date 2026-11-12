@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plugin;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -14,11 +15,20 @@ class PluginSettingsController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
+        $timezone = $user->preferredTimezone();
 
+        // The shape of TRMNL's Account API, which python-trmnl (the Home Assistant integration) requires in full.
         return response()->json([
             'data' => [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'first_name' => Str::before($user->name, ' '),
+                'last_name' => Str::contains($user->name, ' ') ? Str::after($user->name, ' ') : '',
+                'locale' => app()->getLocale(),
+                'time_zone' => $timezone,
+                'time_zone_iana' => $timezone,
+                'utc_offset' => now($timezone)->getOffset(),
             ],
         ]);
     }
