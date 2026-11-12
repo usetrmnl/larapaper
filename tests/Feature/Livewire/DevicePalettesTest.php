@@ -575,7 +575,7 @@ test('update from API runs job and refreshes device palettes', function (): void
     $this->actingAs($user);
 
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response([
             'data' => [
                 [
                     'id' => 'api-palette',

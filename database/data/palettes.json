@@ -1,0 +1,110 @@
+{
+    "data": [
+        {
+            "id": "bw",
+            "name": "Black & White (1-bit)",
+            "grays": 2,
+            "framework_class": "screen--1bit"
+        },
+        {
+            "id": "gray-4",
+            "name": "4 Grays (2-bit)",
+            "grays": 4,
+            "framework_class": "screen--2bit"
+        },
+        {
+            "id": "gray-16",
+            "name": "16 Grays (4-bit)",
+            "grays": 16,
+            "framework_class": "screen--4bit"
+        },
+        {
+            "id": "gray-256",
+            "name": "256 Grays (8-bit)",
+            "grays": 256,
+            "framework_class": "screen--4bit"
+        },
+        {
+            "id": "color-3bwr",
+            "name": "Color (3 colors: black, red, white)",
+            "grays": 2,
+            "colors": [
+                "#000000",
+                "#FF0000",
+                "#FFFFFF"
+            ],
+            "framework_class": "screen--color-3bwr",
+            "grayscale_bit_depth": 1
+        },
+        {
+            "id": "color-3bwy",
+            "name": "Color (3 colors: black, yellow, white)",
+            "grays": 2,
+            "colors": [
+                "#000000",
+                "#FFFF00",
+                "#FFFFFF"
+            ],
+            "framework_class": "screen--color-3bwy",
+            "grayscale_bit_depth": 1
+        },
+        {
+            "id": "color-4bwry",
+            "name": "Color (4 colors: black, red, white, yellow)",
+            "grays": 2,
+            "colors": [
+                "#000000",
+                "#FF0000",
+                "#FFFFFF",
+                "#FFFF00"
+            ],
+            "framework_class": "screen--color-4bwry",
+            "grayscale_bit_depth": 1
+        },
+        {
+            "id": "color-6a",
+            "name": "Color (6 colors)",
+            "grays": 2,
+            "colors": [
+                "#FF0000",
+                "#00FF00",
+                "#0000FF",
+                "#FFFF00",
+                "#000000",
+                "#FFFFFF"
+            ],
+            "framework_class": "screen--color-6a",
+            "grayscale_bit_depth": 1
+        },
+        {
+            "id": "color-7a",
+            "name": "Color (7 colors)",
+            "grays": 2,
+            "colors": [
+                "#000000",
+                "#FFFFFF",
+                "#FF0000",
+                "#00FF00",
+                "#0000FF",
+                "#FFFF00",
+                "#FFA500"
+            ],
+            "framework_class": "screen--color-7a",
+            "grayscale_bit_depth": 1
+        },
+        {
+            "id": "color-12bit",
+            "name": "Color (4096 colors)",
+            "grays": 2,
+            "framework_class": "screen--color-full",
+            "grayscale_bit_depth": 4
+        },
+        {
+            "id": "color-24bit",
+            "name": "Color (16777216 colors)",
+            "grays": 2,
+            "framework_class": "screen--color-full",
+            "grayscale_bit_depth": 4
+        }
+    ]
+}

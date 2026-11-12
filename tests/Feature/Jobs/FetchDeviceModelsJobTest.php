@@ -4,18 +4,13 @@ declare(strict_types=1);
 
 use App\Jobs\FetchDeviceModelsJob;
 use App\Models\DeviceModel;
+use App\Models\DevicePalette;
+use App\Services\DeviceCatalogService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     DeviceModel::truncate();
-
-    // Mock palettes API to return empty array by default
-    Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response([
-            'data' => [],
-        ], 200),
-    ]);
 });
 
 test('fetch device models job can be dispatched', function (): void {
@@ -25,7 +20,7 @@ test('fetch device models job can be dispatched', function (): void {
 
 test('fetch device models job handles successful api response', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -57,7 +52,7 @@ test('fetch device models job handles successful api response', function (): voi
         ->with('Successfully fetched and updated device models', ['count' => 1]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     $deviceModel = DeviceModel::where('name', 'test-model')->first();
     expect($deviceModel)->not->toBeNull()
@@ -78,7 +73,7 @@ test('fetch device models job handles successful api response', function (): voi
 
 test('fetch device models job handles multiple device models', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -124,7 +119,7 @@ test('fetch device models job handles multiple device models', function (): void
         ->with('Successfully fetched and updated device models', ['count' => 2]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::where('name', 'model-1')->exists())->toBeTrue()
         ->and(DeviceModel::where('name', 'model-2')->exists())->toBeTrue();
@@ -132,7 +127,7 @@ test('fetch device models job handles multiple device models', function (): void
 
 test('fetch device models job handles empty data array', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [],
         ], 200),
@@ -147,14 +142,14 @@ test('fetch device models job handles empty data array', function (): void {
         ->with('Successfully fetched and updated device models', ['count' => 0]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles missing data field', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'message' => 'No data available',
         ], 200),
@@ -169,14 +164,14 @@ test('fetch device models job handles missing data field', function (): void {
         ->with('Successfully fetched and updated device models', ['count' => 0]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles non-array data', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => 'invalid-data',
         ], 200),
@@ -191,14 +186,14 @@ test('fetch device models job handles non-array data', function (): void {
         ->with('Invalid response format from device models API', Mockery::type('array'));
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles api failure', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'error' => 'Internal Server Error',
         ], 500),
@@ -216,14 +211,14 @@ test('fetch device models job handles api failure', function (): void {
         ]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles network exception', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => function (): void {
             throw new Exception('Network connection failed');
         },
@@ -238,14 +233,14 @@ test('fetch device models job handles network exception', function (): void {
         ->with('Exception occurred while fetching device models', Mockery::type('array'));
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles device model with missing name', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -269,14 +264,14 @@ test('fetch device models job handles device model with missing name', function 
         ->with('Successfully fetched and updated device models', ['count' => 1]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     expect(DeviceModel::count())->toBe(0);
 });
 
 test('fetch device models job handles device model with partial data', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -296,7 +291,7 @@ test('fetch device models job handles device model with partial data', function 
         ->with('Successfully fetched and updated device models', ['count' => 1]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     $deviceModel = DeviceModel::where('name', 'minimal-model')->first();
     expect($deviceModel)->not->toBeNull()
@@ -325,7 +320,7 @@ test('fetch device models job updates existing device model', function (): void 
     ]);
 
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -356,7 +351,7 @@ test('fetch device models job updates existing device model', function (): void 
         ->with('Successfully fetched and updated device models', ['count' => 1]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     $existingModel->refresh();
     expect($existingModel->label)->toBe('Updated Label')
@@ -368,7 +363,7 @@ test('fetch device models job updates existing device model', function (): void 
 
 test('fetch device models job handles processing exception for individual model', function (): void {
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
@@ -398,9 +393,289 @@ test('fetch device models job handles processing exception for individual model'
         ->with('Successfully fetched and updated device models', ['count' => 2]);
 
     $job = new FetchDeviceModelsJob();
-    $job->handle();
+    $job->handle(app(DeviceCatalogService::class));
 
     // Should still create the valid model
     expect(DeviceModel::where('name', 'valid-model')->exists())->toBeTrue();
     expect(DeviceModel::count())->toBe(1);
+});
+
+test('fetch device models job sets palette from default palette id', function (): void {
+    DevicePalette::query()->delete();
+
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response([
+            'data' => [
+                [
+                    'id' => 'bw',
+                    'name' => 'Black & White',
+                    'grays' => 2,
+                    'framework_class' => 'screen--1bit',
+                ],
+                [
+                    'id' => 'gray-16',
+                    'name' => '16 Grays',
+                    'grays' => 16,
+                    'framework_class' => 'screen--4bit',
+                ],
+            ],
+        ], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'palette-model',
+                    'label' => 'Palette Model',
+                    'width' => 800,
+                    'height' => 480,
+                    'palette_ids' => ['bw'],
+                    'default_palette_id' => 'gray-16',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated palettes', ['count' => 2]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated device models', ['count' => 1]);
+
+    $job = new FetchDeviceModelsJob();
+    $job->handle(app(DeviceCatalogService::class));
+
+    $deviceModel = DeviceModel::query()->where('name', 'palette-model')->first();
+    $palette = DevicePalette::query()->where('name', 'gray-16')->first();
+
+    expect($deviceModel)->not->toBeNull()
+        ->and($palette)->not->toBeNull()
+        ->and($deviceModel->palette_id)->toBe($palette->id);
+});
+
+test('fetch device models job leaves manual device models unchanged', function (): void {
+    $manualModel = DeviceModel::factory()->create([
+        'name' => 'custom-model',
+        'label' => 'Custom Label',
+        'source' => 'manual',
+    ]);
+    $width = $manualModel->width;
+
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'custom-model',
+                    'label' => 'API Label',
+                    'width' => 100,
+                    'height' => 100,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated palettes', ['count' => 0]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated device models', ['count' => 1]);
+
+    $job = new FetchDeviceModelsJob();
+    $job->handle(app(DeviceCatalogService::class));
+
+    $manualModel->refresh();
+
+    expect($manualModel->label)->toBe('Custom Label')
+        ->and($manualModel->source)->toBe('manual')
+        ->and($manualModel->width)->toBe($width);
+});
+
+test('fetch device models job skips unsupported device models', function (): void {
+    $vestaboard = DeviceModel::factory()->create([
+        'name' => 'vestaboard',
+        'label' => 'Existing Vestaboard',
+        'source' => 'api',
+    ]);
+
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'vestaboard',
+                    'label' => 'Updated Vestaboard',
+                ],
+                [
+                    'name' => 'byod_custom',
+                    'label' => 'Custom Device',
+                ],
+                [
+                    'name' => 'tidbyt',
+                    'label' => 'Tidbyt',
+                ],
+                [
+                    'name' => 'og_png',
+                    'label' => 'TRMNL OG (1-bit)',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    (new FetchDeviceModelsJob)->handle(app(DeviceCatalogService::class));
+
+    $vestaboard->refresh();
+
+    expect($vestaboard->label)->toBe('Existing Vestaboard');
+    expect(DeviceModel::query()->where('name', 'og_png')->exists())->toBeTrue();
+    expect(DeviceModel::query()->whereIn('name', ['byod_custom', 'tidbyt'])->exists())->toBeFalse();
+});
+
+test('fetch device models job assigns the first ids to trmnl models and stores gray-4 for og plus', function (): void {
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response([
+            'data' => [
+                [
+                    'id' => 'gray-4',
+                    'name' => '4 Grays',
+                    'grays' => 4,
+                    'framework_class' => 'screen--2bit',
+                ],
+            ],
+        ], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'v2',
+                    'label' => 'TRMNL X',
+                    'default_palette_id' => 'gray-16',
+                ],
+                [
+                    'name' => 'other-model',
+                    'label' => 'Other',
+                ],
+                [
+                    'name' => 'og_png',
+                    'label' => 'TRMNL OG (1-bit)',
+                    'default_palette_id' => 'bw',
+                ],
+                [
+                    'name' => 'og_plus',
+                    'label' => 'TRMNL OG (2-bit)',
+                    'default_palette_id' => 'bw',
+                ],
+                [
+                    'name' => 'og_bwry',
+                    'label' => 'TRMNL OG (B/W/R/Y)',
+                    'default_palette_id' => 'color-4bwry',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    (new FetchDeviceModelsJob)->handle(app(DeviceCatalogService::class));
+
+    expect(DeviceModel::query()->orderBy('id')->pluck('name')->all())->toBe([
+        'og_png',
+        'og_plus',
+        'v2',
+        'og_bwry',
+        'other-model',
+    ])
+        ->and(DeviceModel::query()->find(1)?->name)->toBe('og_png')
+        ->and(DeviceModel::query()->find(2)?->name)->toBe('og_plus')
+        ->and(DeviceModel::query()->find(3)?->name)->toBe('v2')
+        ->and(DeviceModel::query()->find(4)?->name)->toBe('og_bwry');
+
+    expect(DeviceModel::query()->where('name', 'og_plus')->first()?->palette?->name)->toBe('gray-4');
+});
+
+test('fetch device models job keeps existing ids and still stores gray-4 for og plus', function (): void {
+    $ogPlus = DeviceModel::factory()->create([
+        'name' => 'og_plus',
+        'label' => 'TRMNL OG (2-bit)',
+        'source' => 'api',
+    ]);
+    $ogPlusId = $ogPlus->id;
+
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response([
+            'data' => [
+                [
+                    'id' => 'gray-4',
+                    'name' => '4 Grays',
+                    'grays' => 4,
+                    'framework_class' => 'screen--2bit',
+                ],
+            ],
+        ], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'v2',
+                    'label' => 'TRMNL X',
+                ],
+                [
+                    'name' => 'og_png',
+                    'label' => 'TRMNL OG (1-bit)',
+                ],
+                [
+                    'name' => 'og_plus',
+                    'label' => 'TRMNL OG (2-bit)',
+                    'default_palette_id' => 'bw',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    (new FetchDeviceModelsJob)->handle(app(DeviceCatalogService::class));
+
+    $ogPlus->refresh();
+
+    expect($ogPlus->id)->toBe($ogPlusId)
+        ->and($ogPlus->palette?->name)->toBe('gray-4');
+
+    expect(DeviceModel::query()->where('name', 'v2')->value('id'))
+        ->toBeLessThan(DeviceModel::query()->where('name', 'og_png')->value('id'));
+});
+
+test('fetch device models job keeps published at when the payload omits it', function (): void {
+    $deviceModel = DeviceModel::factory()->create([
+        'name' => 'dated-model',
+        'label' => 'Old Label',
+        'published_at' => '2024-01-01 00:00:00',
+        'source' => 'api',
+    ]);
+
+    Http::fake([
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/models' => Http::response([
+            'data' => [
+                [
+                    'name' => 'dated-model',
+                    'label' => 'Updated Label',
+                    'width' => 800,
+                    'height' => 480,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated palettes', ['count' => 0]);
+
+    Log::shouldReceive('info')
+        ->once()
+        ->with('Successfully fetched and updated device models', ['count' => 1]);
+
+    $job = new FetchDeviceModelsJob();
+    $job->handle(app(DeviceCatalogService::class));
+
+    $deviceModel->refresh();
+
+    expect($deviceModel->label)->toBe('Updated Label')
+        ->and($deviceModel->published_at?->toDateTimeString())->toBe('2024-01-01 00:00:00');
 });

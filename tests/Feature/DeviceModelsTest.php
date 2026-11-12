@@ -95,7 +95,7 @@ it('update from API runs job and refreshes device models', function (): void {
     $this->actingAs($user);
 
     Http::fake([
-        'usetrmnl.com/api/palettes' => Http::response(['data' => []], 200),
+        config('services.trmnl.base_url').'/api/palettes' => Http::response(['data' => []], 200),
         config('services.trmnl.base_url').'/api/models' => Http::response([
             'data' => [
                 [
