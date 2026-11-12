@@ -26,6 +26,10 @@ class Device extends Model
 
     public const MAX_PAUSE_REFRESH_SECONDS = 86400; // 24 hours
 
+    public const DEFAULT_SLEEP_MODE_FROM = '22:00';
+
+    public const DEFAULT_SLEEP_MODE_TO = '06:00';
+
     protected $guarded = ['id'];
 
     /**

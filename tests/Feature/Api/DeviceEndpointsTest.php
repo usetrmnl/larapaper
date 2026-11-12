@@ -742,6 +742,30 @@ test('authenticated user can fetch one of their devices', function (): void {
         ]]);
 });
 
+test('a device that never set sleep times returns the default sleep window', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id, 'sleep_mode_from' => null, 'sleep_mode_to' => null]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson(route('api.devices.show', $device))
+        ->assertOk()
+        ->assertJson(['data' => ['sleep_start_time' => 1320, 'sleep_end_time' => 360]]);
+});
+
+test('turning sleep mode on stores the default sleep window when none is set', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id, 'sleep_mode_from' => null, 'sleep_mode_to' => null]);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson(route('api.devices.update', $device), ['sleep_mode_enabled' => true])->assertOk();
+
+    $device->refresh();
+    expect($device->sleep_mode_from->format('H:i'))->toBe('22:00')
+        ->and($device->sleep_mode_to->format('H:i'))->toBe('06:00');
+});
+
 test('user cannot fetch a device they do not own', function (): void {
     $user = User::factory()->create();
     $device = Device::factory()->create(['user_id' => User::factory()->create()->id]);

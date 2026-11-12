@@ -14,10 +14,6 @@ new class extends Component
     use ManagesDeviceActions;
     use ProvidesSelectablePlugins;
 
-    private const DEFAULT_SLEEP_MODE_FROM = '22:00';
-
-    private const DEFAULT_SLEEP_MODE_TO = '06:00';
-
     public $device;
 
     public $name;
@@ -134,8 +130,8 @@ new class extends Component
             return;
         }
 
-        $this->sleep_mode_from ??= self::DEFAULT_SLEEP_MODE_FROM;
-        $this->sleep_mode_to ??= self::DEFAULT_SLEEP_MODE_TO;
+        $this->sleep_mode_from ??= App\Models\Device::DEFAULT_SLEEP_MODE_FROM;
+        $this->sleep_mode_to ??= App\Models\Device::DEFAULT_SLEEP_MODE_TO;
     }
 
     public function deleteDevice(App\Models\Device $device)
