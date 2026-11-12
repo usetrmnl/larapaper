@@ -6,14 +6,35 @@ use App\Models\Plugin;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
-it('GET /api/me returns name and email for authenticated user', function (): void {
-    $user = User::factory()->create(['name' => 'Bluey', 'email' => 'bluey@example.com']);
+it('GET /api/me returns the user in the shape of TRMNL\'s Account API', function (): void {
+    $this->travelTo('2026-07-01 12:00:00');
+    $user = User::factory()->create(['name' => 'Bluey Heeler', 'email' => 'bluey@example.com', 'timezone' => 'America/New_York']);
     Sanctum::actingAs($user);
 
-    $response = $this->getJson('/api/me');
+    $this->getJson('/api/me')->assertOk()->assertExactJson(['data' => [
+        'id' => $user->id,
+        'name' => 'Bluey Heeler',
+        'email' => 'bluey@example.com',
+        'first_name' => 'Bluey',
+        'last_name' => 'Heeler',
+        'locale' => 'en',
+        'time_zone' => 'America/New_York',
+        'time_zone_iana' => 'America/New_York',
+        'utc_offset' => -14400,
+    ]]);
+});
 
-    $response->assertOk();
-    $response->assertJson(['data' => ['name' => 'Bluey', 'email' => 'bluey@example.com']]);
+it('GET /api/me falls back to the app time zone and an empty last name', function (): void {
+    config(['app.timezone' => 'UTC']);
+    Sanctum::actingAs(User::factory()->create(['name' => 'Bingo', 'timezone' => null]));
+
+    $this->getJson('/api/me')->assertOk()->assertJson(['data' => [
+        'first_name' => 'Bingo',
+        'last_name' => '',
+        'time_zone' => 'UTC',
+        'time_zone_iana' => 'UTC',
+        'utc_offset' => 0,
+    ]]);
 });
 
 it('GET /api/me returns 401 when unauthenticated', function (): void {
