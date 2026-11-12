@@ -467,6 +467,62 @@ class Plugin extends Model
         return is_array($value) && ! array_is_list($value);
     }
 
+    /**
+     * True only if the URL's host resolves exclusively to public, globally-routable addresses.
+     * Used in multi-user mode to keep tenant-controlled polling URLs from reaching the server's
+     * own loopback/private network or cloud metadata. Fails closed on unresolvable hosts.
+     */
+    protected static function pollingHostIsPublic(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! $host) {
+            return false;
+        }
+        $host = trim($host, '[]');
+
+        $ips = [];
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $ips[] = $host;
+        } else {
+            foreach ([DNS_A, DNS_AAAA] as $type) {
+                $records = @dns_get_record($host, $type);
+                if (is_array($records)) {
+                    foreach ($records as $record) {
+                        if (! empty($record['ip'])) {
+                            $ips[] = $record['ip'];
+                        }
+                        if (! empty($record['ipv6'])) {
+                            $ips[] = $record['ipv6'];
+                        }
+                    }
+                }
+            }
+        }
+
+        if (empty($ips)) {
+            return false;
+        }
+
+        foreach ($ips as $ip) {
+            // Normalise IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) so the private check applies
+            if (preg_match('/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i', $ip, $m)) {
+                $ip = $m[1];
+            }
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return false;
+            }
+            // CGNAT 100.64.0.0/10 is not covered by FILTER_FLAG_NO_RES_RANGE
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                $long = ip2long($ip);
+                if ($long !== false && ($long & 0xffc00000) === (ip2long('100.64.0.0') & 0xffc00000)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     public function updateDataPayload(): void
     {
         if ($this->data_strategy !== 'polling' || ! $this->polling_url) {
@@ -493,6 +549,21 @@ class Plugin extends Model
             filled(...)
         ));
 
+        // In multi-user (restricted) mode a tenant has no code-execution path, so a polling URL
+        // must not be usable to reach the server's own network. Drop any URL whose host is not a
+        // public address. In single-user mode the fully trusted owner may still poll LAN hosts.
+        $restricted = ! UserBladeExecution::allowed();
+        if ($restricted) {
+            $urls = array_values(array_filter($urls, function (string $url): bool {
+                if (self::pollingHostIsPublic($url)) {
+                    return true;
+                }
+                Log::warning("Plugin {$this->id} blocked non-public polling URL: {$url}");
+
+                return false;
+            }));
+        }
+
         $resolvedBody = ($this->polling_verb === 'post' && $this->polling_body)
             ? $this->resolveLiquidVariables($this->polling_body)
             : null;
@@ -500,10 +571,14 @@ class Plugin extends Model
 
         $isPost = $this->polling_verb === 'post';
         $httpClientTimeout = config('app.http_client_timeout');
-        $responses = Http::pool(function (Pool $pool) use ($urls, $headers, $resolvedBody, $contentType, $isPost, $httpClientTimeout): array {
+        $responses = Http::pool(function (Pool $pool) use ($urls, $headers, $resolvedBody, $contentType, $isPost, $httpClientTimeout, $restricted): array {
             $requests = [];
             foreach ($urls as $url) {
                 $request = $pool->withHeaders($headers)->timeout($httpClientTimeout);
+                if ($restricted) {
+                    // Stop a public host from redirecting into the internal network
+                    $request = $request->withoutRedirecting();
+                }
                 if ($isPost && $resolvedBody !== null) {
                     $request = $request->withBody($resolvedBody, $contentType);
                 }
