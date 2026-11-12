@@ -23,3 +23,13 @@ test('authenticated user can fetch current user from api', function (): void {
 test('guest cannot fetch api user', function (): void {
     $this->getJson('/api/user')->assertUnauthorized();
 });
+
+test('a bad token gets 401 JSON without an Accept header', function (): void {
+    $this->get('/api/me', ['Authorization' => 'Bearer not-a-token'])
+        ->assertUnauthorized()
+        ->assertExactJson(['message' => 'Unauthenticated.']);
+});
+
+test('a guest on a web page is still sent to the login page', function (): void {
+    $this->get('/dashboard')->assertRedirect('/login');
+});
