@@ -196,6 +196,7 @@ class GenerateDefaultImagesCommand extends Command
             'deviceVariant' => $deviceVariant,
             'colorDepth' => $colorDepth,
             'scaleLevel' => $scaleLevel,
+            'paletteClass' => $deviceModel->paletteClass(),
             'cssVariables' => $deviceModel->css_variables,
         ])->render();
     }

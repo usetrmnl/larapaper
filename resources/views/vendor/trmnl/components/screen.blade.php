@@ -4,6 +4,7 @@
     'deviceVariant' => 'ogv2',
     'deviceOrientation' => null,
     'colorDepth' => '1bit',
+    'paletteClass' => null,
     'scaleLevel' => null,
     'cssVariables' => null,
     'frameworkVersion' => null,
@@ -12,7 +13,7 @@
 @php
     $resolvedFrameworkVersion = $frameworkVersion
         ?? config('trmnl-blade.framework_css_version')
-        ?? config('trmnl-blade.framework_version', '2.3.7');
+        ?? config('trmnl-blade.framework_version', '3.4.6');
 @endphp
 
 <!DOCTYPE html>
@@ -34,7 +35,7 @@
     @endif
 </head>
 <body class="environment trmnl">
-<div class="screen {{ $noBleed ? 'screen--no-bleed' : '' }} {{ $darkMode ? 'screen--dark-mode' : '' }} {{ $deviceVariant ? 'screen--' . $deviceVariant : '' }} {{ $deviceOrientation ? 'screen--' . $deviceOrientation : '' }} {{ $colorDepth ? 'screen--' . $colorDepth : '' }} {{ $scaleLevel ? 'screen--scale-' . $scaleLevel : '' }}">
+<div class="screen {{ $noBleed ? 'screen--no-bleed' : '' }} {{ $darkMode ? 'screen--dark-mode' : '' }} {{ $deviceVariant ? 'screen--' . $deviceVariant : '' }} {{ $deviceOrientation ? 'screen--' . $deviceOrientation : '' }} {{ $paletteClass ? $paletteClass : '' }} {{ $scaleLevel ? 'screen--scale-' . $scaleLevel : '' }}">
     {{ $slot }}
 </div>
 </body>

@@ -166,6 +166,7 @@ class PlaylistItem extends Model
                 'colorDepth' => $device?->colorDepth(),
                 'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
                 'scaleLevel' => $device?->scaleLevel(),
+                'paletteClass' => $device?->paletteClass(),
                 'cssVariables' => $device?->deviceModel?->css_variables,
                 'frameworkVersion' => $this->plugin instanceof Plugin
                     ? $this->plugin->resolvedFrameworkVersion()
@@ -195,6 +196,7 @@ class PlaylistItem extends Model
             'colorDepth' => $device?->colorDepth(),
             'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
             'scaleLevel' => $device?->scaleLevel(),
+            'paletteClass' => $device?->paletteClass(),
             'cssVariables' => $device?->deviceModel?->css_variables,
             'frameworkVersion' => $frameworkVersion,
             'mashupLayout' => $this->getMashupLayoutType(),

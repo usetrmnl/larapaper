@@ -5,6 +5,7 @@
     'deviceOrientation' => null,
     'colorDepth' => '1bit',
     'scaleLevel' => null,
+    'paletteClass' => null,
     'cssVariables' => null,
     'pluginName' => 'Recipe',
 ])
@@ -16,6 +17,7 @@
     device-variant="{{ $deviceVariant }}"
     device-orientation="{{ $deviceOrientation }}"
     scale-level="{{ $scaleLevel }}"
+    :palette-class="$paletteClass"
     :css-variables="$cssVariables"
 >
     <x-trmnl::view>

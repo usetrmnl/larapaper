@@ -273,6 +273,16 @@ class Device extends Model
     }
 
     /**
+     * Framework CSS class for this device's palette, or the model palette when the device has none.
+     */
+    public function paletteClass(): ?string
+    {
+        $palette = $this->palette ?? $this->deviceModel?->palette;
+
+        return $palette?->frameworkClass();
+    }
+
+    /**
      * Get the device variant name, defaulting to 'og' if not available.
      */
     public function deviceVariant(): string

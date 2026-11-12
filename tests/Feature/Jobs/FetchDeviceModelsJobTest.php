@@ -66,9 +66,9 @@ test('fetch device models job handles successful api response', function (): voi
         ->and($deviceModel->rotation)->toBe(0)
         ->and($deviceModel->mime_type)->toBe('image/png')
         ->and($deviceModel->offset_x)->toBe(0)
-        ->and($deviceModel->offset_y)->toBe(0);
-    // expect($deviceModel->kind)->toBe('trmnl');
-    expect($deviceModel->source)->toBe('api');
+        ->and($deviceModel->offset_y)->toBe(0)
+        ->and($deviceModel->kind)->toBe('trmnl')
+        ->and($deviceModel->source)->toBe('api');
 });
 
 test('fetch device models job handles multiple device models', function (): void {

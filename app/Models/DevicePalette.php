@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property array|null $colors
+ * @property string|null $framework_class
  */
 final class DevicePalette extends Model
 {
@@ -20,4 +21,18 @@ final class DevicePalette extends Model
         'grays' => 'integer',
         'colors' => 'array',
     ];
+
+    /**
+     * Framework screen class, or null when the palette does not define one.
+     */
+    public function frameworkClass(): ?string
+    {
+        $frameworkClass = $this->framework_class;
+
+        if (! is_string($frameworkClass) || $frameworkClass === '') {
+            return null;
+        }
+
+        return $frameworkClass;
+    }
 }

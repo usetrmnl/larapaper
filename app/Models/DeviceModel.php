@@ -91,6 +91,14 @@ final class DeviceModel extends Model
     }
 
     /**
+     * Framework CSS class for this model's palette, or null when it has none.
+     */
+    public function paletteClass(): ?string
+    {
+        return $this->palette?->frameworkClass();
+    }
+
+    /**
      * Returns css_variables with --screen-w and --screen-h filled from width/height
      * when puppeteer_window_size_strategy is v2 and they are not set.
      *

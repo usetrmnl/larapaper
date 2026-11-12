@@ -20,6 +20,8 @@ test('device catalog seeder loads models and palettes from local files', functio
 
     expect($deviceModel)->not->toBeNull()
         ->and($deviceModel->source)->toBe('api')
+        ->and($deviceModel->kind)->toBe('trmnl')
+        ->and($deviceModel->getRawOriginal('css_name'))->toBe('v2')
         ->and($deviceModel->palette?->name)->toBe('gray-16')
         ->and(DevicePalette::query()->where('name', 'gray-16')->exists())->toBeTrue();
 });

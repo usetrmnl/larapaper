@@ -670,6 +670,7 @@ class ImageGenerationService
             'deviceOrientation' => $deviceOrientation,
             'colorDepth' => $colorDepth,
             'scaleLevel' => $scaleLevel,
+            'paletteClass' => $device->paletteClass(),
             'cssVariables' => $device->deviceModel->css_variables ?? [],
         ];
 
