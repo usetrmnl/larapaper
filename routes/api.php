@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Firmware\DisplayController;
 use App\Http\Controllers\Api\Firmware\ScreenController;
 use App\Http\Controllers\Api\Firmware\SetupController;
 use App\Http\Controllers\Api\PlaylistController;
+use App\Http\Controllers\Api\PlaylistItemController;
 use App\Http\Controllers\Api\PluginActionController;
 use App\Http\Controllers\Api\PluginArchiveController;
 use App\Http\Controllers\Api\PluginSettingsController;
@@ -46,6 +47,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/playlists', [PlaylistController::class, 'index'])->name('api.playlists.index');
     Route::patch('/playlists/{playlist}', [PlaylistController::class, 'update'])->name('api.playlists.update');
+    Route::get('/playlists/{playlist}/items', [PlaylistItemController::class, 'index'])->name('api.playlists.items.index');
+    Route::prefix('/playlist-items/{playlistItem}/cache')->name('api.playlist-items.cache.')->group(function (): void {
+        Route::post('/clear', [PlaylistItemController::class, 'clearCache'])->name('clear');
+        Route::post('/warm', [PlaylistItemController::class, 'warmCache'])->name('warm');
+        Route::post('/refresh', [PlaylistItemController::class, 'refreshCache'])->name('refresh');
+    });
 
     Route::get('/display/status', [DisplayStatusController::class, 'show'])->name('display.status');
     Route::post('/display/status', [DisplayStatusController::class, 'update'])->name('display.status.post');

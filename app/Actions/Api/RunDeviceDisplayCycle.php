@@ -2,6 +2,7 @@
 
 namespace App\Actions\Api;
 
+use App\Actions\RenderPluginImage;
 use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
 use App\Models\PlaylistItem;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\Log;
 
 class RunDeviceDisplayCycle
 {
-    public function __construct(private readonly DeviceImageResolver $imageResolver) {}
+    public function __construct(
+        private readonly DeviceImageResolver $imageResolver,
+        private readonly RenderPluginImage $renderPluginImage,
+    ) {}
 
     /**
      * Resolve the image path and refresh-time override for the current display
@@ -150,7 +154,7 @@ class RunDeviceDisplayCycle
             $plugin->refresh();
         }
 
-        if ($this->shouldSkipFromPayload($plugin)) {
+        if ($this->renderPluginImage->shouldSkipFromPayload($plugin)) {
             Log::info('Skipping rendering because payload sets TRMNL_SKIP_DISPLAY', [
                 'device_id' => $device->id,
                 'plugin_id' => $plugin->id,
@@ -166,7 +170,7 @@ class RunDeviceDisplayCycle
                 $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
                 $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
 
-                if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
+                if ($usesMarkupPipeline && $this->renderPluginImage->shouldSkipFromMarkup($markup)) {
                     Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
                         'device_id' => $device->id,
                         'plugin_id' => $plugin->id,
@@ -210,68 +214,7 @@ class RunDeviceDisplayCycle
      */
     private function renderOfflineImage(Device $device, Plugin $plugin): ?string
     {
-        ImageGenerationService::resetIfNotCacheable($plugin, $device);
-        $plugin->refresh();
-
-        $isDataStale = $plugin->isDataStale();
-
-        if ($isDataStale) {
-            $plugin->updateDataPayload();
-            $plugin->refresh();
-        }
-
-        if ($this->shouldSkipFromPayload($plugin)) {
-            Log::info('Skipping rendering because payload sets TRMNL_SKIP_DISPLAY', [
-                'device_id' => $device->id,
-                'plugin_id' => $plugin->id,
-            ]);
-
-            return null;
-        }
-
-        $output = $plugin->handler()?->output();
-
-        if ($output === PluginOutput::ProcessedImage) {
-            return $plugin->current_image;
-        }
-
-        if (! $isDataStale && $plugin->current_image !== null) {
-            return $plugin->current_image;
-        }
-
-        $usesMarkupPipeline = $output !== PluginOutput::Image;
-        $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
-
-        if ($usesMarkupPipeline && $this->shouldSkipFromMarkup($markup)) {
-            Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
-                'device_id' => $device->id,
-                'plugin_id' => $plugin->id,
-            ]);
-
-            $plugin->clearCurrentImage();
-
-            return null;
-        }
-
-        $imageUuid = ImageGenerationService::generateImageFromModel(
-            markup: $markup,
-            deviceModel: $device->deviceModel,
-            user: $device->user,
-            palette: $device->palette ?? $device->deviceModel?->palette,
-            device: $device,
-            plugin: $plugin,
-            existingImageId: $device->offline_screen_image,
-        );
-
-        $plugin->update([
-            'current_image' => $imageUuid,
-            'current_image_metadata' => ImageGenerationService::buildImageMetadataFromDevice($device),
-            'data_payload_updated_at' => now(),
-        ]);
-
-        ImageGenerationService::cleanupFolder();
-
-        return $imageUuid;
+        return $this->renderPluginImage->handle($plugin, $device, existingImageId: $device->offline_screen_image);
     }
 
     private function renderMashup(Device $device, PlaylistItem $playlistItem): void
@@ -301,20 +244,6 @@ class RunDeviceDisplayCycle
         if ($device->current_screen_image !== null) {
             $playlistItem->update(['last_displayed_at' => now()]);
         }
-    }
-
-    private function shouldSkipFromPayload(Plugin $plugin): bool
-    {
-        return is_array($plugin->data_payload)
-            && ($plugin->data_payload['TRMNL_SKIP_DISPLAY'] ?? false) === true;
-    }
-
-    private function shouldSkipFromMarkup(string $markup): bool
-    {
-        return preg_match(
-            '/<script\b[^>]*>.*?window\.TRMNL_SKIP_DISPLAY\s*=\s*true\b.*?<\/script>/is',
-            $markup
-        ) === 1;
     }
 
     /**

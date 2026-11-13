@@ -87,11 +87,7 @@ new class extends Component
 
         abort_unless(auth()->user()->devices->contains($item->playlist->device), 403);
 
-        if ($item->isMashup()) {
-            return;
-        }
-
-        if (! $item->plugin_id || ! $item->plugin || $item->plugin->plugin_type !== 'recipe') {
+        if (! $item->supportsImageCache()) {
             return;
         }
 

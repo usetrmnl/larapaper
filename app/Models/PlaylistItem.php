@@ -44,6 +44,16 @@ class PlaylistItem extends Model
     }
 
     /**
+     * Whether this item has its own plugin image cache to clear, warm or refresh (single recipe plugins only).
+     */
+    public function supportsImageCache(): bool
+    {
+        return ! $this->isMashup()
+            && $this->plugin instanceof Plugin
+            && $this->plugin->plugin_type === 'recipe';
+    }
+
+    /**
      * Get the mashup name if this is a mashup
      */
     public function getMashupName(): ?string
