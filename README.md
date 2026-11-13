@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/logo-dark.svg" />
+    <img src="docs/assets/images/logo-light.svg" alt="LaraPaper" width="420" />
+  </picture>
+</p>
+
 ## LaraPaper (PHP/Laravel)
 
 [![tests](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml/badge.svg)](https://github.com/usetrmnl/larapaper/actions/workflows/test.yml)
