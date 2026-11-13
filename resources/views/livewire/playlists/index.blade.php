@@ -2,6 +2,8 @@
 
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
+use App\Models\Plugin;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 new class extends Component
@@ -20,6 +22,14 @@ new class extends Component
     public $active_until;
 
     public $refresh_time = null;
+
+    public ?int $item_playlist_id = null;
+
+    public ?int $editing_item_id = null;
+
+    public string $mashup_layout = 'full';
+
+    public array $mashup_plugins = [];
 
     public function mount()
     {
@@ -147,6 +157,106 @@ new class extends Component
         $this->active_until = optional($playlist->active_until)->format('H:i');
         $this->refresh_time = $playlist->refresh_time;
     }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Plugin>
+     */
+    public function recipePlugins(): \Illuminate\Database\Eloquent\Collection
+    {
+        return auth()->user()->plugins()
+            ->where('plugin_type', 'recipe')
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function prepareAddPlaylistItem(Playlist $playlist): void
+    {
+        $this->authorizePlaylist($playlist);
+
+        $this->resetErrorBag();
+        $this->item_playlist_id = $playlist->id;
+        $this->editing_item_id = null;
+        $this->mashup_layout = 'full';
+        $this->mashup_plugins = [];
+    }
+
+    public function prepareEditPlaylistItem(PlaylistItem $item): void
+    {
+        $item->loadMissing(['playlist.device', 'plugin']);
+        $this->authorizePlaylist($item->playlist);
+        abort_unless($item->isMashup() || $item->plugin?->plugin_type === 'recipe', 403);
+
+        $this->resetErrorBag();
+        $this->item_playlist_id = $item->playlist_id;
+        $this->editing_item_id = $item->id;
+        $this->mashup_layout = $item->isMashup() ? ($item->getMashupLayoutType() ?? 'full') : 'full';
+        $this->mashup_plugins = $item->isMashup()
+            ? array_map(strval(...), $item->getMashupPluginIds())
+            : [(string) $item->plugin_id];
+    }
+
+    public function savePlaylistItem(): void
+    {
+        $playlist = Playlist::query()->with('device')->findOrFail($this->item_playlist_id);
+        $this->authorizePlaylist($playlist);
+
+        $allowedLayouts = array_merge(['full'], array_keys(PlaylistItem::getAvailableLayouts()));
+
+        $this->validate([
+            'mashup_layout' => ['required', 'string', Rule::in($allowedLayouts)],
+        ]);
+
+        $this->mashup_plugins = PlaylistItem::takePluginIdsForLayout($this->mashup_layout, $this->mashup_plugins);
+        $required = PlaylistItem::getRequiredPluginCountForLayout($this->mashup_layout);
+
+        $this->validate([
+            'mashup_plugins' => ['required', 'array', 'size:'.$required],
+            'mashup_plugins.*' => [
+                'required',
+                Rule::exists('plugins', 'id')->where('user_id', auth()->id())->where('plugin_type', 'recipe'),
+            ],
+        ]);
+
+        $pluginIds = array_map(intval(...), $this->mashup_plugins);
+
+        if ($this->editing_item_id !== null) {
+            $item = PlaylistItem::query()
+                ->where('playlist_id', $playlist->id)
+                ->findOrFail($this->editing_item_id);
+            $item->applyLayout($this->mashup_layout, $pluginIds);
+            $message = 'Layout updated.';
+        } else {
+            $maxOrder = $playlist->items()->max('order') ?? 0;
+
+            if ($this->mashup_layout === 'full') {
+                $playlist->items()->create([
+                    'plugin_id' => $pluginIds[0],
+                    'order' => $maxOrder + 1,
+                ]);
+            } else {
+                $primary = Plugin::query()->findOrFail($pluginIds[0]);
+                PlaylistItem::createMashup(
+                    $playlist,
+                    $this->mashup_layout,
+                    $pluginIds,
+                    $primary->name.' Mashup',
+                    $maxOrder + 1,
+                );
+            }
+
+            $message = 'Item added';
+        }
+
+        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        $this->reset(['item_playlist_id', 'editing_item_id', 'mashup_layout', 'mashup_plugins']);
+        Flux::modal('playlist-item-form')->close();
+        Flux::toast(variant: 'success', text: $message);
+    }
+
+    protected function authorizePlaylist(Playlist $playlist): void
+    {
+        abort_unless(auth()->user()->devices->contains($playlist->device), 403);
+    }
 }; ?>
 
 <div>
@@ -207,6 +317,17 @@ new class extends Component
 
                                         <flux:card.actions>
                                             <div class="flex gap-1">
+                                                <flux:modal.trigger name="playlist-item-form">
+                                                    <flux:tooltip content="Add item" position="bottom">
+                                                        <flux:button
+                                                            icon="plus"
+                                                            variant="subtle"
+                                                            size="sm"
+                                                            wire:click="prepareAddPlaylistItem({{ $playlist->id }})"
+                                                            aria-label="Add item"
+                                                        />
+                                                    </flux:tooltip>
+                                                </flux:modal.trigger>
                                                 <flux:modal.trigger name="edit-playlist-{{ $playlist->id }}">
                                                     <flux:tooltip content="Edit playlist settings" position="bottom">
                                                         <flux:button
@@ -385,19 +506,31 @@ new class extends Component
                                                             </td>
                                                             <td class="px-3 py-3 text-sm whitespace-nowrap first:pl-0 last:pr-0">
                                                                 <div class="flex items-center justify-end gap-2">
-                                                                    @if (! $item->isMashup() && $item->plugin?->plugin_type === 'recipe')
+                                                                    @if ($item->isMashup() || $item->plugin?->plugin_type === 'recipe')
                                                                         <flux:dropdown>
                                                                             <flux:button
                                                                                 icon="ellipsis-horizontal"
                                                                                 variant="ghost"
                                                                                 size="xs"
+                                                                                aria-label="Item actions"
                                                                             />
                                                                             <flux:menu>
-                                                                                <flux:menu.item
-                                                                                    icon="x-mark"
-                                                                                    wire:click="clearPluginImageCache({{ $item->id }})"
-                                                                                >
-                                                                                    Clear image cache</flux:menu.item>
+                                                                                <flux:modal.trigger name="playlist-item-form">
+                                                                                    <flux:menu.item
+                                                                                        icon="mashup-2x2"
+                                                                                        wire:click="prepareEditPlaylistItem({{ $item->id }})"
+                                                                                    >
+                                                                                        Edit layout
+                                                                                    </flux:menu.item>
+                                                                                </flux:modal.trigger>
+                                                                                @if (! $item->isMashup())
+                                                                                    <flux:menu.item
+                                                                                        icon="x-mark"
+                                                                                        wire:click="clearPluginImageCache({{ $item->id }})"
+                                                                                    >
+                                                                                        Clear image
+                                                                                        cache</flux:menu.item>
+                                                                                @endif
                                                                             </flux:menu>
                                                                         </flux:dropdown>
                                                                     @endif
@@ -457,6 +590,23 @@ new class extends Component
                     </div>
                 @endif
             @endforeach
+
+            <flux:modal name="playlist-item-form" class="min-w-2xl">
+                <div class="space-y-6">
+                    <flux:heading size="lg">{{ $editing_item_id ? 'Edit layout' : 'Add item' }}</flux:heading>
+
+                    <form wire:submit="savePlaylistItem">
+                        <x-mashup-layout-fields :layout="$mashup_layout" :plugins="$this->recipePlugins()" />
+
+                        <div class="flex">
+                            <flux:spacer />
+                            <flux:button type="submit" variant="primary">
+                                {{ $editing_item_id ? 'Save changes' : 'Add item' }}
+                            </flux:button>
+                        </div>
+                    </form>
+                </div>
+            </flux:modal>
 
             @if ($devices->isEmpty() || $devices->every(fn ($device) => $device->playlists->isEmpty()))
                 <flux:card>

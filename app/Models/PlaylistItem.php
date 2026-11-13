@@ -244,6 +244,53 @@ class PlaylistItem extends Model
     }
 
     /**
+     * Keep the plugin ids a layout needs and drop extras left over from a larger layout.
+     *
+     * When $extrasOnly is true, the primary plugin is not part of $pluginIds, so the result is one shorter.
+     *
+     * @param  array<int|string, mixed>  $pluginIds
+     * @return list<mixed>
+     */
+    public static function takePluginIdsForLayout(string $layout, array $pluginIds, bool $extrasOnly = false): array
+    {
+        $count = self::getRequiredPluginCountForLayout($layout);
+
+        if ($extrasOnly) {
+            $count = max(0, $count - 1);
+        }
+
+        return array_slice(array_values($pluginIds), 0, $count);
+    }
+
+    /**
+     * Replace this item's layout and plugin slots. Order and active state stay unchanged.
+     *
+     * @param  list<int>  $pluginIds
+     */
+    public function applyLayout(string $layout, array $pluginIds): void
+    {
+        if ($layout === 'full') {
+            $this->update([
+                'plugin_id' => $pluginIds[0],
+                'mashup' => null,
+            ]);
+
+            return;
+        }
+
+        $primary = Plugin::query()->findOrFail($pluginIds[0]);
+
+        $this->update([
+            'plugin_id' => $pluginIds[0],
+            'mashup' => [
+                'mashup_layout' => $layout,
+                'mashup_name' => $primary->name.' Mashup',
+                'plugin_ids' => array_values(array_map(intval(...), $pluginIds)),
+            ],
+        ]);
+    }
+
+    /**
      * Create a new mashup with the given layout and plugins
      */
     public static function createMashup(Playlist $playlist, string $layout, array $pluginIds, string $name, $order): self

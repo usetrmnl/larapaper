@@ -388,28 +388,24 @@ new class extends Component
             ->get();
     }
 
-    public function getRequiredPluginCount(): int
-    {
-        if ($this->mashup_layout === 'full') {
-            return 1;
-        }
-
-        return match ($this->mashup_layout) {
-            '1Lx1R', '1Tx1B' => 2,  // Left-Right or Top-Bottom split
-            '1Lx2R', '2Lx1R', '2Tx1B', '1Tx2B' => 3,  // Two on one side, one on other
-            '2x2' => 4,  // Quadrant
-            default => 1,
-        };
-    }
-
     public function addToPlaylist()
     {
+        $this->mashup_plugins = App\Models\PlaylistItem::takePluginIdsForLayout(
+            $this->mashup_layout,
+            $this->mashup_plugins,
+            extrasOnly: true,
+        );
+
+        $requiredExtras = $this->mashup_layout === 'full'
+            ? 0
+            : App\Models\PlaylistItem::getRequiredPluginCountForLayout($this->mashup_layout) - 1;
+
         $this->validate([
             'checked_devices' => 'required|array|min:1',
             'checked_devices.*' => [Rule::exists('devices', 'id')->where('user_id', auth()->id())],
             'mashup_layout' => 'required|string',
-            'mashup_plugins' => 'required_if:mashup_layout,1Lx1R,1Lx2R,2Lx1R,1Tx1B,2Tx1B,1Tx2B,2x2|array',
-            'mashup_plugins.*' => [Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
+            'mashup_plugins' => ['array', 'size:'.$requiredExtras],
+            'mashup_plugins.*' => ['required', Rule::exists('plugins', 'id')->where('user_id', auth()->id())],
         ]);
 
         // Validate that each checked device has a playlist selected
@@ -455,8 +451,10 @@ new class extends Component
                     'order' => $maxOrder + 1,
                 ]);
             } else {
-                // Create mashup
-                $pluginIds = array_merge([$this->plugin->id], array_map('intval', $this->mashup_plugins));
+                $pluginIds = array_merge(
+                    [$this->plugin->id],
+                    array_map(intval(...), $this->mashup_plugins),
+                );
                 App\Models\PlaylistItem::createMashup(
                     $playlist,
                     $this->mashup_layout,
@@ -965,48 +963,11 @@ HTML;
                         "
                         style="display: none"
                     >
-                        <flux:separator text="Layout" />
-                        <div class="mt-4 mb-4">
-                            <flux:radio.group wire:model.live="mashup_layout" variant="segmented">
-                                <flux:radio value="full" icon="mashup-1x1" />
-                                <flux:radio value="1Lx1R" icon="mashup-1Lx1R" />
-                                <flux:radio value="1Lx2R" icon="mashup-1Lx2R" />
-                                <flux:radio value="2Lx1R" icon="mashup-2Lx1R" />
-                                <flux:radio value="1Tx1B" icon="mashup-1Tx1B" />
-                                <flux:radio value="2Tx1B" icon="mashup-2Tx1B" />
-                                <flux:radio value="1Tx2B" icon="mashup-1Tx2B" />
-                                <flux:radio value="2x2" icon="mashup-2x2" />
-                            </flux:radio.group>
-                        </div>
-
-                        @if ($mashup_layout !== 'full')
-                            <div class="mb-4">
-                                <div class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                    Mashup Slots
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-24 text-sm text-zinc-500 dark:text-zinc-400">Main Plugin</div>
-                                        <flux:input :value="$plugin->name" disabled class="flex-1" />
-                                    </div>
-                                    @for ($i = 0; $i < $this->getRequiredPluginCount() - 1; ++$i)
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-24 text-sm text-zinc-500 dark:text-zinc-400">
-                                                Plugin {{ $i + 2 }}:
-                                            </div>
-                                            <flux:select wire:model="mashup_plugins.{{ $i }}" class="flex-1">
-                                                <option value="">Select a plugin...</option>
-                                                @foreach ($this->getAvailablePlugins() as $availablePlugin)
-                                                    <option value="{{ $availablePlugin->id }}">
-                                                        {{ $availablePlugin->name }}
-                                                    </option>
-                                                @endforeach
-                                            </flux:select>
-                                        </div>
-                                    @endfor
-                                </div>
-                            </div>
-                        @endif
+                        <x-mashup-layout-fields
+                            :layout="$mashup_layout"
+                            :plugins="$this->getAvailablePlugins()"
+                            :locked-plugin="$plugin"
+                        />
                     </div>
 
                     <div class="flex">

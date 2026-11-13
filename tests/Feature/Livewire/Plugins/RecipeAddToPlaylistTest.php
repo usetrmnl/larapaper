@@ -89,3 +89,44 @@ test('recipe cannot be added to a playlist of another users device', function ()
 
     expect($foreignPlaylist->fresh()->items)->toBeEmpty();
 });
+
+test('recipe mashup keeps only the slots the layout needs', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->for($user)->create();
+    $playlist = Playlist::factory()->for($device)->create();
+    $plugin = recipeFor($user);
+    $slot = recipeFor($user);
+    $unused = recipeFor($user);
+    $this->actingAs($user);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->set('checked_devices', [(string) $device->id])
+        ->set('device_playlists.'.$device->id, (string) $playlist->id)
+        ->set('mashup_layout', '1Lx1R')
+        ->assertSee('Mashup Slots')
+        ->assertSee('Main Plugin')
+        ->set('mashup_plugins', [(string) $slot->id, (string) $unused->id])
+        ->call('addToPlaylist')
+        ->assertHasNoErrors();
+
+    expect($playlist->fresh()->items->first()->mashup['plugin_ids'])->toBe([$plugin->id, $slot->id]);
+});
+
+test('recipe mashup requires a plugin for each slot', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->for($user)->create();
+    $playlist = Playlist::factory()->for($device)->create();
+    $plugin = recipeFor($user);
+    $slot = recipeFor($user);
+    $this->actingAs($user);
+
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->set('checked_devices', [(string) $device->id])
+        ->set('device_playlists.'.$device->id, (string) $playlist->id)
+        ->set('mashup_layout', '2x2')
+        ->set('mashup_plugins', [(string) $slot->id])
+        ->call('addToPlaylist')
+        ->assertHasErrors(['mashup_plugins']);
+
+    expect($playlist->fresh()->items)->toBeEmpty();
+});
