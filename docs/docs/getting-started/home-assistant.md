@@ -36,8 +36,6 @@ A new device starts in Wi-Fi pairing mode. To return to pairing, hold the left a
 3. Go **Back to Wi-Fi**, pick your network, and tap **Connect**.
 4. Turn on **Auto-Join** in the LaraPaper header. The device appears on its own.
 
-The "Please visit trmnl.com/start" screen comes from the firmware. The device picks up its playlist at the next refresh.
-
 A TRMNL OG on firmware older than 1.4.6 has no **Custom Server** option and needs a firmware update first. See [Connecting devices](/getting-started/connecting-devices).
 
 ## Options
