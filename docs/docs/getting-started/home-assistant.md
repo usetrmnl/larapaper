@@ -25,7 +25,7 @@ Or add the repository yourself:
 
 1. Set **App URL** to the address your TRMNL uses to reach this add-on, for example `http://192.168.1.10:4567`. Use an IP address or a name the device can resolve. `.local` names usually fail. Leave off the trailing slash.
 2. Start the add-on and click **Open Web UI**.
-3. Register your account, then turn off **Allow registration**.
+3. Register your account, then turn off **Allow registration**. LaraPaper is single-user by design. Only leave registration on for trusted people, like family and friends.
 
 ## Point the device
 

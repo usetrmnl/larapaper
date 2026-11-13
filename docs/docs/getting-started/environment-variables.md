@@ -9,7 +9,7 @@ description: LaraPaper environment configuration reference.
 | --- | --- | --- |
 | `TRMNL_PROXY_BASE_URL` | Base URL of the native TRMNL service | `https://trmnl.app` |
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often to fetch new images from the cloud service | `15` |
-| `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade | `0` |
+| `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade. Trusted environments only (family, friends) | `0` |
 | `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | Force compiling user-authored Blade as PHP on (`1`) or off (`0`). Unset: on for a single user, off for multi-user | auto |
 | `PASSKEYS_ENABLED` | Enable passkeys (requires HTTPS). See [Authentication](/getting-started/authentication#passkeys) | `0` |
 | `SSL_MODE` | SSL mode when not behind a reverse proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off` |
@@ -47,6 +47,8 @@ The redirect URI is `{APP_URL}/auth/oidc/callback`. It is not a separate variabl
 | `OIDC_SCOPES` | Comma-separated scopes | `openid,profile,email` |
 
 ## Security
+
+LaraPaper is built for a single user on a VPS or in a homelab. Multi-user mode is for trusted environments only, like family and friends. Full isolation between users is a non-goal, so multi-user mode is not a security boundary.
 
 The first account can always be created. After that, signup stays closed unless `MULTIUSER_REGISTRATION_ENABLED` is on.
 

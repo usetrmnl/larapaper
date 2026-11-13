@@ -26,6 +26,10 @@ LaraPaper is a self-hostable implementation of a TRMNL server (BYOS), built with
 
 A device calls `/api/display`. LaraPaper renders the selected screen with Puppeteer, converts the result to a device-specific PNG via ImageMagick, and the device downloads and displays that image.
 
+## Supported deployment model
+
+LaraPaper is meant to run as a **single-user** server on a VPS or in a homelab. Multi-user mode (`MULTIUSER_REGISTRATION_ENABLED=1`) is for **trusted environments only**, like family and friends. Full isolation between users is a non-goal: do not run LaraPaper as a public or multi-tenant service, and do not give accounts to people you don't trust.
+
 ## Next steps
 
 ::: card "Get started"

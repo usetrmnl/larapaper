@@ -56,7 +56,7 @@ or
 ### Hosting
 
 Run everywhere, where Docker is supported: Raspberry Pi, VPS, NAS, Container Cloud Service (Cloud Run, ...).
-For production use, generate a new APP_KEY (`php artisan key:generate --show`) and set the environment variable `APP_KEY=`. For personal use, you can disable registration (see section Environment Variables).
+For production use, generate a new APP_KEY (`php artisan key:generate --show`) and set the environment variable `APP_KEY=`. Signup closes after the first account (single-user mode). Only enable multi-user registration in trusted environments (see section Environment Variables).
 
 #### Docker Compose
 Docker Compose file located at: [docker/prod/docker-compose.yml](docker/prod/docker-compose.yml).
@@ -125,7 +125,7 @@ php artisan db:seed --class=ExampleRecipesSeeder
 | `TRMNL_PROXY_BASE_URL`        | Base URL of the native TRMNL service                                                                                                        | https://trmnl.app |
 | `TRMNL_PROXY_REFRESH_MINUTES` | How often should the server fetch new images from native service                                                                            | 15                |
 | `TRMNL_BLADE_FRAMEWORK_BASE_URL` | Base URL for versioned TRMNL framework CSS/JS used when rendering recipes                                                                | https://trmnl.com |
-| `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade. See the security note below.                            | 0                 |
+| `MULTIUSER_REGISTRATION_ENABLED` | After the first account, allow more signups and disable user-authored Blade. Trusted environments only (family/friends); no full user isolation. See the security note below. | 0                 |
 | `INSECURE_BLADE_ALLOW_PHP_EXECUTION` | Force compiling user Blade as PHP on (`1`) or off (`0`). Unset: on for a single user, off for multi-user. `1` in multi-user mode is remote code execution for every registered user. | auto              |
 | `PASSKEYS_ENABLED`            | Enable Passkeys for login (requires HTTPS)                                                                                                  | 0                 |
 | `SSL_MODE`                    | SSL Mode, if not using a Reverse Proxy ([docs](https://serversideup.net/open-source/docker-php/docs/customizing-the-image/configuring-ssl)) | `off`             |
@@ -141,7 +141,7 @@ php artisan db:seed --class=ExampleRecipesSeeder
 If your environment is local, you can access the server at `http://localhost:4567` and login with user / password
 `admin@example.com` / `admin@example.com`, otherwise register the first account. Further signup stays closed unless `MULTIUSER_REGISTRATION_ENABLED=1`.
 
-**Security:** Turning on multi-user registration disables user-authored Blade unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. That insecure flag lets any registered user execute PHP on the server, potentially accessing other users' data. Set `INSECURE_BLADE_ALLOW_PHP_EXECUTION=0` to disable Blade on a single-user server too.
+**Security:** Multi-user mode is not a security boundary between users. Full user isolation is a non-goal, so only give accounts to people you trust. Turning on multi-user registration disables user-authored Blade unless `INSECURE_BLADE_ALLOW_PHP_EXECUTION=1`. That insecure flag lets any registered user execute PHP on the server, potentially accessing other users' data. Set `INSECURE_BLADE_ALLOW_PHP_EXECUTION=0` to disable Blade on a single-user server too.
 
 ### ➕ Add Your TRMNL Device
 
