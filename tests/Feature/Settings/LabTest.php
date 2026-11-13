@@ -75,3 +75,9 @@ test('non-first users cannot load the lab component', function (): void {
         ->test('pages::settings.lab')
         ->assertForbidden();
 });
+
+test('lab settings page lists the pre-render playlist items experiment', function (): void {
+    Livewire::test('pages::settings.lab')
+        ->assertSee(config('toggle.experiments.prerender-playlist-items.title'))
+        ->assertSee(config('toggle.experiments.prerender-playlist-items.description'));
+});

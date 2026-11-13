@@ -75,6 +75,7 @@ return [
 
     'flags' => [
         'mcp' => env('TOGGLE_MCP', false),
+        'prerender-playlist-items' => env('TOGGLE_PRERENDER_PLAYLIST_ITEMS', false),
     ],
 
     /*
@@ -91,6 +92,10 @@ return [
         'mcp' => [
             'title' => 'MCP Server',
             'description' => 'Expose a Model Context Protocol server so AI tools can list, create, update, and render your recipes. Requires an MCP API token.',
+        ],
+        'prerender-playlist-items' => [
+            'title' => 'Pre-render playlist items',
+            'description' => 'Refresh the cache of the next playlist item before a device is expected to fetch it, so the image is ready when the device calls.',
         ],
     ],
 
