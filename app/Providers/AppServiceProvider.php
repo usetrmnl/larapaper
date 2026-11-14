@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Services\OidcProvider;
 use App\Services\Plugin\Transform\HttpTransformProvider;
+use App\Services\Plugin\Transform\LocalTransformProvider;
 use App\Services\Plugin\Transform\TransformProvider;
+use App\Services\Plugin\Transform\TransformService;
 use App\Services\QrCodeService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
@@ -23,7 +25,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind('qr-code', fn (): QrCodeService => new QrCodeService);
 
-        $this->app->bind(TransformProvider::class, HttpTransformProvider::class);
+        $this->app->bind(TransformProvider::class, fn (Application $app): TransformProvider => TransformService::usesLocalProvider()
+            ? $app->make(LocalTransformProvider::class)
+            : $app->make(HttpTransformProvider::class));
     }
 
     /**

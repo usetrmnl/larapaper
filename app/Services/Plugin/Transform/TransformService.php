@@ -20,12 +20,24 @@ final class TransformService
         private readonly TransformProvider $provider,
     ) {}
 
+    /** Values of `TRANSFORM_PROVIDER` that enable transforms. */
+    public const PROVIDERS = ['local', 'http'];
+
     /**
-     * Transforms are enabled once an external runner is configured (`TRANSFORM_PROVIDER=http`).
+     * Transforms are enabled once a provider is configured: `local` runs JavaScript with the
+     * Node.js binary on this host, `http` uses an external runner implementing `POST /run`.
      */
     public static function isEnabled(): bool
     {
-        return config('services.transform.provider') === 'http';
+        return in_array(config('services.transform.provider'), self::PROVIDERS, true);
+    }
+
+    /**
+     * Whether transforms run with the built-in local JavaScript provider.
+     */
+    public static function usesLocalProvider(): bool
+    {
+        return config('services.transform.provider') === 'local';
     }
 
     /**

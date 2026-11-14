@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 new class extends Component
 {
     /** Transform languages a recipe may store and edit; the configured provider decides which can run. */
-    private const TRANSFORM_LANGUAGES = ['php', 'node', 'python', 'ruby'];
+    private const TRANSFORM_LANGUAGES = ['node', 'php', 'python', 'ruby'];
 
     public Plugin $plugin;
 
@@ -321,7 +321,7 @@ new class extends Component
         }
 
         if (blank($this->transform_code)) {
-            $this->transform_language = $this->transformLanguages()[0] ?? 'php';
+            $this->transform_language = $this->transformLanguages()[0] ?? 'node';
             $this->transform_code = $this->transformExample($this->transform_language);
         } else {
             // Re-adding the tab keeps the previous code; recognise its language.
@@ -665,6 +665,14 @@ HTML;
     public function transformIsEnabled(): bool
     {
         return TransformService::isEnabled();
+    }
+
+    /**
+     * Transforms run with the built-in JavaScript provider (`TRANSFORM_PROVIDER=local`).
+     */
+    public function transformUsesLocalProvider(): bool
+    {
+        return TransformService::usesLocalProvider();
     }
 
     /**
@@ -1940,6 +1948,15 @@ PHP,
                                                 <a href="https://usetrmnl.github.io/larapaper/usage/transform" class="underline" target="_blank" rel="noopener noreferrer">Transform documentation</a>.
                                             </flux:callout.text>
                                         </flux:callout>
+                                    @elseif ($runnableTransformLanguages === [] && $this->transformUsesLocalProvider())
+                                        <flux:callout variant="warning" icon="exclamation-triangle">
+                                            <flux:callout.heading>Node.js is not available</flux:callout.heading>
+                                            <flux:callout.text>
+                                                The local Transform Provider needs Node.js 24 or newer
+                                                (<code class="text-xs">TRANSFORM_NODE_BINARY</code>), so transforms cannot run and
+                                                the untransformed data is stored.
+                                            </flux:callout.text>
+                                        </flux:callout>
                                     @elseif ($runnableTransformLanguages === [])
                                         <flux:callout variant="warning" icon="exclamation-triangle">
                                             <flux:callout.heading>The transform runner is not available</flux:callout.heading>
@@ -1953,7 +1970,7 @@ PHP,
                                         <flux:callout variant="warning" icon="exclamation-triangle">
                                             <flux:callout.heading>
                                                 {{ $this->transformLanguageLabel($transform_language) }} is not supported by the
-                                                transform runner
+                                                {{ $this->transformUsesLocalProvider() ? 'local Transform Provider' : 'transform runner' }}
                                             </flux:callout.heading>
                                             <flux:callout.text>
                                                 You can edit and save this transform, but it cannot run: the untransformed
@@ -1997,6 +2014,17 @@ PHP,
                                                 If it fails, the last output is kept.
                                             @else
                                                 Save to apply; if the transform fails, the untransformed data is stored.
+                                            @endif
+                                            @if ($this->transformUsesLocalProvider())
+                                                @if (\App\Services\Plugin\Transform\TransformFetcher::networkIsAllowed())
+                                                    <code class="text-xs">fetch()</code> (text and JSON responses), timers and
+                                                    <code class="text-xs">AbortController</code> are available;
+                                                    <code class="text-xs">require</code> and <code class="text-xs">import</code> are not.
+                                                @else
+                                                    Network access is disabled on this server, so <code class="text-xs">fetch()</code>
+                                                    fails; <code class="text-xs">require</code> and <code class="text-xs">import</code>
+                                                    are not available.
+                                                @endif
                                             @endif
                                             See the
                                             <a href="https://help.trmnl.com/en/articles/14130649-serverless" class="underline" target="_blank" rel="noopener noreferrer">TRMNL serverless documentation</a>.

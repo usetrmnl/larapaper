@@ -5,7 +5,7 @@ description: The HTTP contract a transform runner implements so LaraPaper can ex
 
 # Write your own transform provider
 
-LaraPaper does not execute [transforms](/usage/transforms) itself. It sends each run to an HTTP **transform provider**, which runs the code and returns the result. [byos-transform-runner](https://github.com/bnussbau/byos-transform-runner) is the reference. Any service that implements `POST /run` and `GET /manifest` can replace it.
+Besides its [local JavaScript provider](/usage/transform#local-javascript-provider), LaraPaper can send each [transform](/usage/transform) run to an HTTP **transform provider**, which runs the code and returns the result. [byos-transform-runner](https://github.com/bnussbau/byos-transform-runner) is the reference. Any service that implements `POST /run` and `GET /manifest` can replace it.
 
 ```sh
 TRANSFORM_PROVIDER=http
@@ -34,7 +34,7 @@ LaraPaper sends one request per transform run:
 | --- | --- |
 | `language` | `php`, `node` (JavaScript), `python`, or `ruby` |
 | `code` | Source that defines `run(input)`. Legacy TRMNL code may define `transform(input)` |
-| `input` | The data plus `trmnl`. See [Input and output](/usage/transforms#input-and-output) |
+| `input` | The data plus `trmnl`. See [Input and output](/usage/transform#input-and-output) |
 | `timeout` | Seconds allowed (`TRANSFORM_TIMEOUT_SECONDS`) |
 
 Call that function with `input` and answer **200**:

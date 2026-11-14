@@ -36,7 +36,7 @@ test('polling stores the runner output and sends the polled data with the trmnl 
         && $request['input']['trmnl']['plugin_settings']['custom_fields_values'] === ['display_label' => 'Janus']);
 });
 
-test('polling skips the transform unless the http provider is configured and the recipe has a transform language', function (?string $provider, ?string $language): void {
+test('polling skips the transform unless a provider is configured and the recipe has a transform language', function (?string $provider, ?string $language): void {
     fakeTransformRunner(fn (): array => ['executed' => true]);
     config(['services.transform.provider' => $provider]);
     Http::fake(['https://example.test/api' => Http::response(['raw' => true])]);
@@ -48,7 +48,7 @@ test('polling skips the transform unless the http provider is configured and the
     Http::assertNotSent(fn ($request): bool => $request->url() === 'http://runner.test/run');
 })->with([
     'no provider' => [null, 'node'],
-    'unknown provider' => ['local', 'node'],
+    'unknown provider' => ['lambda', 'node'],
     'no transform language' => ['http', null],
 ]);
 

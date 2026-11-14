@@ -21,10 +21,13 @@ description: LaraPaper environment configuration reference.
 | `APP_TIMEZONE` | PHP timezone (UTC recommended) | `UTC` |
 | `TOGGLE_MCP` | Default for the MCP Server lab flag | `false` |
 | `TOGGLE_PRERENDER_PLAYLIST_ITEMS` | Default for the Pre-render playlist items lab flag | `false` |
-| `TRANSFORM_PROVIDER` | Set to `http` to enable [transforms](/usage/transforms) on an external runner | `null` |
+| `TRANSFORM_PROVIDER` | `local` runs JavaScript [transforms](/usage/transform) with Node.js in the container; `http` uses an external runner | `null` |
 | `TRANSFORM_RUNNER_URL` | Base URL of the transform runner | `http://transform:3000` |
 | `TRANSFORM_RUNNER_TOKEN` | Optional bearer token sent to the runner | `null` |
 | `TRANSFORM_TIMEOUT_SECONDS` | Max seconds for one transform | `5` |
+| `TRANSFORM_MEMORY_LIMIT_MB` | Max JavaScript heap for one local transform | `128` |
+| `TRANSFORM_NODE_BINARY` | Node.js binary used by the local provider | `node` |
+| `TRANSFORM_ALLOW_NETWORK` | `false` makes `fetch()` in local transforms fail | `true` |
 
 ## Browser assets
 

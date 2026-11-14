@@ -42,21 +42,21 @@ test('the plus menu offers the transform tab for polling and static recipes with
     'no provider' => [null, 'polling', true],
 ]);
 
-test('adding the transform tab inserts the example and saving persists it', function (): void {
+test('adding the transform tab inserts the JavaScript example and saving persists it', function (): void {
     $plugin = transformRecipe();
 
     Livewire::test('plugins.recipe', ['plugin' => $plugin])
         ->call('toggleTransformTab')
         ->assertSet('active_tab', 'transform')
-        ->assertSet('transform_language', 'php')
-        ->assertSet('transform_code', fn (?string $code): bool => str_contains((string) $code, "\$input['transformed_at']"))
-        ->assertSee('Transform script', false)
+        ->assertSet('transform_language', 'node')
+        ->assertSet('transform_code', fn (?string $code): bool => str_contains((string) $code, 'transformed_at: new Date().toISOString()'))
+        ->assertSeeHtmlInOrder(['value="node"', 'value="php"', 'value="python"'])
         ->call('saveMarkup')
         ->assertHasNoErrors();
 
     expect($plugin->fresh())
-        ->transform_language->toBe('php')
-        ->transform_code->toContain('function run(array $input)');
+        ->transform_language->toBe('node')
+        ->transform_code->toContain('function run(input)');
 });
 
 test('removing the transform tab clears the language but keeps the code', function (): void {

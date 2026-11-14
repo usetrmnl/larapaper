@@ -47,12 +47,17 @@ return [
     ],
 
     'transform' => [
-        // Set to `http` to enable transforms on an external runner implementing POST /run.
-        'provider' => env('TRANSFORM_PROVIDER'),
+        // `local` runs JavaScript transforms with the Node.js binary on this host;
+        // `http` uses an external runner implementing POST /run. Unset disables transforms.
+        'provider' => env('TRANSFORM_PROVIDER', 'local'),
         'runner_url' => env('TRANSFORM_RUNNER_URL', 'http://transform:3000'),
         'runner_token' => env('TRANSFORM_RUNNER_TOKEN'),
         'max_output_bytes' => env('TRANSFORM_MAX_OUTPUT_BYTES', 1048576),
         'timeout_seconds' => env('TRANSFORM_TIMEOUT_SECONDS', 5),
+        // Local provider only. `allow_network=false` makes fetch() in transforms reject.
+        'allow_network' => env('TRANSFORM_ALLOW_NETWORK', true),
+        'memory_limit_mb' => env('TRANSFORM_MEMORY_LIMIT_MB', 128),
+        'node_binary' => env('TRANSFORM_NODE_BINARY', 'node'),
     ],
 
     'webhook' => [

@@ -9,6 +9,7 @@ use App\Models\PlaylistItem;
 use App\Models\Plugin;
 use App\Models\User;
 use App\Services\Plugin\Transform\HttpTransformProvider;
+use App\Services\Plugin\Transform\LocalTransformProvider;
 use App\Services\Plugin\Transform\TransformException;
 use App\Services\Plugin\Transform\TransformProvider;
 use App\Services\Plugin\Transform\TransformResult;
@@ -67,15 +68,16 @@ beforeEach(function (): void {
     Cache::put('transform:languages', HttpTransformProvider::LANGUAGES);
 });
 
-test('transforms are enabled only with the http provider', function (?string $provider, bool $enabled): void {
+test('transforms are enabled only with the local or http provider', function (?string $provider, bool $enabled, string $providerClass): void {
     config(['services.transform.provider' => $provider]);
 
     expect(TransformService::isEnabled())->toBe($enabled)
-        ->and(app(TransformProvider::class))->toBeInstanceOf(HttpTransformProvider::class);
+        ->and(app(TransformProvider::class))->toBeInstanceOf($providerClass);
 })->with([
-    'http' => ['http', true],
-    'unset' => [null, false],
-    'removed local provider' => ['local', false],
+    'local' => ['local', true, LocalTransformProvider::class],
+    'http' => ['http', true, HttpTransformProvider::class],
+    'unset' => [null, false, HttpTransformProvider::class],
+    'unknown' => ['lambda', false, HttpTransformProvider::class],
 ]);
 
 test('external provider uses the language capabilities of the runner manifest', function (): void {

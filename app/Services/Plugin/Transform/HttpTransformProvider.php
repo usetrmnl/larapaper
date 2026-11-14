@@ -18,7 +18,7 @@ use Throwable;
 final class HttpTransformProvider implements TransformProvider
 {
     /** Language keys LaraPaper can send to a runner. */
-    public const LANGUAGES = ['php', 'node', 'python', 'ruby'];
+    public const LANGUAGES = ['node', 'php', 'python', 'ruby'];
 
     /** Maximum bytes of a runner error message surfaced to the recipe owner. */
     private const MAX_ERROR_BYTES = 1024;
