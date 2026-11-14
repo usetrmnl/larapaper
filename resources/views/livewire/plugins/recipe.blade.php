@@ -225,7 +225,7 @@ new class extends Component
             'markup_language' => $this->markup_language ?? null,
         ]);
 
-        if ($this->transformIsAvailable()) {
+        if ($this->transformIsSupported()) {
             $this->plugin->update([
                 'transform_code' => filled($this->transform_code) ? $this->transform_code : null,
                 'transform_language' => $this->transform_language,
@@ -304,7 +304,7 @@ new class extends Component
     {
         abort_unless(auth()->user()->plugins->contains($this->plugin), 403);
 
-        if (! $this->transformIsAvailable()) {
+        if (! $this->transformIsSupported()) {
             return;
         }
 
@@ -668,11 +668,19 @@ HTML;
     }
 
     /**
+     * Polled and static recipes can hold a transform, even without a configured provider.
+     */
+    public function transformIsSupported(): bool
+    {
+        return in_array($this->data_strategy, TransformService::strategies(), true);
+    }
+
+    /**
      * Transforms run on polled and static data once a transform provider is configured.
      */
     public function transformIsAvailable(): bool
     {
-        return $this->transformIsEnabled() && in_array($this->data_strategy, TransformService::strategies(), true);
+        return $this->transformIsEnabled() && $this->transformIsSupported();
     }
 
     /**
@@ -685,7 +693,7 @@ HTML;
 
     public function showsTransformTab(): bool
     {
-        return filled($this->transform_language) && $this->transformIsAvailable();
+        return filled($this->transform_language) && $this->transformIsSupported();
     }
 
     /**
@@ -693,6 +701,10 @@ HTML;
      */
     public function transformLanguages(): array
     {
+        if (! $this->transformIsEnabled()) {
+            return [];
+        }
+
         return app(TransformService::class)->languages();
     }
 
@@ -1869,7 +1881,7 @@ PHP,
                                             </div>
                                         </flux:menu.item>
                                     @endforeach
-                                    @if ($this->transformIsAvailable())
+                                    @if ($this->transformIsSupported())
                                         <flux:menu.separator />
                                         <flux:menu.item wire:click="toggleTransformTab">
                                             <div class="flex items-center gap-2">
@@ -1919,7 +1931,16 @@ PHP,
                                     </div>
                                     <flux:error name="transform_language" />
 
-                                    @if ($runnableTransformLanguages === [])
+                                    @if (! $this->transformIsEnabled())
+                                        <flux:callout variant="warning" icon="exclamation-triangle">
+                                            <flux:callout.heading>No Transform Provider available</flux:callout.heading>
+                                            <flux:callout.text>
+                                                Transform code can be edited and saved, but it does not run until a Transform
+                                                Provider is configured. See the
+                                                <a href="https://usetrmnl.github.io/larapaper/usage/transform" class="underline" target="_blank" rel="noopener noreferrer">Transform documentation</a>.
+                                            </flux:callout.text>
+                                        </flux:callout>
+                                    @elseif ($runnableTransformLanguages === [])
                                         <flux:callout variant="warning" icon="exclamation-triangle">
                                             <flux:callout.heading>The transform runner is not available</flux:callout.heading>
                                             <flux:callout.text>

@@ -39,7 +39,7 @@ test('the plus menu offers the transform tab for polling and static recipes with
     'polling' => ['http', 'polling', true],
     'static' => ['http', 'static', true],
     'webhook' => ['http', 'webhook', false],
-    'no provider' => [null, 'polling', false],
+    'no provider' => [null, 'polling', true],
 ]);
 
 test('adding the transform tab inserts the example and saving persists it', function (): void {
@@ -141,19 +141,22 @@ test('re-adding the tab recognises the language of kept code', function (string 
     'javascript' => ['function run(input) { return input; }', 'node'],
 ]);
 
-test('saving without the http provider leaves transform fields untouched', function (): void {
+test('without the http provider the transform stays visible and editable with a hint', function (): void {
     config(['services.transform.provider' => null]);
     $plugin = transformRecipe(['transform_language' => 'php', 'transform_code' => 'function run($input) { return []; }']);
 
     Livewire::test('plugins.recipe', ['plugin' => $plugin])
-        ->set('transform_code', 'tampered')
-        ->set('transform_language', null)
+        ->call('switchTab', 'transform')
+        ->assertSet('active_tab', 'transform')
+        ->assertSee('No Transform Provider available', false)
+        ->assertSeeHtml('https://usetrmnl.github.io/larapaper/usage/transform')
+        ->set('transform_code', 'function run($input) { return $input; }')
         ->call('saveMarkup')
-        ->call('editSettings');
+        ->assertHasNoErrors();
 
     expect($plugin->fresh())
         ->transform_language->toBe('php')
-        ->transform_code->toBe('function run($input) { return []; }');
+        ->transform_code->toBe('function run($input) { return $input; }');
 });
 
 test('run shows the output of the unsaved code without storing it', function (): void {
