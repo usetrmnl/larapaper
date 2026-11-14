@@ -21,7 +21,7 @@ For production, generate an application key and set it in your environment:
 php artisan key:generate --show
 ```
 
-Set `APP_KEY=` in your environment. The first account can always be created. Further signup needs `MULTIUSER_REGISTRATION_ENABLED=1` (see [Environment variables](./environment-variables)).
+Set `APP_KEY=` in your environment (should start with prefix `base64`). The first account can always be created. Further signup needs `MULTIUSER_REGISTRATION_ENABLED=1` (see [Environment variables](./environment-variables)).
 
 ### Backup database
 

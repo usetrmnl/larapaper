@@ -63,7 +63,7 @@ or
 ### Hosting
 
 Run everywhere, where Docker is supported: Raspberry Pi, VPS, NAS, Container Cloud Service (Cloud Run, ...).
-For production use, generate a new APP_KEY (`php artisan key:generate --show`) and set the environment variable `APP_KEY=`. Signup closes after the first account (single-user mode). Only enable multi-user registration in trusted environments (see section Environment Variables).
+For production use, generate a new APP_KEY (`php artisan key:generate --show`) and set the environment variable `APP_KEY=`, including the `base64` prefix. Signup closes after the first account (single-user mode). Only enable multi-user registration in trusted environments (see section Environment Variables).
 
 #### Docker Compose
 Docker Compose file located at: [docker/prod/docker-compose.yml](docker/prod/docker-compose.yml).

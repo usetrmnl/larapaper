@@ -4,7 +4,7 @@ services:
         ports:
             - "4567:8080"
         environment:
-            # Generate the APP_KEY with `echo "base64:$(openssl rand -base64 32)"`
+            # Generate the APP_KEY with `echo "base64:$(openssl rand -base64 32)"`. Include the base64 prefix.
             #- APP_KEY=
             # Base URL of the application
             #- APP_URL=
