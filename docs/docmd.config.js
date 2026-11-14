@@ -104,6 +104,7 @@ export default defineConfig({
       children: [
         { title: 'Experimental features', path: '/lab', icon: 'flask-conical' },
         { title: 'MCP Server', path: '/lab/mcp', icon: 'bot' },
+        { title: 'Pre-render playlist items', path: '/lab/prerender-playlist-items', icon: 'image' },
       ],
     },
     {

@@ -20,6 +20,7 @@ description: LaraPaper environment configuration reference.
 | `HTTP_CLIENT_TIMEOUT` | Outbound HTTP timeout when fetching recipe polling URLs (seconds) | `10` |
 | `APP_TIMEZONE` | PHP timezone (UTC recommended) | `UTC` |
 | `TOGGLE_MCP` | Default for the MCP Server lab flag | `false` |
+| `TOGGLE_PRERENDER_PLAYLIST_ITEMS` | Default for the Pre-render playlist items lab flag | `false` |
 | `TRANSFORM_PROVIDER` | Set to `http` to enable [transforms](/usage/transforms) on an external runner | `null` |
 | `TRANSFORM_RUNNER_URL` | Base URL of the transform runner | `http://transform:3000` |
 | `TRANSFORM_RUNNER_TOKEN` | Optional bearer token sent to the runner | `null` |

@@ -16,10 +16,15 @@ Expose a Model Context Protocol server so AI tools can list, create, update, and
 ::: button "MCP Server" /lab/mcp
 :::
 
+::: card "Pre-render playlist items" icon:image
+Refresh the cache of the next playlist item before a device is expected to fetch it, so the image is ready when the device calls.
+::: button "Pre-render playlist items" /lab/prerender-playlist-items
+:::
+
 ## Enable a flag
 
 1. Sign in as the first registered user.
 2. Go to **Settings → Lab**.
 3. Toggle the experiment on.
 
-You can also enable the MCP server with `TOGGLE_MCP=true`. See [Environment variables](/getting-started/environment-variables).
+You can also set lab defaults in `.env` (for example `TOGGLE_MCP=true` or `TOGGLE_PRERENDER_PLAYLIST_ITEMS=true`). See [Environment variables](/getting-started/environment-variables).
