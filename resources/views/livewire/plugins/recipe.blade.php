@@ -438,19 +438,12 @@ new class extends Component
 
         $validated['data_payload'] = $decodedPayload;
 
-        // Changed static data runs through the transform, whose output replaces the stored data.
-        $storesStaticData = $this->data_strategy === 'static' && $decodedPayload !== $this->plugin->data_payload;
-        if ($storesStaticData) {
+        // A static transform produces the data payload on every refresh, so saving never overwrites its output.
+        if ($this->data_strategy === 'static' && $this->plugin->runsStaticTransform()) {
             unset($validated['data_payload']);
         }
 
         $this->plugin->update($validated);
-
-        if ($storesStaticData) {
-            $this->plugin->storeStaticDataPayload($decodedPayload);
-            $this->data_payload = json_encode($this->plugin->data_payload, JSON_PRETTY_PRINT);
-            $this->data_payload_updated_at = $this->plugin->data_payload_updated_at;
-        }
 
         foreach ($this->configuration_template as $fieldKey => $field) {
             if (($field['field_type'] ?? null) !== 'multi_string') {
@@ -483,7 +476,7 @@ new class extends Component
 
     public function updateData(): void
     {
-        if ($this->plugin->data_strategy === 'polling') {
+        if ($this->plugin->data_strategy === 'polling' || $this->plugin->runsStaticTransform()) {
             try {
                 $this->plugin->updateDataPayload();
 
@@ -783,8 +776,9 @@ PHP,
         ]);
 
         try {
+            // A static transform receives only the trmnl context.
             $payload = $this->data_strategy === 'static'
-                ? json_decode((string) $this->data_payload, true)
+                ? []
                 : $this->plugin->fetchPollingPayload();
             $result = app(TransformService::class)->run(
                 $this->plugin,
@@ -1650,6 +1644,11 @@ PHP,
                                 </flux:button>
                             </flux:modal.trigger>
                         </div>
+                    @elseif ($data_strategy === 'static' && $plugin->runsStaticTransform())
+                        <flux:text class="mb-2">Data comes from the transform on every refresh.</flux:text>
+                        <flux:button icon="arrow-path" wire:click="updateData" class="mb-4 w-full">
+                            Run transform now
+                        </flux:button>
                     @elseif ($data_strategy === 'static')
                         <flux:text class="mb-2">Enter static JSON data in the Data Payload field.</flux:text>
                     @endif
@@ -1689,7 +1688,7 @@ PHP,
                     @endisset
                     @if ($this->showsTransformFailure())
                         <flux:badge icon="exclamation-triangle" size="sm" variant="pill" color="red" class="ml-2">
-                            Untransformed
+                            {{ $plugin->runsStaticTransform() ? 'Stale' : 'Untransformed' }}
                         </flux:badge>
                     @endif
                 </div>
@@ -1699,8 +1698,12 @@ PHP,
                             Transform failing since {{ $plugin->transform_failed_at?->diffForHumans() }}
                         </flux:callout.heading>
                         <flux:callout.text>
-                            The data payload holds the untransformed data. If the template needs the transformed data,
-                            rendering fails and the device shows the error screen.
+                            @if ($plugin->runsStaticTransform())
+                                The data payload holds the last successful transform output.
+                            @else
+                                The data payload holds the untransformed data. If the template needs the transformed data,
+                                rendering fails and the device shows the error screen.
+                            @endif
                         </flux:callout.text>
                         <pre class="mt-2 max-h-48 overflow-auto font-mono text-xs whitespace-pre-wrap wrap-anywhere text-red-800 dark:text-red-200">{{ $plugin->transform_error }}</pre>
                     </flux:callout>
@@ -1719,7 +1722,7 @@ PHP,
                     />
                     <div
                         x-data="codeEditorFormComponent({
-                                isDisabled: @js($data_strategy !== 'static'),
+                                isDisabled: @js($data_strategy !== 'static' || $plugin->runsStaticTransform()),
                                 language: 'json',
                                 state: $wire.entangle('data_payload'),
                                 textareaId: @js($textareaId)
@@ -1961,16 +1964,16 @@ PHP,
                                         <flux:error name="transform_code" />
                                         <flux:description>
                                             @if ($data_strategy === 'static')
-                                                <code class="text-xs">run(input)</code> receives the static data
+                                                <code class="text-xs">run(input)</code> runs on every refresh instead of polling and receives only
                                             @else
                                                 <code class="text-xs">run(input)</code> receives the polled JSON (several URLs
-                                                arrive as <code class="text-xs">IDX_0</code>, <code class="text-xs">IDX_1</code>, …)
+                                                arrive as <code class="text-xs">IDX_0</code>, <code class="text-xs">IDX_1</code>, …) plus
                                             @endif
-                                            plus <code class="text-xs">input.trmnl</code> with <code class="text-xs">user</code> and
+                                            <code class="text-xs">input.trmnl</code> with <code class="text-xs">user</code> and
                                             <code class="text-xs">plugin_settings.custom_fields_values</code>. The returned object
                                             replaces the data payload.
                                             @if ($data_strategy === 'static')
-                                                It runs when you save changed static data; the saved data is replaced by the output.
+                                                If it fails, the last output is kept.
                                             @else
                                                 Save to apply; if the transform fails, the untransformed data is stored.
                                             @endif
@@ -1991,7 +1994,7 @@ PHP,
                                             Run
                                         </flux:button>
                                         <flux:text class="text-sm">
-                                            {{ $data_strategy === 'static' ? 'Runs the code above on the static data without saving.' : 'Fetches the polling URLs and runs the code above without saving.' }}
+                                            {{ $data_strategy === 'static' ? 'Runs the code above without saving.' : 'Fetches the polling URLs and runs the code above without saving.' }}
                                         </flux:text>
                                     </div>
 

@@ -126,8 +126,8 @@ class PluginExportService
             $settings['serverless_language'] = $plugin->transform_language;
         }
 
-        // Add static data if available
-        if ($plugin->data_payload) {
+        // Add static data if available; a static transform's payload is generated output, not source data
+        if ($plugin->data_payload && ! $plugin->runsStaticTransform()) {
             $settings['static_data'] = json_encode($plugin->data_payload, JSON_PRETTY_PRINT);
         }
 

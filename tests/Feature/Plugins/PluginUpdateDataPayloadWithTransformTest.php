@@ -126,28 +126,46 @@ test('transformed data is available as top-level liquid variables', function ():
     expect($plugin->fresh()->render('full', false))->toContain('4 µg/m³');
 });
 
-test('saving static data stores the transform output', function (): void {
-    fakeTransformRunner(fn (array $input): array => ['count' => count($input['items'])]);
-    $plugin = pollingTransformPlugin(['data_strategy' => 'static', 'polling_url' => null]);
+test('a static transform runs instead of polling with only the trmnl context', function (): void {
+    fakeTransformRunner(fn (array $input): array => ['keys' => array_keys($input)]);
+    $plugin = pollingTransformPlugin(['data_strategy' => 'static', 'polling_url' => null, 'data_payload' => ['old' => true]]);
 
-    $plugin->storeStaticDataPayload(['items' => [1, 2]]);
+    $plugin->updateDataPayload();
+
+    expect($plugin->fresh())
+        ->data_payload->toBe(['keys' => ['trmnl']])
+        ->transform_error->toBeNull();
+    Http::assertSentCount(2);
+});
+
+test('a failed static transform keeps the last output and records the error', function (): void {
+    fakeTransformRunner(fn (): mixed => Http::response(['error' => 'boom'], 422));
+    $plugin = pollingTransformPlugin(['data_strategy' => 'static', 'polling_url' => null, 'data_payload' => ['count' => 2]]);
+
+    $plugin->updateDataPayload();
 
     expect($plugin->fresh())
         ->data_payload->toBe(['count' => 2])
-        ->transform_error->toBeNull();
-});
-
-test('a failed static transform stores the untransformed data and records the error', function (): void {
-    fakeTransformRunner(fn (): mixed => Http::response(['error' => 'boom'], 422));
-    $plugin = pollingTransformPlugin(['data_strategy' => 'static', 'polling_url' => null]);
-
-    $plugin->storeStaticDataPayload(['items' => [1, 2]]);
-
-    expect($plugin->fresh())
-        ->data_payload->toBe(['items' => [1, 2]])
         ->transform_error->toContain('boom')
         ->transform_failed_at->not->toBeNull();
 });
+
+test('a static transform is stale on every refresh', function (?string $provider, ?string $language, bool $stale): void {
+    fakeTransformRunner();
+    config(['services.transform.provider' => $provider]);
+    $plugin = pollingTransformPlugin([
+        'data_strategy' => 'static',
+        'polling_url' => null,
+        'transform_language' => $language,
+        'data_payload_updated_at' => now(),
+    ]);
+
+    expect($plugin->isDataStale())->toBe($stale);
+})->with([
+    'static transform' => ['http', 'node', true],
+    'no provider' => [null, 'node', false],
+    'no transform language' => ['http', null, false],
+]);
 
 test('webhook data is not transformed', function (): void {
     fakeTransformRunner(fn (): array => ['executed' => true]);

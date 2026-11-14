@@ -309,6 +309,10 @@ class Plugin extends Model
             return $handlerStale;
         }
 
+        if ($this->runsStaticTransform()) {
+            return true;
+        }
+
         if ($this->data_strategy === 'webhook') {
             // Treat as stale if any webhook event has occurred in the past hour
             return $this->data_payload_updated_at && $this->data_payload_updated_at->gt(now()->subHour());
@@ -394,7 +398,7 @@ class Plugin extends Model
     }
 
     /**
-     * Run the recipe's transform on polled or static data once transforms are enabled
+     * Run the recipe's transform on polled data (or the empty static input) once transforms are enabled
      * and the recipe has a transform language (null means no transform).
      * Throws so the caller can fall back to the untransformed payload.
      *
@@ -416,11 +420,11 @@ class Plugin extends Model
 
     /**
      * Transform the payload and build the attributes to store. A failing transform
-     * stores the untransformed payload and records the error on the plugin.
+     * stores the fallback payload (the untransformed payload by default) and records the error on the plugin.
      *
      * @return array{data_payload: mixed, data_payload_updated_at: DateTimeInterface, transform_error: ?string, transform_failed_at: ?DateTimeInterface}
      */
-    private function transformedPayloadAttributes(mixed $rawPayload): array
+    private function transformedPayloadAttributes(mixed $rawPayload, mixed $fallbackPayload = null): array
     {
         $transformError = null;
 
@@ -428,7 +432,7 @@ class Plugin extends Model
             $finalPayload = $this->applyTransform($rawPayload);
         } catch (TransformException $e) {
             Log::warning('Transform failed; storing the untransformed payload', ['plugin_id' => $this->id, 'error' => $e->getMessage()]);
-            $finalPayload = $rawPayload;
+            $finalPayload = $fallbackPayload ?? $rawPayload;
             $transformError = mb_substr(mb_trim($e->getMessage()."\n".($e->diagnostics ?? '')), 0, self::MAX_TRANSFORM_ERROR_LENGTH);
         }
 
@@ -446,11 +450,14 @@ class Plugin extends Model
     }
 
     /**
-     * Store static data, replacing it with the transform output when the recipe has a transform.
+     * A static recipe with a transform runs it on every refresh instead of polling.
+     * The transform receives only the `trmnl` context and its output becomes the data payload.
      */
-    public function storeStaticDataPayload(mixed $payload): void
+    public function runsStaticTransform(): bool
     {
-        $this->update($this->transformedPayloadAttributes($payload));
+        return $this->data_strategy === 'static'
+            && filled($this->transform_language)
+            && TransformService::isEnabled();
     }
 
     /** Supported TRMNL webhook merge strategies for recipe plugins. */
@@ -538,6 +545,13 @@ class Plugin extends Model
 
     public function updateDataPayload(): void
     {
+        if ($this->runsStaticTransform()) {
+            // Keep the last good output when the transform fails.
+            $this->update($this->transformedPayloadAttributes([], fallbackPayload: $this->data_payload));
+
+            return;
+        }
+
         if ($this->data_strategy !== 'polling' || ! $this->polling_url) {
             return;
         }

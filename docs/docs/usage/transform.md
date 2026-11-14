@@ -1,6 +1,6 @@
 ---
 title: Transform
-description: Reshape polled or static JSON with a PHP, JavaScript, Python or Ruby run(input) function before rendering.
+description: Reshape polled JSON, or generate static recipe data, with a PHP, JavaScript, Python or Ruby run(input) function before rendering.
 ---
 
 # Transform ("Serverless")
@@ -12,7 +12,7 @@ The function runs on a separate **transform runner**. LaraPaper never executes i
 | Data strategy | When it runs | What is stored |
 | --- | --- | --- |
 | Polling | Every refresh, after the polling URLs are fetched | The output |
-| Static | When you save changed static data | The output **replaces** the static data |
+| Static | Every refresh, instead of polling (`input` holds only `trmnl`) | The output |
 | Webhook | Not supported | — |
 
 ## Enable transforms
@@ -54,14 +54,14 @@ Bubblewrap needs `security_opt: [seccomp=unconfined, apparmor=unconfined]` on th
 ## Add a transform
 
 1. On a polling or static recipe, click **+** and choose **Transform**. The tab starts with an example that adds `transformed_at`.
-2. Pick PHP, JavaScript, Python, or Ruby and write `run(input)`. **Run** executes the editor (fetching polling URLs, or using the static data) and stores nothing.
-3. **Save.** Polling applies on the next refresh. Static runs the next time you save *changed* static data, and the output replaces it, so keep a copy of the source. Saving the transform, or unchanged settings, does not run it again.
+2. Pick PHP, JavaScript, Python, or Ruby and write `run(input)`. **Run** executes the editor (after fetching the polling URLs for a polling recipe) and stores nothing.
+3. **Save.** The transform applies on the next refresh. A static recipe runs it on every refresh instead of polling, so `run(input)` builds the data itself. While a static recipe has a transform, the data payload shows the last output and cannot be edited. **Run transform now** refreshes it immediately.
 
 Languages come from the runner's `GET /manifest`. If the runner cannot run the language or cannot be reached, **Run** is disabled. You can still save, import, and export the code; the untransformed data is stored ([Failures](#failures)). Uncheck **Transform** and save to hide the tab. The code is kept.
 
 ## Input and output
 
-`input` is the data's top-level keys. A polled JSON array is `input.data`; several URLs are `IDX_0`, `IDX_1`, and so on. `input.trmnl` has `user` and `plugin_settings` (including `custom_fields_values`). `device` is `null`. `system` and `sensors` exist only at render time.
+For polling, `input` is the data's top-level keys. For static, `input` holds only `trmnl`. A polled JSON array is `input.data`; several URLs are `IDX_0`, `IDX_1`, and so on. `input.trmnl` has `user` and `plugin_settings` (including `custom_fields_values`). `device` is `null`. `system` and `sensors` exist only at render time.
 
 Return an object (an associative array in PHP). It **replaces** the stored data, so include any source fields you still need. A returned `trmnl` key is dropped. JSON `{}` may arrive in PHP as `[]`. `console.log`, `print`, `puts`, and `echo` show under **Console output**.
 
@@ -75,7 +75,7 @@ function run(input) {
 
 ## Failures
 
-On an error, timeout, invalid return, unreachable runner, or unsupported language, LaraPaper logs a warning and stores the untransformed data. The recipe page shows the time, the error, and the script output (owner only, never in the application log). The next success clears it. A template that needs the new fields shows the device error screen.
+On an error, timeout, invalid return, unreachable runner, or unsupported language, LaraPaper logs a warning. Polling stores the untransformed data. Static keeps the last successful output. The recipe page shows the time, the error, and the script output (owner only, never in the application log). The next success clears it. A template that needs the new fields shows the device error screen.
 
 ## Recipe archives
 

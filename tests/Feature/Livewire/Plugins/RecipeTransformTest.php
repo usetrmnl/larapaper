@@ -185,61 +185,51 @@ test('run shows transform errors with diagnostics', function (): void {
         ->assertSet('transform_run.logs', fn (string $logs): bool => str_contains($logs, 'upstream changed'));
 });
 
-test('run uses the static data in the editor', function (): void {
-    fakeTransformRunner(fn (array $input): array => ['count' => count($input['items'])]);
+test('run gives a static transform only the trmnl context', function (): void {
+    fakeTransformRunner(fn (array $input): array => ['keys' => array_keys($input)]);
 
     Livewire::test('plugins.recipe', ['plugin' => transformRecipe(['data_strategy' => 'static', 'data_payload' => ['items' => [1]]])])
         ->call('toggleTransformTab')
-        ->set('data_payload', '{"items": [1, 2]}')
         ->call('runTransform')
-        ->assertSet('transform_run.output', fn (string $output): bool => json_decode($output, true) === ['count' => 2]);
+        ->assertSet('transform_run.output', fn (string $output): bool => json_decode($output, true) === ['keys' => ['trmnl']]);
 });
 
-test('saving changed static data stores the transform output once', function (): void {
-    $runs = 0;
-    fakeTransformRunner(function (array $input) use (&$runs): array {
-        ++$runs;
-
-        return ['count' => count($input['items'])];
-    });
+test('saving a static transform recipe keeps the transform output', function (): void {
+    fakeTransformRunner(fn (): array => ['executed' => true]);
     $plugin = transformRecipe([
         'data_strategy' => 'static',
-        'data_payload' => ['items' => [1]],
+        'data_payload' => ['count' => 2],
         'transform_language' => 'node',
-        'transform_code' => 'function run(input) { return { count: input.items.length }; }',
+        'transform_code' => 'function run(input) { return { count: 2 }; }',
     ]);
 
-    $component = Livewire::test('plugins.recipe', ['plugin' => $plugin])
-        ->set('data_payload', '{"items": [1, 2]}')
+    Livewire::test('plugins.recipe', ['plugin' => $plugin])
+        ->set('data_payload', '{"edited": true}')
+        ->set('name', 'Renamed')
         ->call('editSettings')
-        ->assertHasNoErrors()
-        ->assertSet('data_payload', fn (string $payload): bool => json_decode($payload, true) === ['count' => 2]);
+        ->assertHasNoErrors();
 
-    expect($plugin->fresh()->data_payload)->toBe(['count' => 2])
-        ->and($runs)->toBe(1);
-
-    $component->set('name', 'Renamed')->call('editSettings');
-
-    expect($runs)->toBe(1)
-        ->and($plugin->fresh()->data_payload)->toBe(['count' => 2]);
+    expect($plugin->fresh())
+        ->name->toBe('Renamed')
+        ->data_payload->toBe(['count' => 2]);
+    Http::assertNotSent(fn ($request): bool => $request->url() === 'http://runner.test/run');
 });
 
-test('a failed static transform stores the untransformed data and shows the error', function (): void {
+test('refreshing a static transform runs it and shows a failure while keeping the last output', function (): void {
     fakeTransformRunner(fn (): mixed => Http::response(['error' => 'static boom'], 422));
     $plugin = transformRecipe([
         'data_strategy' => 'static',
-        'data_payload' => [],
+        'data_payload' => ['count' => 2],
         'transform_language' => 'node',
         'transform_code' => 'function run(input) { throw new Error("static boom"); }',
     ]);
 
     Livewire::test('plugins.recipe', ['plugin' => $plugin])
-        ->set('data_payload', '{"items": [1, 2]}')
-        ->call('editSettings')
+        ->call('updateData')
+        ->assertNotDispatched('data-update-error')
         ->assertSee('Transform failing since', false)
-        ->assertSee('static boom', false);
-
-    expect($plugin->fresh()->data_payload)->toBe(['items' => [1, 2]]);
+        ->assertSee('static boom', false)
+        ->assertSet('data_payload', fn (string $payload): bool => json_decode($payload, true) === ['count' => 2]);
 });
 
 test('run is forbidden without the http provider', function (): void {
