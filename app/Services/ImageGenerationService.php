@@ -124,8 +124,9 @@ class ImageGenerationService
                 $browserStage->setBrowsershotOption('waitUntil', 'networkidle0');
             }
 
-            if (config('app.puppeteer_docker')) {
-                $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
+            $browserArguments = self::browserArguments();
+            if ($browserArguments !== []) {
+                $browserStage->setBrowsershotOption('args', $browserArguments);
             }
 
             $colorPalette = match (true) {
@@ -173,6 +174,33 @@ class ImageGenerationService
             Log::error('Failed to generate image: '.$e->getMessage());
             throw new RuntimeException('Failed to generate image: '.$e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Chromium arguments for every Browsershot render.
+     *
+     * Local renders share an HTTP disk cache so cacheable assets are not
+     * downloaded again on every render; AWS Lambda renders do not.
+     *
+     * @return list<string>
+     */
+    public static function browserArguments(): array
+    {
+        $arguments = config('app.puppeteer_docker')
+            ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
+            : [];
+
+        $cacheDirectory = config('app.puppeteer_disk_cache_dir');
+
+        if (config('app.puppeteer_mode') !== 'sidecar-aws'
+            && config('app.puppeteer_disk_cache')
+            && is_string($cacheDirectory)
+            && $cacheDirectory !== '') {
+            $arguments[] = '--disk-cache-dir='.$cacheDirectory;
+            $arguments[] = '--disk-cache-size='.(config('app.puppeteer_disk_cache_size_mb') * 1024 * 1024);
+        }
+
+        return $arguments;
     }
 
     /**
@@ -600,8 +628,9 @@ class ImageGenerationService
                 $browserStage->setBrowsershotOption('waitUntil', 'networkidle0');
             }
 
-            if (config('app.puppeteer_docker')) {
-                $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
+            $browserArguments = self::browserArguments();
+            if ($browserArguments !== []) {
+                $browserStage->setBrowsershotOption('args', $browserArguments);
             }
 
             $palette = $device->palette ?? $device->deviceModel?->palette;
