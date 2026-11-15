@@ -258,3 +258,73 @@ it('device without device model returns null relationship', function (): void {
     // Test the relationship returns null
     expect($device->deviceModel)->toBeNull();
 });
+
+it('browser_arguments add a shared disk cache for local renders', function (): void {
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_mode' => 'local',
+        'app.puppeteer_disk_cache' => true,
+        'app.puppeteer_disk_cache_dir' => '/var/cache/browser',
+        'app.puppeteer_disk_cache_size_mb' => 50,
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBe([
+        '--disk-cache-dir=/var/cache/browser',
+        '--disk-cache-size=52428800',
+    ]);
+});
+
+it('browser_arguments keep the docker sandbox arguments next to the disk cache', function (): void {
+    config([
+        'app.puppeteer_docker' => true,
+        'app.puppeteer_mode' => 'local',
+        'app.puppeteer_disk_cache' => true,
+        'app.puppeteer_disk_cache_dir' => '/var/cache/browser',
+        'app.puppeteer_disk_cache_size_mb' => 100,
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBe([
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disk-cache-dir=/var/cache/browser',
+        '--disk-cache-size=104857600',
+    ]);
+});
+
+it('browser_arguments leave out the disk cache when it is disabled', function (): void {
+    config([
+        'app.puppeteer_docker' => true,
+        'app.puppeteer_mode' => 'local',
+        'app.puppeteer_disk_cache' => false,
+        'app.puppeteer_disk_cache_dir' => '/var/cache/browser',
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBe([
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+    ]);
+});
+
+it('browser_arguments leave out the disk cache when no directory is set', function (): void {
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_mode' => 'local',
+        'app.puppeteer_disk_cache' => true,
+        'app.puppeteer_disk_cache_dir' => '',
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBeEmpty();
+});
+
+it('browser_arguments leave out the disk cache for aws lambda renders', function (): void {
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_mode' => 'sidecar-aws',
+        'app.puppeteer_disk_cache' => true,
+        'app.puppeteer_disk_cache_dir' => '/var/cache/browser',
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBeEmpty();
+});

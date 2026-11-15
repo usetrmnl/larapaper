@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\DeviceModel;
+use App\Services\ImageGenerationService;
 use Bnussbau\EpaperPipeline\EpaperPipeline;
 use Bnussbau\EpaperPipeline\Stages\BrowserStage;
 use Bnussbau\EpaperPipeline\Stages\ImageStage;
@@ -131,8 +132,9 @@ class GenerateDefaultImagesCommand extends Command
 
             $browserStage->setBrowsershotOption('waitUntil', 'networkidle0');
 
-            if (config('app.puppeteer_docker')) {
-                $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
+            $browserArguments = ImageGenerationService::browserArguments();
+            if ($browserArguments !== []) {
+                $browserStage->setBrowsershotOption('args', $browserArguments);
             }
 
             $outputPath = Storage::disk('public')->path($targetPath);

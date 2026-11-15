@@ -191,6 +191,22 @@ return [
     'puppeteer_wait_for_network_idle' => env('PUPPETEER_WAIT_FOR_NETWORK_IDLE', true),
     'puppeteer_window_size_strategy' => env('PUPPETEER_WINDOW_SIZE_STRATEGY', 'v2'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Browser Disk Cache
+    |--------------------------------------------------------------------------
+    |
+    | Renders share Chromium's HTTP cache, so assets served as cacheable
+    | (framework CSS/JS, fonts, CDN scripts) download once instead of on
+    | every render. Each render still gets its own temporary profile.
+    | Chromium evicts the least recently used entries beyond the size cap.
+    |
+    */
+
+    'puppeteer_disk_cache' => env('PUPPETEER_DISK_CACHE', true),
+    'puppeteer_disk_cache_dir' => env('PUPPETEER_DISK_CACHE_DIR', storage_path('framework/cache/browser')),
+    'puppeteer_disk_cache_size_mb' => (int) env('PUPPETEER_DISK_CACHE_SIZE_MB', 100),
+
     'notifications' => [
         'battery_low' => [
             'warn_at_percent' => env('NOTIFICATION_BATTERYLOW_WARNATPERCENT', 20),
