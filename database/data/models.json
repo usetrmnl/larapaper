@@ -839,6 +839,62 @@
             }
         },
         {
+            "name": "frame",
+            "label": "TRMNL Frame",
+            "description": "TRMNL Frame",
+            "width": 2560,
+            "height": 1440,
+            "colors": 2,
+            "bit_depth": 1,
+            "scale_factor": 1,
+            "rotation": 0,
+            "mime_type": "image/png",
+            "offset_x": 0,
+            "offset_y": 0,
+            "kind": "trmnl",
+            "palette_ids": [
+                "color-6a",
+                "bw"
+            ],
+            "default_palette_id": "color-6a",
+            "preview_white_point": "limited",
+            "image_size_limit": 4000000,
+            "image_upload_supported": true,
+            "css": {
+                "classes": {
+                    "device": "screen--frame",
+                    "size": "screen--md",
+                    "density": "screen--density-1x"
+                },
+                "variables": [
+                    [
+                        "--screen-w",
+                        "2560px"
+                    ],
+                    [
+                        "--screen-h",
+                        "1440px"
+                    ],
+                    [
+                        "--pixel-ratio",
+                        "1.0"
+                    ],
+                    [
+                        "--dither-pixel-ratio",
+                        "1.0"
+                    ],
+                    [
+                        "--device-ui-scale",
+                        "1.0"
+                    ],
+                    [
+                        "--gap-scale",
+                        "1.0"
+                    ]
+                ]
+            }
+        },
+        {
             "name": "m5_paper_s3",
             "label": "M5PaperS3",
             "description": "M5PaperS3",
