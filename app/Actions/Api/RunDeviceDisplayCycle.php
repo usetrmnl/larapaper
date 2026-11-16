@@ -144,7 +144,7 @@ class RunDeviceDisplayCycle
     {
         $plugin = $playlistItem->plugin;
 
-        ImageGenerationService::resetIfNotCacheable($plugin, $device);
+        ImageGenerationService::resetIfNotCacheable($plugin, $device, $playlistItem->text_scale_level);
         $plugin->refresh();
 
         $isDataStale = $plugin->isDataStale();
@@ -168,7 +168,7 @@ class RunDeviceDisplayCycle
         if ($needsRender) {
             try {
                 $usesMarkupPipeline = $plugin->handler()?->output() !== PluginOutput::Image;
-                $markup = $usesMarkupPipeline ? $plugin->render(device: $device) : '';
+                $markup = $usesMarkupPipeline ? $plugin->render(device: $device, textScaleLevel: $playlistItem->text_scale_level) : '';
 
                 if ($usesMarkupPipeline && $this->renderPluginImage->shouldSkipFromMarkup($markup)) {
                     Log::info('Skipping rendering because markup sets TRMNL_SKIP_DISPLAY', [
@@ -181,7 +181,7 @@ class RunDeviceDisplayCycle
                     return false;
                 }
 
-                GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup);
+                GenerateScreenJob::dispatchSync($device->id, $plugin->id, $markup, $playlistItem->text_scale_level);
             } catch (Exception $e) {
                 Log::error("Failed to render plugin {$plugin->id} ({$plugin->name}): ".$e->getMessage());
                 $errorImageUuid = ImageGenerationService::generateDefaultScreenImage($device, 'error', $plugin->name);

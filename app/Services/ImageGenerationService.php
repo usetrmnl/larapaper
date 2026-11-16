@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ImageFormat;
+use App\Enums\TextScaleLevel;
 use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\DevicePalette;
@@ -425,8 +426,10 @@ class ImageGenerationService
     /**
      * Ensure plugin image cache is valid for the current context. No-op for image_webhook.
      * When deviceOrModel is provided (recipe only), clears cache if stored metadata does not match.
+     *
+     * @param  TextScaleLevel|null  $textScaleLevel  Text scale of the playlist item the image is rendered for.
      */
-    public static function resetIfNotCacheable(?Plugin $plugin, Device|DeviceModel|null $deviceOrModel = null): void
+    public static function resetIfNotCacheable(?Plugin $plugin, Device|DeviceModel|null $deviceOrModel = null, ?TextScaleLevel $textScaleLevel = null): void
     {
         if (! $plugin?->id) {
             return;
@@ -449,7 +452,7 @@ class ImageGenerationService
         if ($plugin->current_image === null) {
             return;
         }
-        if (self::imageMetadataMatches($plugin->current_image_metadata, $deviceOrModel)) {
+        if (self::imageMetadataMatches($plugin->current_image_metadata, $deviceOrModel, $textScaleLevel)) {
             return;
         }
         $plugin->update([
@@ -462,9 +465,10 @@ class ImageGenerationService
     /**
      * Build canonical image metadata from a Device for cache comparison.
      *
-     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null}
+     * @param  TextScaleLevel|null  $textScaleLevel  Text scale of the playlist item the image is rendered for.
+     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null, text_scale_level: string|null}
      */
-    public static function buildImageMetadataFromDevice(Device $device): array
+    public static function buildImageMetadataFromDevice(Device $device, ?TextScaleLevel $textScaleLevel = null): array
     {
         $device->loadMissing(['deviceModel', 'deviceModel.palette']);
         $settings = self::getImageSettings($device);
@@ -477,13 +481,14 @@ class ImageGenerationService
             'palette_id' => $paletteId,
             'mime_type' => $settings['mime_type'],
             'scale_level' => $device->scaleLevel(),
+            'text_scale_level' => $textScaleLevel?->value,
         ];
     }
 
     /**
      * Build canonical image metadata from a DeviceModel for cache comparison.
      *
-     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null}
+     * @return array{width: int, height: int, rotation: int, palette_id: int|null, mime_type: string, scale_level: string|null, text_scale_level: null}
      */
     public static function buildImageMetadataFromDeviceModel(DeviceModel $model): array
     {
@@ -494,24 +499,27 @@ class ImageGenerationService
             'palette_id' => $model->palette_id,
             'mime_type' => $model->mime_type,
             'scale_level' => $model->scale_level,
+            'text_scale_level' => null,
         ];
     }
 
     /**
      * Check if stored metadata matches the current device or device model.
      * Returns false if stored is null or empty so cache is regenerated and metadata is stored.
+     *
+     * @param  TextScaleLevel|null  $textScaleLevel  Text scale of the playlist item the image is rendered for.
      */
-    public static function imageMetadataMatches(?array $stored, Device|DeviceModel $deviceOrModel): bool
+    public static function imageMetadataMatches(?array $stored, Device|DeviceModel $deviceOrModel, ?TextScaleLevel $textScaleLevel = null): bool
     {
         if ($stored === null || $stored === []) {
             return false;
         }
 
         $current = $deviceOrModel instanceof Device
-            ? self::buildImageMetadataFromDevice($deviceOrModel)
+            ? self::buildImageMetadataFromDevice($deviceOrModel, $textScaleLevel)
             : self::buildImageMetadataFromDeviceModel($deviceOrModel);
 
-        foreach (['width', 'height', 'rotation', 'palette_id', 'mime_type', 'scale_level'] as $key) {
+        foreach (['width', 'height', 'rotation', 'palette_id', 'mime_type', 'scale_level', 'text_scale_level'] as $key) {
             if (($stored[$key] ?? null) !== ($current[$key] ?? null)) {
                 return false;
             }

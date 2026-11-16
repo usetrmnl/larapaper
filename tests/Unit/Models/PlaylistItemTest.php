@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TextScaleLevel;
 use App\Models\Device;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
@@ -260,4 +261,52 @@ test('playlist item mashup render includes device context in liquid (trmnl.devic
     expect($markup)
         ->toContain('my-kitchen-display')
         ->toContain('slot2:my-kitchen-display');
+});
+
+test('playlist item render applies its text scale to the screen', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'blade',
+        'render_markup' => '<div>Hello</div>',
+    ]);
+    $playlistItem = PlaylistItem::factory()->create([
+        'playlist_id' => Playlist::factory()->create(['device_id' => $device->id])->id,
+        'plugin_id' => $plugin->id,
+        'text_scale_level' => TextScaleLevel::LARGE,
+    ]);
+
+    expect($playlistItem->render($device))->toContain('screen--text-scale-large');
+});
+
+test('playlist item mashup render applies its text scale to the screen', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugins = Plugin::factory()->count(2)->create([
+        'user_id' => $user->id,
+        'markup_language' => 'blade',
+        'render_markup' => '<div>Hello</div>',
+    ]);
+    $playlistItem = PlaylistItem::createMashup($playlist, '1Lx1R', $plugins->pluck('id')->all(), 'Split', 1);
+    $playlistItem->update(['text_scale_level' => TextScaleLevel::XLARGE]);
+
+    expect($playlistItem->render($device))->toContain('screen--text-scale-xlarge');
+});
+
+test('playlist item render without a text scale adds no text scale class', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'blade',
+        'render_markup' => '<div>Hello</div>',
+    ]);
+    $playlistItem = PlaylistItem::factory()->create([
+        'playlist_id' => Playlist::factory()->create(['device_id' => $device->id])->id,
+        'plugin_id' => $plugin->id,
+    ]);
+
+    expect($playlistItem->render($device))->not->toContain('screen--text-scale-');
 });

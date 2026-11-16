@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TextScaleLevel;
 use App\Liquid\Filters\StandardFilters;
 use App\Liquid\PluginLiquidEnvironment;
 use App\Plugins\PluginHandler;
@@ -881,9 +882,11 @@ class Plugin extends Model
     /**
      * Render the plugin's markup
      *
+     * @param  TextScaleLevel|null  $textScaleLevel  Text scale of the playlist item being rendered (standalone screens only).
+     *
      * @throws LiquidException
      */
-    public function render(string $size = 'full', bool $standalone = true, ?Device $device = null): string
+    public function render(string $size = 'full', bool $standalone = true, ?Device $device = null, ?TextScaleLevel $textScaleLevel = null): string
     {
         if ($this->plugin_type !== 'recipe') {
             throw new InvalidArgumentException('Render method is only applicable for recipe plugins.');
@@ -939,6 +942,7 @@ class Plugin extends Model
                         'noBleed' => $this->no_bleed,
                         'darkMode' => $this->dark_mode,
                         'scaleLevel' => $device?->scaleLevel(),
+                        'textScaleLevel' => $textScaleLevel?->value,
                         'paletteClass' => $device?->paletteClass(),
                         'cssVariables' => $device?->deviceModel?->css_variables,
                         'frameworkVersion' => $this->resolvedFrameworkVersion(),
@@ -952,6 +956,7 @@ class Plugin extends Model
                     'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
                     'darkMode' => $this->dark_mode,
                     'scaleLevel' => $device?->scaleLevel(),
+                    'textScaleLevel' => $textScaleLevel?->value,
                     'paletteClass' => $device?->paletteClass(),
                     'cssVariables' => $device?->deviceModel?->css_variables,
                     'frameworkVersion' => $this->resolvedFrameworkVersion(),
@@ -979,6 +984,7 @@ class Plugin extends Model
                         'noBleed' => $this->no_bleed,
                         'darkMode' => $this->dark_mode,
                         'scaleLevel' => $device?->scaleLevel(),
+                        'textScaleLevel' => $textScaleLevel?->value,
                         'paletteClass' => $device?->paletteClass(),
                         'cssVariables' => $device?->deviceModel?->css_variables,
                         'frameworkVersion' => $this->resolvedFrameworkVersion(),
@@ -992,6 +998,7 @@ class Plugin extends Model
                     'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
                     'darkMode' => $this->dark_mode,
                     'scaleLevel' => $device?->scaleLevel(),
+                    'textScaleLevel' => $textScaleLevel?->value,
                     'paletteClass' => $device?->paletteClass(),
                     'cssVariables' => $device?->deviceModel?->css_variables,
                     'frameworkVersion' => $this->resolvedFrameworkVersion(),

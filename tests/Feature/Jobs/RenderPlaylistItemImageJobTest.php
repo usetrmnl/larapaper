@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TextScaleLevel;
 use App\Jobs\RenderPlaylistItemImageJob;
 use App\Models\Device;
 use App\Models\Playlist;
@@ -90,4 +91,16 @@ test('mashup items are skipped', function (): void {
     RenderPlaylistItemImageJob::dispatchSync($item->id, force: true);
 
     expect($item->plugin->refresh()->current_image)->toBeNull();
+});
+
+test('warming re-renders a cached image made at another text scale', function (): void {
+    $item = playlistItemWithRecipe(cachedImage: 'cached-image-uuid');
+    $item->update(['text_scale_level' => TextScaleLevel::LARGE]);
+
+    RenderPlaylistItemImageJob::dispatchSync($item->id, force: false);
+
+    $plugin = $item->plugin->refresh();
+    expect($plugin->current_image)->not->toBeNull()
+        ->not->toBe('cached-image-uuid')
+        ->and($plugin->current_image_metadata['text_scale_level'])->toBe('large');
 });

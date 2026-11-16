@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\TextScaleLevel;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property TextScaleLevel|null $text_scale_level
+ */
 class PlaylistItem extends Model
 {
     use HasFactory;
@@ -17,6 +21,7 @@ class PlaylistItem extends Model
         'is_active' => 'boolean',
         'last_displayed_at' => 'datetime',
         'mashup' => 'json',
+        'text_scale_level' => TextScaleLevel::class,
     ];
 
     /**
@@ -176,13 +181,14 @@ class PlaylistItem extends Model
                 'colorDepth' => $device?->colorDepth(),
                 'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
                 'scaleLevel' => $device?->scaleLevel(),
+                'textScaleLevel' => $this->text_scale_level?->value,
                 'paletteClass' => $device?->paletteClass(),
                 'cssVariables' => $device?->deviceModel?->css_variables,
                 'frameworkVersion' => $this->plugin instanceof Plugin
                     ? $this->plugin->resolvedFrameworkVersion()
                     : null,
                 'slot' => $this->plugin instanceof Plugin
-                    ? $this->plugin->render('full', false, $device)
+                    ? $this->plugin->render('full', false, $device, $this->text_scale_level)
                     : throw new Exception('Invalid plugin instance'),
             ])->render();
         }
@@ -206,6 +212,7 @@ class PlaylistItem extends Model
             'colorDepth' => $device?->colorDepth(),
             'deviceVariant' => $device?->deviceModel->css_name ?? $device?->deviceVariant() ?? 'og',
             'scaleLevel' => $device?->scaleLevel(),
+            'textScaleLevel' => $this->text_scale_level?->value,
             'paletteClass' => $device?->paletteClass(),
             'cssVariables' => $device?->deviceModel?->css_variables,
             'frameworkVersion' => $frameworkVersion,
