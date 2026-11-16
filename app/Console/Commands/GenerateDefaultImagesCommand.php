@@ -135,6 +135,13 @@ class GenerateDefaultImagesCommand extends Command
                 $browserStage->setBrowsershotOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']);
             }
 
+            // Over a pipe, Chromium exits on its own once the Node process that started it is
+            // gone. Over the default WebSocket it keeps running when Browsershot's timeout kills
+            // that process, because the process gets no time to close the browser.
+            if ($browsershotInstance === null) {
+                $browserStage->setBrowsershotOption('pipe', true);
+            }
+
             $outputPath = Storage::disk('public')->path($targetPath);
 
             $imageStage = new ImageStage();
