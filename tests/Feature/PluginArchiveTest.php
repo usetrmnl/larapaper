@@ -157,6 +157,97 @@ it('exports screen settings as trmnl yes values', function (): void {
         ->and($settings['dark_mode'])->toBe('yes');
 });
 
+it('exports framework_version latest when plugin uses default framework', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Latest Framework Plugin',
+        'trmnlp_id' => 'latest-fw-1',
+        'framework_version' => null,
+        'markup_language' => 'liquid',
+        'render_markup' => '<div>Test</div>',
+    ]);
+
+    $exporter = app(PluginExportService::class);
+    $response = $exporter->exportToZip($plugin, $user);
+
+    $zipPath = $response->getFile()->getPathname();
+    $zip = new ZipArchive();
+    $zip->open($zipPath);
+
+    $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+    $tempDir = $temporaryDirectory->path();
+    $zip->extractTo($tempDir, 'settings.yml');
+    $settings = Yaml::parse((string) file_get_contents($tempDir.'/settings.yml'));
+    $zip->close();
+
+    expect($settings['framework_version'])->toBe('latest');
+});
+
+it('exports pinned framework_version in settings yml', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Pinned Framework Plugin',
+        'trmnlp_id' => 'pinned-fw-1',
+        'framework_version' => '3.0.5',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div>Test</div>',
+    ]);
+
+    $exporter = app(PluginExportService::class);
+    $response = $exporter->exportToZip($plugin, $user);
+
+    $zipPath = $response->getFile()->getPathname();
+    $zip = new ZipArchive();
+    $zip->open($zipPath);
+
+    $temporaryDirectory = (new TemporaryDirectory)->deleteWhenDestroyed()->create();
+    $tempDir = $temporaryDirectory->path();
+    $zip->extractTo($tempDir, 'settings.yml');
+    $settings = Yaml::parse((string) file_get_contents($tempDir.'/settings.yml'));
+    $zip->close();
+
+    expect($settings['framework_version'])->toBe('3.0.5');
+});
+
+it('round trips framework_version latest as null on re-import', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Latest Round Trip',
+        'trmnlp_id' => 'latest-round-trip-1',
+        'framework_version' => null,
+        'markup_language' => 'liquid',
+        'render_markup' => '<div>Hello</div>',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'name',
+                    'field_type' => 'text',
+                    'default' => 'World',
+                ],
+            ],
+        ],
+    ]);
+
+    $exporter = app(PluginExportService::class);
+    $exportResponse = $exporter->exportToZip($plugin, $user);
+    $exportedFilePath = $exportResponse->getFile()->getPathname();
+
+    $uploadedFile = new UploadedFile(
+        $exportedFilePath,
+        'plugin_latest-round-trip-1.zip',
+        'application/zip',
+        null,
+        true
+    );
+
+    $imported = app(PluginImportService::class)->importFromZip($uploadedFile, $user);
+
+    expect($imported->framework_version)->toBeNull();
+});
+
 it('handles blade templates correctly', function (): void {
     $user = User::factory()->create();
     $plugin = Plugin::factory()->create([

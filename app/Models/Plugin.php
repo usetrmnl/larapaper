@@ -136,6 +136,28 @@ class Plugin extends Model
         return $this->framework_version ?? config('trmnl-blade.framework_version');
     }
 
+    public static function normalizeImportedFrameworkVersion(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        if (strcasecmp($value, 'latest') === 0) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    public static function frameworkVersionForSettingsExport(?string $stored): string
+    {
+        return $stored ?? 'latest';
+    }
+
     public static function validateFrameworkVersion(mixed $value, Closure $fail): void
     {
         if ($value === null || $value === '') {

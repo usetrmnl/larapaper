@@ -36,7 +36,7 @@ new class extends Component
         $this->alias = $this->plugin->alias ?? false;
         $this->use_trmnl_liquid_renderer = $this->plugin->preferred_renderer === 'trmnl-liquid';
         $this->configurationTemplateYaml = $this->plugin->getCustomFieldsEditorYaml();
-        $this->framework_version = $this->plugin->framework_version ?? '';
+        $this->framework_version = Plugin::normalizeImportedFrameworkVersion($this->plugin->framework_version) ?? '';
     }
 
     public function saveTrmnlpId(): void

@@ -149,6 +149,7 @@ class PluginExportService
         }
 
         $settings['refresh_interval'] = $plugin->data_stale_minutes;
+        $settings['framework_version'] = Plugin::frameworkVersionForSettingsExport($plugin->framework_version);
         $settings['id'] = $plugin->trmnlp_id;
 
         // Add custom fields from configuration template

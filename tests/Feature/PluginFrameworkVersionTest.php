@@ -54,6 +54,19 @@ test('validateFrameworkVersion rejects versions 4.0.0 and above', function (): v
     expect($errors)->toContain('Framework version must be lower than 4.0.0.');
 });
 
+test('normalizeImportedFrameworkVersion maps latest to null', function (): void {
+    expect(Plugin::normalizeImportedFrameworkVersion('latest'))->toBeNull()
+        ->and(Plugin::normalizeImportedFrameworkVersion('Latest'))->toBeNull()
+        ->and(Plugin::normalizeImportedFrameworkVersion(null))->toBeNull()
+        ->and(Plugin::normalizeImportedFrameworkVersion(''))->toBeNull()
+        ->and(Plugin::normalizeImportedFrameworkVersion('3.0.5'))->toBe('3.0.5');
+});
+
+test('frameworkVersionForSettingsExport maps null to latest', function (): void {
+    expect(Plugin::frameworkVersionForSettingsExport(null))->toBe('latest')
+        ->and(Plugin::frameworkVersionForSettingsExport('2.3.7'))->toBe('2.3.7');
+});
+
 test('validateFrameworkVersion accepts versions from 2.0.0 up to 3.x.x', function (): void {
     $errors = [];
     $fail = function (string $message) use (&$errors): void {
