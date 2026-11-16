@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\TextScaleLevel;
 use App\Models\Device;
 use App\Models\Plugin;
 use App\Plugins\Enums\PluginOutput;
@@ -22,7 +23,8 @@ class GenerateScreenJob implements ShouldQueue
     public function __construct(
         private readonly int $deviceId,
         private readonly ?int $pluginId,
-        private readonly string $markup
+        private readonly string $markup,
+        private readonly ?TextScaleLevel $textScaleLevel = null,
     ) {}
 
     /**
@@ -60,6 +62,6 @@ class GenerateScreenJob implements ShouldQueue
     {
         $device = Device::with(['deviceModel', 'deviceModel.palette'])->findOrFail($this->deviceId);
 
-        return ImageGenerationService::buildImageMetadataFromDevice($device);
+        return ImageGenerationService::buildImageMetadataFromDevice($device, $this->textScaleLevel);
     }
 }

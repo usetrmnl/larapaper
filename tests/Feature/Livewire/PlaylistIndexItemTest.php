@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\TextScaleLevel;
 use App\Models\Device;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
@@ -281,4 +282,68 @@ test('playlists index rejects editing the layout of a non-recipe item', function
     Livewire::test('playlists.index')
         ->call('prepareEditPlaylistItem', $item->id)
         ->assertForbidden();
+});
+
+test('playlists index adds an item with a text scale', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test('playlists.index')
+        ->call('prepareAddPlaylistItem', $playlist->id)
+        ->set('mashup_layout', 'full')
+        ->set('mashup_plugins', [(string) $plugin->id])
+        ->set('text_scale_level', 'large')
+        ->call('savePlaylistItem')
+        ->assertHasNoErrors();
+
+    expect($playlist->items()->sole()->text_scale_level)->toBe(TextScaleLevel::LARGE);
+});
+
+test('playlists index changes the text scale of an item', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create(['user_id' => $user->id]);
+    $item = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+        'text_scale_level' => TextScaleLevel::SMALL,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('playlists.index')
+        ->call('prepareEditPlaylistItem', $item->id)
+        ->assertSet('text_scale_level', 'small')
+        ->set('text_scale_level', '')
+        ->call('savePlaylistItem')
+        ->assertHasNoErrors();
+
+    expect($item->refresh()->text_scale_level)->toBeNull();
+});
+
+test('playlists index rejects an unknown text scale', function (): void {
+    $user = User::factory()->create();
+    $device = Device::factory()->create(['user_id' => $user->id]);
+    $playlist = Playlist::factory()->create(['device_id' => $device->id]);
+    $plugin = Plugin::factory()->create(['user_id' => $user->id]);
+    $item = PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+        'text_scale_level' => TextScaleLevel::SMALL,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('playlists.index')
+        ->call('prepareEditPlaylistItem', $item->id)
+        ->set('text_scale_level', 'huge')
+        ->call('savePlaylistItem')
+        ->assertHasErrors(['text_scale_level' => 'The selected text scale level is invalid.']);
+
+    expect($item->refresh()->text_scale_level)->toBe(TextScaleLevel::SMALL);
 });

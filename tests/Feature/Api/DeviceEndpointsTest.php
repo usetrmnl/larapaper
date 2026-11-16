@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TextScaleLevel;
 use App\Jobs\GenerateScreenJob;
 use App\Models\Device;
 use App\Models\DeviceModel;
@@ -2360,4 +2361,48 @@ test('getDeviceSpecificDefaultImage returns null for error type when no device-s
 
     $result = ImageGenerationService::getDeviceSpecificDefaultImage($device, 'error');
     expect($result)->toBeNull();
+});
+
+test('display re-renders a cached plugin image made at another text scale than the playlist item', function (): void {
+    $device = Device::factory()->create([
+        'mac_address' => '00:11:22:33:44:77',
+        'api_key' => 'text-scale-key',
+        'proxy_cloud' => false,
+    ]);
+    $plugin = Plugin::factory()->create([
+        'data_strategy' => 'static',
+        'polling_url' => null,
+        'data_stale_minutes' => 60,
+        'data_payload_updated_at' => now(),
+        'render_markup' => '<div>Hello</div>',
+        'current_image' => 'cached-image-uuid',
+        'current_image_metadata' => ImageGenerationService::buildImageMetadataFromDevice($device),
+    ]);
+    Storage::disk('public')->put('images/generated/cached-image-uuid.png', 'cached');
+    $playlist = Playlist::factory()->create([
+        'device_id' => $device->id,
+        'is_active' => true,
+        'weekdays' => null,
+        'active_from' => null,
+        'active_until' => null,
+    ]);
+    PlaylistItem::factory()->create([
+        'playlist_id' => $playlist->id,
+        'plugin_id' => $plugin->id,
+        'is_active' => true,
+        'text_scale_level' => TextScaleLevel::LARGE,
+    ]);
+
+    $this->withHeaders([
+        'id' => $device->mac_address,
+        'access-token' => $device->api_key,
+        'rssi' => -70,
+        'battery_voltage' => 3.8,
+        'fw-version' => '1.0.0',
+    ])->get('/api/display')->assertOk();
+
+    $plugin->refresh();
+    expect($plugin->current_image)->not->toBe('cached-image-uuid')
+        ->and($plugin->current_image_metadata['text_scale_level'])->toBe('large')
+        ->and($device->refresh()->current_screen_image)->toBe($plugin->current_image);
 });

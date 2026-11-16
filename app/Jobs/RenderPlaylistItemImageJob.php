@@ -48,6 +48,7 @@ class RenderPlaylistItemImageJob implements ShouldBeUnique, ShouldQueue
                 $playlistItem->playlist->device,
                 force: $this->force,
                 existingImageId: $plugin->current_image,
+                textScaleLevel: $playlistItem->text_scale_level,
             );
         } catch (Exception $e) {
             Log::error("Failed to render playlist item {$playlistItem->id} ({$plugin->name}): ".$e->getMessage());

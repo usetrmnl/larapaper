@@ -5,6 +5,7 @@
     'deviceOrientation' => null,
     'colorDepth' => '1bit',
     'scaleLevel' => null,
+    'textScaleLevel' => null,
     'paletteClass' => null,
     'cssVariables' => null,
     'frameworkVersion' => null,
@@ -18,6 +19,7 @@
         device-variant="{{ $deviceVariant }}"
         device-orientation="{{ $deviceOrientation }}"
         scale-level="{{ $scaleLevel }}"
+        text-scale-level="{{ $textScaleLevel }}"
         :palette-class="$paletteClass"
         :css-variables="$cssVariables"
         :framework-version="$frameworkVersion"
@@ -32,6 +34,7 @@
         device-variant="{{ $deviceVariant }}"
         device-orientation="{{ $deviceOrientation }}"
         scale-level="{{ $scaleLevel }}"
+        text-scale-level="{{ $textScaleLevel }}"
         :palette-class="$paletteClass"
         :css-variables="$cssVariables"
         :framework-version="$frameworkVersion"

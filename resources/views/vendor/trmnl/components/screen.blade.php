@@ -6,6 +6,7 @@
     'colorDepth' => '1bit',
     'paletteClass' => null,
     'scaleLevel' => null,
+    'textScaleLevel' => null,
     'cssVariables' => null,
     'frameworkVersion' => null,
 ])
@@ -35,7 +36,7 @@
     @endif
 </head>
 <body class="environment trmnl">
-<div class="screen {{ $noBleed ? 'screen--no-bleed' : '' }} {{ $darkMode ? 'screen--dark-mode' : '' }} {{ $deviceVariant ? 'screen--' . $deviceVariant : '' }} {{ $deviceOrientation ? 'screen--' . $deviceOrientation : '' }} {{ $paletteClass ? $paletteClass : '' }} {{ $scaleLevel ? 'screen--scale-' . $scaleLevel : '' }}">
+<div class="screen {{ $noBleed ? 'screen--no-bleed' : '' }} {{ $darkMode ? 'screen--dark-mode' : '' }} {{ $deviceVariant ? 'screen--' . $deviceVariant : '' }} {{ $deviceOrientation ? 'screen--' . $deviceOrientation : '' }} {{ $paletteClass ? $paletteClass : '' }} {{ $scaleLevel ? 'screen--scale-' . $scaleLevel : '' }} {{ $textScaleLevel ? 'screen--text-scale-' . $textScaleLevel : '' }}">
     {{ $slot }}
 </div>
 </body>
