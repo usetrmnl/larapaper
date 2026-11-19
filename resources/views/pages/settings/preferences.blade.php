@@ -17,6 +17,13 @@ new class extends Component
         $this->timezone = Auth::user()->timezone ?? config('app.timezone');
     }
 
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['timezone', 'assign_new_device_id'], true)) {
+            $this->updatePreferences();
+        }
+    }
+
     public function updatePreferences(): void
     {
         $validated = $this->validate([
@@ -36,7 +43,7 @@ new class extends Component
 
         Auth::user()->update($validated);
 
-        Flux::toast(variant: 'success', text: __('Saved.'));
+        Flux::toast(variant: 'success', text: __('Saved'));
     }
 }; ?>
 
@@ -45,27 +52,54 @@ new class extends Component
         @include('partials.settings-heading')
 
         <x-pages::settings.layout heading="Preferences" subheading="Update your preferences">
-            <form wire:submit="updatePreferences" class="my-6 w-full space-y-6">
-                <flux:select wire:model="timezone" label="Timezone">
-                    <flux:select.option value="" disabled>Select timezone...</flux:select.option>
-                    @foreach (timezone_identifiers_list() as $tz)
-                        <flux:select.option value="{{ $tz }}">{{ $tz }}</flux:select.option>
-                    @endforeach
-                </flux:select>
+            <div class="my-6 w-full space-y-2">
+                <flux:item.group>
+                    <flux:item>
+                        <flux:item.heading>{{ __('Timezone') }}</flux:item.heading>
+                        <flux:item.subheading>
+                            {{ __('Used for schedules and times shown in the app.') }}</flux:item.subheading>
 
-                <flux:select wire:model="assign_new_device_id" label="Auto-Joined Devices should mirror">
-                    <flux:select.option value="">None</flux:select.option>
-                    @foreach (auth()->user()->devices->where('mirror_device_id', null) as $device)
-                        <flux:select.option value="{{ $device->id }}">
-                            {{ $device->name }} ({{ $device->friendly_id }})
-                        </flux:select.option>
-                    @endforeach
-                </flux:select>
+                        <flux:item.actions>
+                            <flux:select
+                                wire:model.live="timezone"
+                                size="sm"
+                                aria-label="{{ __('Timezone') }}"
+                                class="max-w-56"
+                            >
+                                <flux:select.option value="" disabled>Select timezone...</flux:select.option>
+                                @foreach (timezone_identifiers_list() as $tz)
+                                    <flux:select.option value="{{ $tz }}">{{ $tz }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </flux:item.actions>
+                    </flux:item>
 
-                <div class="flex items-center gap-4">
-                    <flux:button variant="primary" type="submit">{{ __('Save') }}</flux:button>
-                </div>
-            </form>
+                    <flux:item>
+                        <flux:item.heading>{{ __('Auto-joined devices should mirror') }}</flux:item.heading>
+                        <flux:item.subheading>
+                            {{ __('New devices that auto-join will mirror this device.') }}</flux:item.subheading>
+
+                        <flux:item.actions>
+                            <flux:select
+                                wire:model.live="assign_new_device_id"
+                                size="sm"
+                                aria-label="{{ __('Auto-joined devices should mirror') }}"
+                                class="max-w-56"
+                            >
+                                <flux:select.option value="">None</flux:select.option>
+                                @foreach (auth()->user()->devices->where('mirror_device_id', null) as $device)
+                                    <flux:select.option value="{{ $device->id }}">
+                                        {{ $device->name }} ({{ $device->friendly_id }})
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </flux:item.actions>
+                    </flux:item>
+                </flux:item.group>
+
+                <flux:error name="timezone" />
+                <flux:error name="assign_new_device_id" />
+            </div>
         </x-pages::settings.layout>
     </div>
 </section>
