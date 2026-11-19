@@ -1,7 +1,7 @@
 ########################
 # Base Image
 ########################
-FROM bnussbau/serversideup-php:8.4-fpm-nginx-alpine-imagick-chromium@sha256:363478ba94b7a73f0ef022ec8251c20be31c3a64cbbe86ce0a4d6a56374f9aef AS base
+FROM bnussbau/serversideup-php:8.4-fpm-nginx-alpine-imagick-chromium@sha256:0b2ddb4e9ceb40a300776816bac08cbc025d352ee5d5b7d526c7ea00117b53f6 AS base
 
 LABEL org.opencontainers.image.source=https://github.com/usetrmnl/larapaper
 LABEL org.opencontainers.image.description="LaraPaper"
