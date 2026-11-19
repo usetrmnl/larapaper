@@ -32,8 +32,6 @@ new class extends Component
 
     public array $mashup_plugins = [];
 
-    public ?string $text_scale_level = null;
-
     public function mount()
     {
         $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
@@ -113,6 +111,23 @@ new class extends Component
         $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
     }
 
+    /**
+     * Regular is the framework's default: stored as null, so the screen gets no text scale class.
+     */
+    public function setPlaylistItemTextScale(PlaylistItem $item, string $textScaleLevel): void
+    {
+        $item->loadMissing('playlist.device');
+        $this->authorizePlaylist($item->playlist);
+
+        $level = TextScaleLevel::tryFrom($textScaleLevel);
+        abort_if($level === null, 422);
+
+        $item->update(['text_scale_level' => $level === TextScaleLevel::REGULAR ? null : $level]);
+
+        $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
+        Flux::toast(text: 'Text scale updated', variant: 'success');
+    }
+
     public function editPlaylist(Playlist $playlist)
     {
         abort_unless(auth()->user()->devices->contains($playlist->device), 403);
@@ -181,7 +196,6 @@ new class extends Component
         $this->editing_item_id = null;
         $this->mashup_layout = 'full';
         $this->mashup_plugins = [];
-        $this->text_scale_level = null;
     }
 
     public function prepareEditPlaylistItem(PlaylistItem $item): void
@@ -197,7 +211,6 @@ new class extends Component
         $this->mashup_plugins = $item->isMashup()
             ? array_map(strval(...), $item->getMashupPluginIds())
             : [(string) $item->plugin_id];
-        $this->text_scale_level = $item->text_scale_level?->value;
     }
 
     public function savePlaylistItem(): void
@@ -209,7 +222,6 @@ new class extends Component
 
         $this->validate([
             'mashup_layout' => ['required', 'string', Rule::in($allowedLayouts)],
-            'text_scale_level' => ['nullable', Rule::enum(TextScaleLevel::class)],
         ]);
 
         $this->mashup_plugins = PlaylistItem::takePluginIdsForLayout($this->mashup_layout, $this->mashup_plugins);
@@ -224,14 +236,12 @@ new class extends Component
         ]);
 
         $pluginIds = array_map(intval(...), $this->mashup_plugins);
-        $textScaleLevel = blank($this->text_scale_level) ? null : $this->text_scale_level;
 
         if ($this->editing_item_id !== null) {
             $item = PlaylistItem::query()
                 ->where('playlist_id', $playlist->id)
                 ->findOrFail($this->editing_item_id);
             $item->applyLayout($this->mashup_layout, $pluginIds);
-            $item->update(['text_scale_level' => $textScaleLevel]);
             $message = 'Layout updated.';
         } else {
             $maxOrder = $playlist->items()->max('order') ?? 0;
@@ -240,7 +250,6 @@ new class extends Component
                 $playlist->items()->create([
                     'plugin_id' => $pluginIds[0],
                     'order' => $maxOrder + 1,
-                    'text_scale_level' => $textScaleLevel,
                 ]);
             } else {
                 $primary = Plugin::query()->findOrFail($pluginIds[0]);
@@ -250,14 +259,14 @@ new class extends Component
                     $pluginIds,
                     $primary->name.' Mashup',
                     $maxOrder + 1,
-                )->update(['text_scale_level' => $textScaleLevel]);
+                );
             }
 
             $message = 'Item added';
         }
 
         $this->devices = auth()->user()->devices()->with(['playlists.items.plugin'])->get();
-        $this->reset(['item_playlist_id', 'editing_item_id', 'mashup_layout', 'mashup_plugins', 'text_scale_level']);
+        $this->reset(['item_playlist_id', 'editing_item_id', 'mashup_layout', 'mashup_plugins']);
         Flux::modal('playlist-item-form')->close();
         Flux::toast(variant: 'success', text: $message);
     }
@@ -540,6 +549,19 @@ new class extends Component
                                                                                         Clear image
                                                                                         cache</flux:menu.item>
                                                                                 @endif
+                                                                                <flux:menu.separator />
+                                                                                <flux:menu.submenu heading="Text scale">
+                                                                                    <flux:menu.radio.group>
+                                                                                        @foreach (TextScaleLevel::cases() as $textScaleLevel)
+                                                                                            <flux:menu.radio
+                                                                                                :checked="($item->text_scale_level ?? TextScaleLevel::REGULAR) === $textScaleLevel"
+                                                                                                wire:click="setPlaylistItemTextScale({{ $item->id }}, '{{ $textScaleLevel->value }}')"
+                                                                                            >
+                                                                                                {{ $textScaleLevel->label() }}
+                                                                                            </flux:menu.radio>
+                                                                                        @endforeach
+                                                                                    </flux:menu.radio.group>
+                                                                                </flux:menu.submenu>
                                                                             </flux:menu>
                                                                         </flux:dropdown>
                                                                     @endif
@@ -606,19 +628,6 @@ new class extends Component
 
                     <form wire:submit="savePlaylistItem">
                         <x-mashup-layout-fields :layout="$mashup_layout" :plugins="$this->recipePlugins()" />
-
-                        <flux:select
-                            class="mb-4"
-                            label="Text scale"
-                            wire:model="text_scale_level"
-                            description="Size of text in this item's screen, without changing its layout."
-                        >
-                            @foreach (TextScaleLevel::cases() as $textScaleLevel)
-                                {{-- Regular is the framework's default: stored as null, so the screen gets no text scale class. --}}
-                                <flux:select.option value="{{ $textScaleLevel === TextScaleLevel::REGULAR ? '' : $textScaleLevel->value }}">
-                                    {{ $textScaleLevel->label() }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
 
                         <div class="flex">
                             <flux:spacer />
