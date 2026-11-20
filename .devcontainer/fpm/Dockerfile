@@ -1,5 +1,5 @@
 # From official php image.
-FROM php:8.4-fpm-alpine
+FROM php:8.5-fpm-alpine
 RUN addgroup -g 1000 -S user && adduser -u 1000 -D user -G user
 # Install postgres pdo driver.
 # RUN apk add --no-cache postgresql-dev && docker-php-ext-install pdo_pgsql
@@ -34,5 +34,5 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 # Install PHP extensions
 RUN docker-php-ext-install imagick zip gd intl
 
-RUN rm -f /usr/bin/php84
-RUN ln -s /usr/local/bin/php /usr/bin/php84
+RUN rm -f /usr/bin/php85
+RUN ln -s /usr/local/bin/php /usr/bin/php85

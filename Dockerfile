@@ -1,7 +1,7 @@
 ########################
 # Base Image
 ########################
-FROM bnussbau/serversideup-php:8.4-fpm-nginx-alpine-imagick-chromium@sha256:0b2ddb4e9ceb40a300776816bac08cbc025d352ee5d5b7d526c7ea00117b53f6 AS base
+FROM bnussbau/serversideup-php:8.5-fpm-nginx-alpine-imagick-chromium@sha256:18ad58f96a91ab2e93c0291ceb19998e6318000e44e93fde3f5b4d69200e37d5 AS base
 
 LABEL org.opencontainers.image.source=https://github.com/usetrmnl/larapaper
 LABEL org.opencontainers.image.description="LaraPaper"
@@ -33,7 +33,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 ########################
 # Assets Image
 ########################
-FROM node:24-alpine AS assets
+FROM node:26-alpine AS assets
 
 # Copy the application
 COPY --from=base /var/www/html /app

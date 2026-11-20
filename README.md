@@ -99,7 +99,7 @@ Laravel Forge, or bare metal PHP server with Nginx or Apache is also supported.
 
 #### Requirements
 
-* PHP >= 8.4
+* PHP >= 8.4; 8.5 recommended
 * ext-imagick
 * puppeteer [see Browsershot docs](https://spatie.be/docs/browsershot/v4/requirements)
 
