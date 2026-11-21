@@ -109,9 +109,6 @@ class PluginImportService
         $fullLiquid = null;
         if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
             $fullLiquid = File::get($filePaths['fullLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $fullLiquid = $this->ensureLiquidViewWrapper($fullLiquid);
-            }
         }
 
         // Read shared markup separately
@@ -126,25 +123,16 @@ class PluginImportService
         $halfHorizontalMarkup = null;
         if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
             $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $halfHorizontalMarkup = $this->ensureLiquidViewWrapper($halfHorizontalMarkup);
-            }
         }
 
         $halfVerticalMarkup = null;
         if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
             $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $halfVerticalMarkup = $this->ensureLiquidViewWrapper($halfVerticalMarkup);
-            }
         }
 
         $quadrantMarkup = null;
         if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
             $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $quadrantMarkup = $this->ensureLiquidViewWrapper($quadrantMarkup);
-            }
         }
 
         // Ensure custom_fields is properly formatted
@@ -283,9 +271,6 @@ class PluginImportService
         $fullLiquid = null;
         if (isset($filePaths['fullLiquidPath']) && $filePaths['fullLiquidPath']) {
             $fullLiquid = File::get($filePaths['fullLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $fullLiquid = $this->ensureLiquidViewWrapper($fullLiquid);
-            }
         }
 
         // Read shared markup separately
@@ -300,25 +285,16 @@ class PluginImportService
         $halfHorizontalMarkup = null;
         if (isset($filePaths['halfHorizontalLiquidPath']) && $filePaths['halfHorizontalLiquidPath'] && File::exists($filePaths['halfHorizontalLiquidPath'])) {
             $halfHorizontalMarkup = File::get($filePaths['halfHorizontalLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $halfHorizontalMarkup = $this->ensureLiquidViewWrapper($halfHorizontalMarkup);
-            }
         }
 
         $halfVerticalMarkup = null;
         if (isset($filePaths['halfVerticalLiquidPath']) && $filePaths['halfVerticalLiquidPath'] && File::exists($filePaths['halfVerticalLiquidPath'])) {
             $halfVerticalMarkup = File::get($filePaths['halfVerticalLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $halfVerticalMarkup = $this->ensureLiquidViewWrapper($halfVerticalMarkup);
-            }
         }
 
         $quadrantMarkup = null;
         if (isset($filePaths['quadrantLiquidPath']) && $filePaths['quadrantLiquidPath'] && File::exists($filePaths['quadrantLiquidPath'])) {
             $quadrantMarkup = File::get($filePaths['quadrantLiquidPath']);
-            if ($markupLanguage === 'liquid') {
-                $quadrantMarkup = $this->ensureLiquidViewWrapper($quadrantMarkup);
-            }
         }
 
         // Ensure custom_fields is properly formatted
@@ -720,20 +696,6 @@ class PluginImportService
         }
 
         return $customFields;
-    }
-
-    /**
-     * Ensure liquid markup has a dynamic view wrapper for layout sizing.
-     */
-    private function ensureLiquidViewWrapper(string $markup): string
-    {
-        $viewDivPattern = '/<div\s+class=(["\'])[^"\']*\bview\s+view--[^"\']*\1\s*>/';
-
-        if (preg_match($viewDivPattern, $markup)) {
-            return (string) preg_replace($viewDivPattern, '<div class="view view--{{ size }}">', $markup, 1);
-        }
-
-        return '<div class="view view--{{ size }}">'."\n".$markup."\n".'</div>';
     }
 
     /**

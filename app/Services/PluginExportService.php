@@ -194,9 +194,12 @@ class PluginExportService
             return '';
         }
 
-        // Remove the wrapper div if it exists (it will be added during import for liquid)
-        $markup = preg_replace('/^<div class="view view--\{\{ size \}\}">\s*/', '', $markup);
-        $markup = preg_replace('/\s*<\/div>\s*$/', '', $markup);
+        // Remove the legacy wrapper div if it exists (the view wrapper is added at render time)
+        $legacyWrapperPattern = '/^\s*<div class="view view--\{\{ size \}\}">\s*/';
+        if (preg_match($legacyWrapperPattern, $markup)) {
+            $markup = (string) preg_replace($legacyWrapperPattern, '', $markup);
+            $markup = (string) preg_replace('/\s*<\/div>\s*$/', '', $markup);
+        }
 
         return mb_trim($markup);
     }

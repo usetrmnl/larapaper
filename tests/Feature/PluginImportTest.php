@@ -147,12 +147,11 @@ it('imports plugin with shared.liquid file', function (): void {
     $plugin = $pluginImportService->importFromZip($zipFile, $user);
 
     expect($plugin->render_markup_shared)->toBe('{% comment %}Shared styles{% endcomment %}')
-        ->and($plugin->render_markup)->toContain('<div class="view view--{{ size }}">')
-        ->and($plugin->getMarkupForSize('full'))->toContain('{% comment %}Shared styles{% endcomment %}')
-        ->and($plugin->getMarkupForSize('full'))->toContain('<div class="view view--{{ size }}">');
+        ->and($plugin->render_markup)->not->toContain('view--')
+        ->and($plugin->getMarkupForSize('full'))->toContain('{% comment %}Shared styles{% endcomment %}');
 });
 
-it('replaces existing view wrapper on liquid import instead of nesting', function (): void {
+it('keeps an existing view wrapper verbatim on liquid import', function (): void {
     $user = User::factory()->create();
 
     $fullLiquid = <<<'LIQUID'
@@ -171,16 +170,10 @@ LIQUID;
     $pluginImportService = new PluginImportService();
     $plugin = $pluginImportService->importFromZip($zipFile, $user);
 
-    expect($plugin->render_markup)->toBe(<<<'LIQUID'
-<div class="view view--{{ size }}">
-  <h1>{{ data.title }}</h1>
-</div>
-LIQUID
-    )->and($plugin->render_markup)->not->toContain('view--full')
-        ->and(mb_substr_count($plugin->render_markup, '<div class="view view--{{ size }}">'))->toBe(1);
+    expect($plugin->render_markup)->toBe($fullLiquid);
 });
 
-it('wraps liquid markup without view wrapper on import', function (): void {
+it('does not wrap liquid markup in a view wrapper on import', function (): void {
     $user = User::factory()->create();
 
     $zipContent = createMockZipFile([
@@ -193,15 +186,25 @@ it('wraps liquid markup without view wrapper on import', function (): void {
     $pluginImportService = new PluginImportService();
     $plugin = $pluginImportService->importFromZip($zipFile, $user);
 
-    expect($plugin->render_markup)->toBe(<<<'LIQUID'
-<div class="view view--{{ size }}">
-<div class="plugin-content">
-  <h1>{{ data.title }}</h1>
-  <p>{{ data.description }}</p>
-</div>
-</div>
-LIQUID
-    );
+    expect($plugin->render_markup)->toBe(getValidFullLiquid());
+});
+
+it('renders imported shared liquid markup inside the view wrapper', function (): void {
+    $user = User::factory()->create();
+
+    $zipContent = createMockZipFile([
+        'src/settings.yml' => getValidSettingsYaml(),
+        'src/full.liquid' => '{% # NOP %}',
+        'src/shared.liquid' => '<div class="layout">Shared content</div>',
+    ]);
+
+    $zipFile = UploadedFile::fake()->createWithContent('test-plugin.zip', $zipContent);
+
+    $pluginImportService = new PluginImportService();
+    $plugin = $pluginImportService->importFromZip($zipFile, $user);
+
+    expect(preg_replace('/\s+/', ' ', $plugin->refresh()->render('full', false)))
+        ->toBe('<div class="view view--full"> <div class="layout">Shared content</div> </div>');
 });
 
 it('imports plugin with files in root directory', function (): void {
@@ -351,9 +354,8 @@ it('imports plugin from monorepo with shared.liquid in subdirectory', function (
     $plugin = $pluginImportService->importFromZip($zipFile, $user);
 
     expect($plugin->render_markup_shared)->toBe('{% comment %}Monorepo shared styles{% endcomment %}')
-        ->and($plugin->render_markup)->toContain('<div class="view view--{{ size }}">')
-        ->and($plugin->getMarkupForSize('full'))->toContain('{% comment %}Monorepo shared styles{% endcomment %}')
-        ->and($plugin->getMarkupForSize('full'))->toContain('<div class="view view--{{ size }}">');
+        ->and($plugin->render_markup)->not->toContain('view--')
+        ->and($plugin->getMarkupForSize('full'))->toContain('{% comment %}Monorepo shared styles{% endcomment %}');
 });
 
 it('imports plugin from URL with zip_entry_path parameter', function (): void {

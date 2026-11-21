@@ -24,7 +24,7 @@ test('single-user blade markup is executed', function (): void {
         'data_strategy' => 'static',
     ]);
 
-    expect($plugin->render(standalone: false))->toBe('ok');
+    expect(mb_trim(strip_tags($plugin->render(standalone: false))))->toBe('ok');
 });
 
 test('single-user blade markup is not executed when insecure php execution is explicitly disabled', function (): void {
@@ -54,7 +54,7 @@ test('blade markup is executed when another user exists and insecure php executi
         'data_strategy' => 'static',
     ]);
 
-    expect($plugin->render(standalone: false))->toBe('ok');
+    expect(mb_trim(strip_tags($plugin->render(standalone: false))))->toBe('ok');
 });
 
 test('blade recipes are not executed when another user exists', function (): void {

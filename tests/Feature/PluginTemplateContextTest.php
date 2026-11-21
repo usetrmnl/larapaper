@@ -41,7 +41,7 @@ test('plugin render includes the assigned device and last poll time', function (
 
     $output = $plugin->render(standalone: false, device: $device);
 
-    expect($output)->toBe('v2|4|900|true|1380|420|5|1790695085');
+    expect(mb_trim(strip_tags($output)))->toBe('v2|4|900|true|1380|420|5|1790695085');
 })->with('template markups');
 
 test('plugin render leaves device fields empty when no device is assigned', function (string $markupLanguage, string $markup): void {
@@ -56,7 +56,7 @@ test('plugin render leaves device fields empty when no device is assigned', func
 
     $output = $plugin->render(standalone: false);
 
-    expect($output)->toBe('||||||5|1790695085');
+    expect(mb_trim(strip_tags($output)))->toBe('||||||5|1790695085');
 })->with('template markups');
 
 test('plugin render leaves the last poll time empty when data has never been fetched', function (string $markupLanguage, string $markup): void {
@@ -81,7 +81,7 @@ test('plugin render leaves the last poll time empty when data has never been fet
 
     $output = $plugin->render(standalone: false, device: $device);
 
-    expect($output)->toBe('v2|4|900|true|1380|420|5|');
+    expect(mb_trim(strip_tags($output)))->toBe('v2|4|900|true|1380|420|5|');
 })->with('template markups');
 
 test('plugin render leaves sleep times empty when the device has none', function (string $markupLanguage, string $markup): void {
@@ -106,5 +106,5 @@ test('plugin render leaves sleep times empty when the device has none', function
 
     $output = $plugin->render(standalone: false, device: $device);
 
-    expect($output)->toBe('v2|4|900|false|||5|1790695085');
+    expect(mb_trim(strip_tags($output)))->toBe('v2|4|900|false|||5|1790695085');
 })->with('template markups');

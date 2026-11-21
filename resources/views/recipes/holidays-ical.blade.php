@@ -1,4 +1,3 @@
-@props(['size' => 'full'])
 @php
     use Carbon\Carbon;
 
@@ -41,48 +40,46 @@
         ->values();
 @endphp
 
-<x-trmnl::view size="{{ $size }}">
-    <x-trmnl::layout class="layout--col gap--small">
-        <x-trmnl::table>
-            <colgroup>
-                <col span="3" style="width: 33%" />
-            </colgroup>
-            <thead>
+<x-trmnl::layout class="layout--col gap--small">
+    <x-trmnl::table>
+        <colgroup>
+            <col span="3" style="width: 33%" />
+        </colgroup>
+        <thead>
+            <tr>
+                <th>
+                    <x-trmnl::title>Date</x-trmnl::title>
+                </th>
+                <th>
+                    <x-trmnl::title>Event</x-trmnl::title>
+                </th>
+                <th>
+                    <x-trmnl::title>Location</x-trmnl::title>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($events as $event)
                 <tr>
-                    <th>
-                        <x-trmnl::title>Date</x-trmnl::title>
-                    </th>
-                    <th>
-                        <x-trmnl::title>Event</x-trmnl::title>
-                    </th>
-                    <th>
-                        <x-trmnl::title>Location</x-trmnl::title>
-                    </th>
+                    <td>
+                        <x-trmnl::label>{{ $event['start']?->format('D, M j') }}</x-trmnl::label>
+                    </td>
+                    <td>
+                        <x-trmnl::label variant="inverted">{{ $event['summary'] }}</x-trmnl::label>
+                    </td>
+                    <td>
+                        <x-trmnl::label>{{ Str::limit($event['location'] ?? '—',50) }}</x-trmnl::label>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                @forelse ($events as $event)
-                    <tr>
-                        <td>
-                            <x-trmnl::label>{{ $event['start']?->format('D, M j') }}</x-trmnl::label>
-                        </td>
-                        <td>
-                            <x-trmnl::label variant="inverted">{{ $event['summary'] }}</x-trmnl::label>
-                        </td>
-                        <td>
-                            <x-trmnl::label>{{ Str::limit($event['location'] ?? '—',50) }}</x-trmnl::label>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4">
-                            <x-trmnl::label>No events available</x-trmnl::label>
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </x-trmnl::table>
-    </x-trmnl::layout>
+            @empty
+                <tr>
+                    <td colspan="4">
+                        <x-trmnl::label>No events available</x-trmnl::label>
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </x-trmnl::table>
+</x-trmnl::layout>
 
-    <x-trmnl::title-bar title="Public Holidays" instance="updated: {{ now()->format('M j, H:i') }}" />
-</x-trmnl::view>
+<x-trmnl::title-bar title="Public Holidays" instance="updated: {{ now()->format('M j, H:i') }}" />

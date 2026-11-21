@@ -280,6 +280,27 @@ it('removes wrapper div from exported markup', function (): void {
     expect($response)->toBeInstanceOf(Symfony\Component\HttpFoundation\BinaryFileResponse::class);
 });
 
+it('keeps the closing div of exported markup without a wrapper', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Unwrapped Plugin',
+        'trmnlp_id' => 'unwrapped-plugin-203',
+        'markup_language' => 'liquid',
+        'render_markup' => '<div class="layout">Hello World</div>',
+    ]);
+
+    $exporter = app(PluginExportService::class);
+    $response = $exporter->exportToZip($plugin, $user);
+
+    $zip = new ZipArchive();
+    $zip->open($response->getFile()->getPathname());
+
+    expect($zip->getFromName('full.liquid'))->toBe('<div class="layout">Hello World</div>');
+
+    $zip->close();
+});
+
 it('converts polling headers correctly', function (): void {
     $user = User::factory()->create();
     $plugin = Plugin::factory()->create([

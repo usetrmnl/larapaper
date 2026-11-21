@@ -1,50 +1,48 @@
-<div class="view view--{{ size }}">
-    <div class="layout layout--col gap--space-between">
-        <!-- Top row: 2 columns -->
-        <div class="grid">
-            <!-- Sunrise Time - Left column -->
-            <div class="item col-span-6">
-                <div class="content text--center flex flex--col flex--center-xy">
-                    <span class="label label--large font--bold text--center">Sunrise</span>
-                    <span class="value value--large text--center font--normal">
-                      {{ data.today.sunrise }}
-                    </span>
-                </div>
-            </div>
-            <!-- Sunset Time - Right column -->
-            <div class="item col-span-6">
-                <div class="content text--center flex flex--col flex--center-xy">
-                    <span class="label label--large font--bold text--center">Sunset</span>
-                    <span class="value value--large text--center font--normal">
-                      {{ data.today.sunset }}
-                    </span>
-                </div>
+<div class="layout layout--col gap--space-between">
+    <!-- Top row: 2 columns -->
+    <div class="grid">
+        <!-- Sunrise Time - Left column -->
+        <div class="item col-span-6">
+            <div class="content text--center flex flex--col flex--center-xy">
+                <span class="label label--large font--bold text--center">Sunrise</span>
+                <span class="value value--large text--center font--normal">
+                  {{ data.today.sunrise }}
+                </span>
             </div>
         </div>
-        {% if size == 'full' or size == 'half_vertical' %}
-            <!-- Bottom row: 2 columns -->
-            <div class="grid">
-                <!-- Day Progress - Left column -->
+        <!-- Sunset Time - Right column -->
+        <div class="item col-span-6">
+            <div class="content text--center flex flex--col flex--center-xy">
+                <span class="label label--large font--bold text--center">Sunset</span>
+                <span class="value value--large text--center font--normal">
+                  {{ data.today.sunset }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% if size == 'full' or size == 'half_vertical' %}
+        <!-- Bottom row: 2 columns -->
+        <div class="grid">
+            <!-- Day Progress - Left column -->
 
-                <!-- Tomorrow's Times - Right column -->
-                <div class="item col-span-6">
-                    <div class="content text--center flex flex--col flex--center-xy">
-                        <span class="label label--large font--bold text--center">Tomorrow</span>
-                        <div class="value value--medium text--center font--normal">
-                            <div>
-                                <span>↑ {{ data.tomorrow.sunrise }}</span>
-                            </div>
-                            <div>
-                                <span>↓ {{ data.tomorrow.sunset }}</span>
-                            </div>
+            <!-- Tomorrow's Times - Right column -->
+            <div class="item col-span-6">
+                <div class="content text--center flex flex--col flex--center-xy">
+                    <span class="label label--large font--bold text--center">Tomorrow</span>
+                    <div class="value value--medium text--center font--normal">
+                        <div>
+                            <span>↑ {{ data.tomorrow.sunrise }}</span>
+                        </div>
+                        <div>
+                            <span>↓ {{ data.tomorrow.sunset }}</span>
                         </div>
                     </div>
                 </div>
             </div>
-        {% endif %}
-    </div>
-    <!-- Title Bar -->
-    <div class="title_bar">
-        <span class="title">Sunrise & Sunset</span>
-    </div>
+        </div>
+    {% endif %}
+</div>
+<!-- Title Bar -->
+<div class="title_bar">
+    <span class="title">Sunrise & Sunset</span>
 </div>

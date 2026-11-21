@@ -114,17 +114,15 @@ new class extends Component
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout">
-        <div class="richtext richtext--center gap--large">
-            <span class="title">LaraPaper</span>
-            <div class="content">“This screen was rendered by BYOS LaraPaper”</div>
-            <span class="label label--underline">Benjamin Nussbaum</span>
-        </div>
-    </div>
-    <div class="title_bar">
+<div class="layout">
+    <div class="richtext richtext--center gap--large">
         <span class="title">LaraPaper</span>
+        <div class="content">“This screen was rendered by BYOS LaraPaper”</div>
+        <span class="label label--underline">Benjamin Nussbaum</span>
     </div>
+</div>
+<div class="title_bar">
+    <span class="title">LaraPaper</span>
 </div>
 HTML;
         }
@@ -149,17 +147,15 @@ HTML;
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout">
-        <div class="richtext richtext--center gap--large">
-            <span class="title">Motivational Quote</span>
-            <div class="content">“I love inside jokes. I hope to be a part of one someday.”</div>
-            <span class="label label--underline">Michael Scott</span>
-        </div>
-    </div>
-    <div class="title_bar">
+<div class="layout">
+    <div class="richtext richtext--center gap--large">
         <span class="title">Motivational Quote</span>
+        <div class="content">“I love inside jokes. I hope to be a part of one someday.”</div>
+        <span class="label label--underline">Michael Scott</span>
     </div>
+</div>
+<div class="title_bar">
+    <span class="title">Motivational Quote</span>
 </div>
 HTML;
         }
@@ -184,32 +180,30 @@ HTML;
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th><span class="title">Abfahrt</span></th>
-                    <th><span class="title">Aktuell</span></th>
-                    <th><span class="title">Zug</span></th>
-                    <th><span class="title">Ziel</span></th>
-                    <th><span class="title">Steig</span></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><span class="label">08:51</span></td>
-                    <td><span class="label">08:52</span></td>
-                    <td><span class="label">REX 1</span></td>
-                    <td><span class="label">Vienna Main Station</span></td>
-                    <td><span class="label">3</span></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    <div class="title_bar">
-        <span class="title">Train Monitor</span>
-    </div>
+<div class="layout">
+    <table class="table">
+        <thead>
+            <tr>
+                <th><span class="title">Abfahrt</span></th>
+                <th><span class="title">Aktuell</span></th>
+                <th><span class="title">Zug</span></th>
+                <th><span class="title">Ziel</span></th>
+                <th><span class="title">Steig</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="label">08:51</span></td>
+                <td><span class="label">08:52</span></td>
+                <td><span class="label">REX 1</span></td>
+                <td><span class="label">Vienna Main Station</span></td>
+                <td><span class="label">3</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="title_bar">
+    <span class="title">Train Monitor</span>
 </div>
 HTML;
         }
@@ -249,24 +243,22 @@ HTML;
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout layout--col gap--space-between">
-        <div class="grid grid--cols-4">
-            <div class="col col--center">
-                <div class="item">
-                    <div class="meta"></div>
-                    <div class="content">
-                        <span class="value value--large">23.3°</span>
-                        <span class="label w--full flex">47.52 %</span>
-                        <span class="label w--full flex">Sensor 1</span>
-                    </div>
+<div class="layout layout--col gap--space-between">
+    <div class="grid grid--cols-4">
+        <div class="col col--center">
+            <div class="item">
+                <div class="meta"></div>
+                <div class="content">
+                    <span class="value value--large">23.3°</span>
+                    <span class="label w--full flex">47.52 %</span>
+                    <span class="label w--full flex">Sensor 1</span>
                 </div>
             </div>
         </div>
     </div>
-    <div class="title_bar">
-        <span class="title">Home Assistant</span>
-    </div>
+</div>
+<div class="title_bar">
+    <span class="title">Home Assistant</span>
 </div>
 HTML;
         }

@@ -26,7 +26,8 @@ test('hello world example fills liquid markup when liquid is selected', function
     Livewire::test('plugins.markup')
         ->set('markup_language', 'liquid')
         ->call('renderExample', 'helloWorld')
-        ->assertSet('markup_code', fn (string $code): bool => str_contains($code, 'view view--{{ size }}')
+        ->assertSet('markup_code', fn (string $code): bool => str_contains($code, 'class="layout"')
+            && ! str_contains($code, 'view view--{{ size }}')
             && ! str_contains($code, '<x-trmnl::'));
 });
 

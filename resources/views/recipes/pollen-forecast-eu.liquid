@@ -1,167 +1,165 @@
 <script src="https://trmnl.com/js/highcharts/12.3.0/highcharts.js"></script>
 <script src="https://trmnl.com/js/chartkick/5.0.1/chartkick.min.js"></script>
 
-<div class="view view--{{ size }}">
-    <div class="layout layout--col gap--space-between">
-        <!-- Current Pollen Stats -->
-        <div class="grid grid--cols-5">
-            <div class="item">
-                <div class="meta"></div>
-                <div class="content">
-                    <span class="value value--tnums">{{ data.current.birch_pollen }}</span>
-                    <span class="label label--small">grains/m³</span>
-                    <span class="label">Birch</span>
-                </div>
-            </div>
-            <div class="item">
-                <div class="meta"></div>
-                <div class="content">
-                    <span class="value value--tnums">{{ data.current.grass_pollen }}</span>
-                    <span class="label label--small">grains/m³</span>
-                    <span class="label">Grass</span>
-                </div>
-            </div>
-            <div class="item">
-                <div class="meta"></div>
-                <div class="content">
-                    <span class="value value--tnums">{{ data.current.alder_pollen }}</span>
-                    <span class="label label--small">grains/m³</span>
-                    <span class="label">Alder</span>
-                </div>
-            </div>
-            <div class="item">
-                <div class="meta"></div>
-                <div class="content">
-                    <span class="value value--tnums">{{ data.current.mugwort_pollen }}</span>
-                    <span class="label label--small">grains/m³</span>
-                    <span class="label">Mugwort</span>
-                </div>
-            </div>
-            <div class="item">
-                <div class="meta"></div>
-                <div class="content">
-                    <span class="value value--tnums">{{ data.current.ragweed_pollen }}</span>
-                    <span class="label label--small">grains/m³</span>
-                    <span class="label">Ragweed</span>
-                </div>
+<div class="layout layout--col gap--space-between">
+    <!-- Current Pollen Stats -->
+    <div class="grid grid--cols-5">
+        <div class="item">
+            <div class="meta"></div>
+            <div class="content">
+                <span class="value value--tnums">{{ data.current.birch_pollen }}</span>
+                <span class="label label--small">grains/m³</span>
+                <span class="label">Birch</span>
             </div>
         </div>
-
-        <!-- Chart Container -->
-        <div id="chart-pollen" style="width: 100%"></div>
+        <div class="item">
+            <div class="meta"></div>
+            <div class="content">
+                <span class="value value--tnums">{{ data.current.grass_pollen }}</span>
+                <span class="label label--small">grains/m³</span>
+                <span class="label">Grass</span>
+            </div>
+        </div>
+        <div class="item">
+            <div class="meta"></div>
+            <div class="content">
+                <span class="value value--tnums">{{ data.current.alder_pollen }}</span>
+                <span class="label label--small">grains/m³</span>
+                <span class="label">Alder</span>
+            </div>
+        </div>
+        <div class="item">
+            <div class="meta"></div>
+            <div class="content">
+                <span class="value value--tnums">{{ data.current.mugwort_pollen }}</span>
+                <span class="label label--small">grains/m³</span>
+                <span class="label">Mugwort</span>
+            </div>
+        </div>
+        <div class="item">
+            <div class="meta"></div>
+            <div class="content">
+                <span class="value value--tnums">{{ data.current.ragweed_pollen }}</span>
+                <span class="label label--small">grains/m³</span>
+                <span class="label">Ragweed</span>
+            </div>
+        </div>
     </div>
 
-    <div class="title_bar">
-        <svg width="30px" fill="currentColor" xmlns="http://www.w3.org/2000/svg" id="mdi-flower-pollen"
-             viewBox="0 0 24 24">
-            <path
-                d="M18.4 12.75C18.4 11.37 17.28 10.25 15.9 10.25C15.37 10.25 14.88 10.41 14.5 10.69V10.5C14.5 9.12 13.38 8 12 8S9.5 9.12 9.5 10.5V10.69C9.12 10.41 8.63 10.25 8.1 10.25C6.72 10.25 5.6 11.37 5.6 12.75C5.6 13.74 6.19 14.6 7.03 15C6.19 15.4 5.6 16.25 5.6 17.25C5.6 18.63 6.72 19.75 8.1 19.75C8.63 19.75 9.12 19.58 9.5 19.31V19.5C9.5 20.88 10.62 22 12 22S14.5 20.88 14.5 19.5V19.31C14.88 19.58 15.37 19.75 15.9 19.75C17.28 19.75 18.4 18.63 18.4 17.25C18.4 16.25 17.81 15.4 16.97 15C17.81 14.6 18.4 13.74 18.4 12.75M12 17.5C10.62 17.5 9.5 16.38 9.5 15S10.62 12.5 12 12.5 14.5 13.62 14.5 15 13.38 17.5 12 17.5M11 6C11 5.45 11.45 5 12 5S13 5.45 13 6 12.55 7 12 7 11 6.55 11 6M7 8C7 7.45 7.45 7 8 7S9 7.45 9 8 8.55 9 8 9 7 8.55 7 8M5 6C4.45 6 4 5.55 4 5S4.45 4 5 4 6 4.45 6 5 5.55 6 5 6M8 3C8 2.45 8.45 2 9 2S10 2.45 10 3 9.55 4 9 4 8 3.55 8 3M14 3C14 2.45 14.45 2 15 2S16 2.45 16 3 15.55 4 15 4 14 3.55 14 3M20 5C20 5.55 19.55 6 19 6S18 5.55 18 5 18.45 4 19 4 20 4.45 20 5M16 7C16.55 7 17 7.45 17 8S16.55 9 16 9 15 8.55 15 8 15.45 7 16 7Z"></path>
-        </svg>
-        <span class="title">Pollen Forecast Vienna</span>
-        <span class="instance">Data provided by: Open-Meteo.com</span>
-    </div>
+    <!-- Chart Container -->
+    <div id="chart-pollen" style="width: 100%"></div>
+</div>
+
+<div class="title_bar">
+    <svg width="30px" fill="currentColor" xmlns="http://www.w3.org/2000/svg" id="mdi-flower-pollen"
+         viewBox="0 0 24 24">
+        <path
+            d="M18.4 12.75C18.4 11.37 17.28 10.25 15.9 10.25C15.37 10.25 14.88 10.41 14.5 10.69V10.5C14.5 9.12 13.38 8 12 8S9.5 9.12 9.5 10.5V10.69C9.12 10.41 8.63 10.25 8.1 10.25C6.72 10.25 5.6 11.37 5.6 12.75C5.6 13.74 6.19 14.6 7.03 15C6.19 15.4 5.6 16.25 5.6 17.25C5.6 18.63 6.72 19.75 8.1 19.75C8.63 19.75 9.12 19.58 9.5 19.31V19.5C9.5 20.88 10.62 22 12 22S14.5 20.88 14.5 19.5V19.31C14.88 19.58 15.37 19.75 15.9 19.75C17.28 19.75 18.4 18.63 18.4 17.25C18.4 16.25 17.81 15.4 16.97 15C17.81 14.6 18.4 13.74 18.4 12.75M12 17.5C10.62 17.5 9.5 16.38 9.5 15S10.62 12.5 12 12.5 14.5 13.62 14.5 15 13.38 17.5 12 17.5M11 6C11 5.45 11.45 5 12 5S13 5.45 13 6 12.55 7 12 7 11 6.55 11 6M7 8C7 7.45 7.45 7 8 7S9 7.45 9 8 8.55 9 8 9 7 8.55 7 8M5 6C4.45 6 4 5.55 4 5S4.45 4 5 4 6 4.45 6 5 5.55 6 5 6M8 3C8 2.45 8.45 2 9 2S10 2.45 10 3 9.55 4 9 4 8 3.55 8 3M14 3C14 2.45 14.45 2 15 2S16 2.45 16 3 15.55 4 15 4 14 3.55 14 3M20 5C20 5.55 19.55 6 19 6S18 5.55 18 5 18.45 4 19 4 20 4.45 20 5M16 7C16.55 7 17 7.45 17 8S16.55 9 16 9 15 8.55 15 8 15.45 7 16 7Z"></path>
+    </svg>
+    <span class="title">Pollen Forecast Vienna</span>
+    <span class="instance">Data provided by: Open-Meteo.com</span>
+</div>
 </div>
 
 <script type="text/javascript">
-    // Build data arrays manually via Liquid
-    var birchData = [
-        {% for i in (0..47) %}
-        ["{{ data.hourly.time[i] }}", {{ data.hourly.birch_pollen[i] }}]{% unless forloop.last %},{% endunless %}
-        {% endfor %}
-    ];
+// Build data arrays manually via Liquid
+var birchData = [
+    {% for i in (0..47) %}
+    ["{{ data.hourly.time[i] }}", {{ data.hourly.birch_pollen[i] }}]{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+];
 
-    var grassData = [
-        {% for i in (0..47) %}
-        ["{{ data.hourly.time[i] }}", {{ data.hourly.grass_pollen[i] }}]{% unless forloop.last %},{% endunless %}
-        {% endfor %}
-    ];
+var grassData = [
+    {% for i in (0..47) %}
+    ["{{ data.hourly.time[i] }}", {{ data.hourly.grass_pollen[i] }}]{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+];
 
-    var alderData = [
-        {% for i in (0..47) %}
-        ["{{ data.hourly.time[i] }}", {{ data.hourly.alder_pollen[i] }}]{% unless forloop.last %},{% endunless %}
-        {% endfor %}
-    ];
+var alderData = [
+    {% for i in (0..47) %}
+    ["{{ data.hourly.time[i] }}", {{ data.hourly.alder_pollen[i] }}]{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+];
 
-    var mugwortData = [
-        {% for i in (0..47) %}
-        ["{{ data.hourly.time[i] }}", {{ data.hourly.mugwort_pollen[i] }}]{% unless forloop.last %},{% endunless %}
-        {% endfor %}
-    ];
+var mugwortData = [
+    {% for i in (0..47) %}
+    ["{{ data.hourly.time[i] }}", {{ data.hourly.mugwort_pollen[i] }}]{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+];
 
-    var ragweedData = [
-        {% for i in (0..47) %}
-        ["{{ data.hourly.time[i] }}", {{ data.hourly.ragweed_pollen[i] }}]{% unless forloop.last %},{% endunless %}
-        {% endfor %}
-    ];
+var ragweedData = [
+    {% for i in (0..47) %}
+    ["{{ data.hourly.time[i] }}", {{ data.hourly.ragweed_pollen[i] }}]{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+];
 
-    // Function to get max value from data array
-    function getMaxValue(dataArray) {
-        return Math.max(...dataArray.map(item => item[1]));
-    }
+// Function to get max value from data array
+function getMaxValue(dataArray) {
+    return Math.max(...dataArray.map(item => item[1]));
+}
 
-    // Filter data based on max value threshold
-    const threshold = 0.2;
-    const seriesData = [
-        {name: "Birch", data: birchData},
-        {name: "Grass", data: grassData, dashStyle: "shortdot"},
-        {name: "Alder", data: alderData, birchData, dashStyle: "shortdash"},
-        {name: "Mugwort", data: mugwortData},
-        {name: "Ragweed", data: ragweedData, dashStyle: "shortdash"}
-    ].filter(series => getMaxValue(series.data) > threshold);
+// Filter data based on max value threshold
+const threshold = 0.2;
+const seriesData = [
+    {name: "Birch", data: birchData},
+    {name: "Grass", data: grassData, dashStyle: "shortdot"},
+    {name: "Alder", data: alderData, birchData, dashStyle: "shortdash"},
+    {name: "Mugwort", data: mugwortData},
+    {name: "Ragweed", data: ragweedData, dashStyle: "shortdash"}
+].filter(series => getMaxValue(series.data) > threshold);
 
-    // Chartkick config
-    var createChart = function () {
-        new Chartkick["LineChart"](
-            "chart-pollen",
-            seriesData,
-            {
-                adapter: "highcharts",
-                thousands: ",",
-                points: false,
-                curve: true,
-                colors: ["#111", "#111", "#111", "#111", "#111"],
-                library: {
-                    chart: {height: 300},
-                    plotOptions: {
-                        series: {
-                            animation: false,
-                            lineWidth: 5
-                        }
-                    },
-                    yAxis: {
-                        labels: {style: {fontSize: "16px", color: "#000000"}},
-                        gridLineDashStyle: "shortdot",
-                        gridLineWidth: 1,
-                        gridLineColor: "#000000",
-                        tickAmount: 5
-                    },
-                    xAxis: {
-                        type: "datetime",
-                        labels: {style: {fontSize: "16px", color: "#000000"}},
-                        lineWidth: 0,
-                        gridLineDashStyle: "dot",
-                        tickWidth: 1,
-                        tickLength: 0,
-                        gridLineWidth: 1,
-                        gridLineColor: "#000000",
-                        tickPixelInterval: 120,
-                        plotLines: [{
-                            value: new Date().getTime(),
-                            color: '#000000',
-                            width: 2,
-                            dashStyle: 'shortdash',
-                            zIndex: 5
-                        }]
+// Chartkick config
+var createChart = function () {
+    new Chartkick["LineChart"](
+        "chart-pollen",
+        seriesData,
+        {
+            adapter: "highcharts",
+            thousands: ",",
+            points: false,
+            curve: true,
+            colors: ["#111", "#111", "#111", "#111", "#111"],
+            library: {
+                chart: {height: 300},
+                plotOptions: {
+                    series: {
+                        animation: false,
+                        lineWidth: 5
                     }
+                },
+                yAxis: {
+                    labels: {style: {fontSize: "16px", color: "#000000"}},
+                    gridLineDashStyle: "shortdot",
+                    gridLineWidth: 1,
+                    gridLineColor: "#000000",
+                    tickAmount: 5
+                },
+                xAxis: {
+                    type: "datetime",
+                    labels: {style: {fontSize: "16px", color: "#000000"}},
+                    lineWidth: 0,
+                    gridLineDashStyle: "dot",
+                    tickWidth: 1,
+                    tickLength: 0,
+                    gridLineWidth: 1,
+                    gridLineColor: "#000000",
+                    tickPixelInterval: 120,
+                    plotLines: [{
+                        value: new Date().getTime(),
+                        color: '#000000',
+                        width: 2,
+                        dashStyle: 'shortdash',
+                        zIndex: 5
+                    }]
                 }
             }
-        );
-    };
+        }
+    );
+};
 
-    if ("Chartkick" in window) {
-        createChart();
-    } else {
-        window.addEventListener("chartkick:load", createChart, true);
-    }
+if ("Chartkick" in window) {
+    createChart();
+} else {
+    window.addEventListener("chartkick:load", createChart, true);
+}
 </script>
-</div>

@@ -786,7 +786,7 @@ test('plugin render applies user timezone offset when using date filter with num
         'render_markup' => "{{ '2026-01-15T12:00:00+00:00' | date: '%s' | plus: trmnl.user.utc_offset | date: '%H:%M' }}",
     ]);
 
-    $rendered = mb_trim($plugin->render('full', false));
+    $rendered = mb_trim(strip_tags($plugin->render('full', false)));
 
     // Noon UTC → 13:00 in Berlin (CET) when Keepsuit date() formats the numeric epoch using the owner zone
     expect($rendered)->toBe('13:00');
@@ -818,7 +818,7 @@ test('plugin liquid render keeps UTC epoch math after iCal polling mutates PHP d
         'render_markup' => '{% for event in IDX_0.ical limit:1 %}{{ event.DTSTART | date: "%s" | plus: trmnl.user.utc_offset | date: "%d.%m %H:%M" }}{% endfor %}',
     ]);
 
-    $rendered = mb_trim($plugin->render('full', false));
+    $rendered = mb_trim(strip_tags($plugin->render('full', false)));
 
     expect($rendered)->toBe('26.05 08:00');
 

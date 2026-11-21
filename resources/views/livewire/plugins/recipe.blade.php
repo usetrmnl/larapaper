@@ -619,25 +619,20 @@ new class extends Component
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout">
-        <!-- ADD YOUR CONTENT HERE-->
-    </div>
-    <div class="title_bar">
-        <span class="title">TRMNL BYOS</span>
-    </div>
+<div class="layout">
+    <!-- ADD YOUR CONTENT HERE-->
+</div>
+<div class="title_bar">
+    <span class="title">TRMNL BYOS</span>
 </div>
 HTML;
         }
 
         return <<<'HTML'
-@props(['size' => 'full'])
-<x-trmnl::view size="{{$size}}">
-    <x-trmnl::layout>
-        <!-- ADD YOUR CONTENT HERE-->
-    </x-trmnl::layout>
-    <x-trmnl::title-bar/>
-</x-trmnl::view>
+<x-trmnl::layout>
+    <!-- ADD YOUR CONTENT HERE-->
+</x-trmnl::layout>
+<x-trmnl::title-bar/>
 HTML;
     }
 
@@ -645,21 +640,16 @@ HTML;
     {
         if ($this->markup_language === 'liquid') {
             return <<<'HTML'
-<div class="view view--{{ size }}">
-    <div class="layout">
-        <!-- ADD YOUR CONTENT HERE-->
-    </div>
+<div class="layout">
+    <!-- ADD YOUR CONTENT HERE-->
 </div>
 HTML;
         }
 
         return <<<'HTML'
-@props(['size' => 'full'])
-<x-trmnl::view size="{{$size}}">
-    <x-trmnl::layout>
-        <!-- ADD YOUR CONTENT HERE-->
-    </x-trmnl::layout>
-</x-trmnl::view>
+<x-trmnl::layout>
+    <!-- ADD YOUR CONTENT HERE-->
+</x-trmnl::layout>
 HTML;
     }
 

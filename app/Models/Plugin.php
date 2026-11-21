@@ -15,6 +15,7 @@ use App\Support\UserBladeExecution;
 use Carbon\Carbon;
 use Closure;
 use DateTimeInterface;
+use Dom\HTMLDocument;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -956,6 +957,8 @@ class Plugin extends Model
                 ]);
             }
 
+            $renderedContent = $this->wrapInView($this->neutralizeLegacyViewWrappers($renderedContent), $size);
+
             if ($standalone) {
                 if ($size === 'full') {
                     return view('trmnl-layouts.single', [
@@ -991,14 +994,16 @@ class Plugin extends Model
         }
 
         if ($this->render_markup_view) {
-            if ($standalone) {
-                $renderedView = view($this->render_markup_view, [
-                    'size' => $size,
-                    'data' => $this->data_payload,
-                    'config' => $this->configuration ?? [],
-                    'trmnl' => $this->trmnlContext($device),
-                ])->render();
+            $renderedView = view($this->render_markup_view, [
+                'size' => $size,
+                'data' => $this->data_payload,
+                'config' => $this->configuration ?? [],
+                'trmnl' => $this->trmnlContext($device),
+            ])->render();
 
+            $renderedView = $this->wrapInView($this->neutralizeLegacyViewWrappers($renderedView), $size);
+
+            if ($standalone) {
                 if ($size === 'full') {
                     return view('trmnl-layouts.single', [
                         'colorDepth' => $device?->colorDepth(),
@@ -1028,13 +1033,7 @@ class Plugin extends Model
                 ])->render();
             }
 
-            return view($this->render_markup_view, [
-                'size' => $size,
-                'data' => $this->data_payload,
-                'config' => $this->configuration ?? [],
-                'trmnl' => $this->trmnlContext($device),
-            ])->render();
-
+            return $renderedView;
         }
 
         return '<p>No render markup yet defined for this plugin.</p>';
@@ -1046,6 +1045,44 @@ class Plugin extends Model
     public function getConfiguration(string $key, $default = null)
     {
         return $this->configuration[$key] ?? $default;
+    }
+
+    /**
+     * Wrap rendered recipe output (Liquid or Blade) in the framework view container for the given size.
+     */
+    private function wrapInView(string $html, string $size): string
+    {
+        return '<div class="view view--'.$size.'">'."\n".$html."\n".'</div>';
+    }
+
+    /**
+     * Neutralize legacy `view view--*` wrappers in user markup, since the view container is added at render time.
+     *
+     * The `view` and `view--*` classes are removed and the element is rendered with `display: contents`,
+     * so its children behave as direct children of the render-time view container.
+     */
+    private function neutralizeLegacyViewWrappers(string $html): string
+    {
+        $container = HTMLDocument::createEmpty()->createElement('div');
+        $container->innerHTML = $html;
+
+        $legacyViews = $container->querySelectorAll('.view');
+
+        if ($legacyViews->length === 0) {
+            return $html;
+        }
+
+        foreach ($legacyViews as $legacyView) {
+            $viewClasses = array_filter(
+                iterator_to_array($legacyView->classList),
+                fn (string $class): bool => $class === 'view' || str_starts_with($class, 'view--')
+            );
+
+            $legacyView->classList->remove(...$viewClasses);
+            $legacyView->setAttribute('style', mb_rtrim('display: contents; '.$legacyView->getAttribute('style'), '; '));
+        }
+
+        return $container->innerHTML;
     }
 
     /**
