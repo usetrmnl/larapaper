@@ -11,7 +11,7 @@
  * global object has a null prototype and which only ever receives and returns strings.
  * The context has no `process`, `require`, `import()` or sockets, and code generation from
  * strings and WebAssembly are disabled for it. The web APIs it does get (fetch, timers,
- * AbortController, TextEncoder, ...) are implemented inside the context by `sandboxBootstrap`:
+ * AbortController, TextEncoder, URL, URLSearchParams, ...) are implemented inside the context by `sandboxBootstrap`:
  * `fetch()` only queues a request description that PHP performs, and timers are scheduled
  * by this runner within the transform's time budget.
  *
@@ -606,6 +606,435 @@ function sandboxBootstrap(options) {
         return output;
     };
 
+    /* --- URL, URLSearchParams --- */
+
+    const HEX = '0123456789ABCDEF';
+    const utf8Decoder = new TextDecoder();
+    const percentByte = (byte) => '%' + HEX[byte >> 4] + HEX[byte & 15];
+    const utf8Bytes = (point) => {
+        if (point >= 0xD800 && point <= 0xDFFF) point = 0xFFFD;
+        if (point < 0x80) return [point];
+        if (point < 0x800) return [0xC0 | (point >> 6), 0x80 | (point & 0x3F)];
+        if (point < 0x10000) return [0xE0 | (point >> 12), 0x80 | ((point >> 6) & 0x3F), 0x80 | (point & 0x3F)];
+        return [0xF0 | (point >> 18), 0x80 | ((point >> 12) & 0x3F), 0x80 | ((point >> 6) & 0x3F), 0x80 | (point & 0x3F)];
+    };
+
+    /**
+     * Percent-encode every code point outside printable ASCII, plus the ASCII characters in `extra`.
+     * Existing `%` escapes are kept as they are, as the URL standard does.
+     */
+    const percentEncode = (text, extra) => {
+        let output = '';
+        for (const character of StringCtor(text)) {
+            const point = character.codePointAt(0);
+            if (point > 0x20 && point < 0x7F && !extra.includes(character)) {
+                output += character;
+            } else {
+                for (const byte of utf8Bytes(point)) output += percentByte(byte);
+            }
+        }
+        return output;
+    };
+
+    const percentDecode = (text) => {
+        if (!text.includes('%')) return text;
+        let output = '';
+        let bytes = [];
+        const flush = () => {
+            if (bytes.length === 0) return;
+            output += utf8Decoder.decode(new Bytes(bytes));
+            bytes = [];
+        };
+        for (let index = 0; index < text.length; index++) {
+            const pair = text.slice(index + 1, index + 3);
+            if (text[index] === '%' && /^[0-9A-Fa-f]{2}$/.test(pair)) {
+                bytes.push(NumberCtor.parseInt(pair, 16));
+                index += 2;
+            } else {
+                flush();
+                output += text[index];
+            }
+        }
+        flush();
+        return output;
+    };
+
+    const formEncode = (text) => {
+        let output = '';
+        for (const character of StringCtor(text)) {
+            if (character === ' ') {
+                output += '+';
+            } else if (/^[A-Za-z0-9*\-._]$/.test(character)) {
+                output += character;
+            } else {
+                for (const byte of utf8Bytes(character.codePointAt(0))) output += percentByte(byte);
+            }
+        }
+        return output;
+    };
+    const formDecode = (text) => percentDecode(text.replace(/\+/g, ' '));
+    const formParse = (query) => {
+        const list = [];
+        for (const part of StringCtor(query).replace(/^\?/, '').split('&')) {
+            if (part === '') continue;
+            const equals = part.indexOf('=');
+            list.push(equals === -1 ? [formDecode(part), ''] : [formDecode(part.slice(0, equals)), formDecode(part.slice(equals + 1))]);
+        }
+        return list;
+    };
+
+    let attachParams;
+    let replaceParams;
+    let syncQueryFromParams;
+
+    class URLSearchParams {
+        #list = [];
+        #url = null;
+        constructor(init = undefined) {
+            if (init === undefined || init === null) return;
+            if (typeof init === 'object' && #list in init) {
+                this.#list = init.#list.map((pair) => [pair[0], pair[1]]);
+            } else if (typeof init === 'object' || typeof init === 'function') {
+                if (typeof init[Symbol.iterator] === 'function') {
+                    for (const pair of init) {
+                        const entry = [...pair];
+                        if (entry.length !== 2) throw new TypeError('Each query pair must be an iterable [name, value] tuple');
+                        this.#list.push([StringCtor(entry[0]), StringCtor(entry[1])]);
+                    }
+                } else {
+                    for (const name of Object.keys(init)) this.#list.push([name, StringCtor(init[name])]);
+                }
+            } else {
+                this.#list = formParse(init);
+            }
+        }
+        #update() {
+            if (this.#url !== null) syncQueryFromParams(this.#url, this.toString());
+        }
+        get size() { return this.#list.length; }
+        append(name, value) {
+            this.#list.push([StringCtor(name), StringCtor(value)]);
+            this.#update();
+        }
+        delete(name, value = undefined) {
+            const key = StringCtor(name);
+            const match = value === undefined ? null : StringCtor(value);
+            this.#list = this.#list.filter((pair) => pair[0] !== key || (match !== null && pair[1] !== match));
+            this.#update();
+        }
+        get(name) {
+            const key = StringCtor(name);
+            const pair = this.#list.find((entry) => entry[0] === key);
+            return pair === undefined ? null : pair[1];
+        }
+        getAll(name) {
+            const key = StringCtor(name);
+            return this.#list.filter((pair) => pair[0] === key).map((pair) => pair[1]);
+        }
+        has(name, value = undefined) {
+            const key = StringCtor(name);
+            const match = value === undefined ? null : StringCtor(value);
+            return this.#list.some((pair) => pair[0] === key && (match === null || pair[1] === match));
+        }
+        set(name, value) {
+            const key = StringCtor(name);
+            const index = this.#list.findIndex((pair) => pair[0] === key);
+            if (index === -1) {
+                this.#list.push([key, StringCtor(value)]);
+            } else {
+                this.#list[index][1] = StringCtor(value);
+                this.#list = this.#list.filter((pair, position) => position <= index || pair[0] !== key);
+            }
+            this.#update();
+        }
+        sort() {
+            this.#list.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+            this.#update();
+        }
+        forEach(callback, thisArg = undefined) {
+            for (const pair of [...this.#list]) callback.call(thisArg, pair[1], pair[0], this);
+        }
+        *keys() { for (const pair of [...this.#list]) yield pair[0]; }
+        *values() { for (const pair of [...this.#list]) yield pair[1]; }
+        *entries() { for (const pair of [...this.#list]) yield [pair[0], pair[1]]; }
+        [Symbol.iterator]() { return this.entries(); }
+        toString() {
+            return this.#list.map((pair) => formEncode(pair[0]) + '=' + formEncode(pair[1])).join('&');
+        }
+        static {
+            attachParams = (params, url) => { params.#url = url; };
+            replaceParams = (params, query) => { params.#list = query === null ? [] : formParse(query); };
+        }
+    }
+
+    const SPECIAL_PORTS = { 'ftp': '21', 'http': '80', 'https': '443', 'ws': '80', 'wss': '443', 'file': '' };
+    const isSpecial = (scheme) => Object.prototype.hasOwnProperty.call(SPECIAL_PORTS, scheme);
+    const PATH_ENCODE = ' "#<>?`{}';
+    const USERINFO_ENCODE = PATH_ENCODE + '/:;=@[\\]^|';
+    const FRAGMENT_ENCODE = ' "<>`';
+    const queryEncodeSet = (scheme) => (isSpecial(scheme) ? ' "#<>\'' : ' "#<>');
+
+    const normalizePath = (path) => {
+        const segments = path.split('/');
+        const output = [];
+        for (let index = 1; index < segments.length; index++) {
+            const segment = segments[index].toLowerCase();
+            const last = index === segments.length - 1;
+            if (segment === '..' || segment === '.%2e' || segment === '%2e.' || segment === '%2e%2e') {
+                output.pop();
+                if (last) output.push('');
+            } else if (segment === '.' || segment === '%2e') {
+                if (last) output.push('');
+            } else {
+                output.push(segments[index]);
+            }
+        }
+        return '/' + output.join('/');
+    };
+
+    const splitTail = (rest) => {
+        let path = rest;
+        let query = null;
+        let fragment = null;
+        const hash = path.indexOf('#');
+        if (hash !== -1) {
+            fragment = path.slice(hash + 1);
+            path = path.slice(0, hash);
+        }
+        const question = path.indexOf('?');
+        if (question !== -1) {
+            query = path.slice(question + 1);
+            path = path.slice(0, question);
+        }
+        return { path, query, fragment };
+    };
+
+    /** Special schemes treat `\` like `/` before the query. */
+    const slashes = (text, special) => {
+        if (!special) return text;
+        const end = text.search(/[?#]/);
+        return end === -1 ? text.replace(/\\/g, '/') : text.slice(0, end).replace(/\\/g, '/') + text.slice(end);
+    };
+
+    const parseAuthority = (scheme, rest) => {
+        const special = isSpecial(scheme);
+        const end = rest.search(/[/?#]/);
+        const authority = end === -1 ? rest : rest.slice(0, end);
+        const tail = splitTail(end === -1 ? '' : rest.slice(end));
+        let username = '';
+        let password = '';
+        let hostPort = authority;
+        const at = authority.lastIndexOf('@');
+        if (at !== -1) {
+            const userinfo = authority.slice(0, at);
+            hostPort = authority.slice(at + 1);
+            const colon = userinfo.indexOf(':');
+            username = percentEncode(colon === -1 ? userinfo : userinfo.slice(0, colon), USERINFO_ENCODE);
+            password = colon === -1 ? '' : percentEncode(userinfo.slice(colon + 1), USERINFO_ENCODE);
+        }
+        let hostname = hostPort;
+        let port = '';
+        const portMatch = /^(\[[^\]]*\]|[^:]*)(?::(.*))?$/.exec(hostPort);
+        if (portMatch === null) return null;
+        hostname = portMatch[1];
+        if (portMatch[2] !== undefined && portMatch[2] !== '') {
+            if (!/^\d+$/.test(portMatch[2]) || NumberCtor(portMatch[2]) > 65535) return null;
+            port = StringCtor(NumberCtor(portMatch[2]));
+        }
+        if (special) {
+            hostname = percentDecode(hostname).toLowerCase();
+            if (hostname === '' && scheme !== 'file') return null;
+            if (port === SPECIAL_PORTS[scheme]) port = '';
+        }
+        if (!hostname.startsWith('[') && /[\u0000- #/:<>?@[\\\]^|]/.test(hostname)) return null;
+        if (!special && hostname === '' && (username !== '' || password !== '' || port !== '')) return null;
+        let pathname = tail.path === '' ? (special ? '/' : '') : normalizePath(tail.path);
+        return { scheme, username, password, hostname, port, hasAuthority: true, opaque: false, pathname, query: tail.query, fragment: tail.fragment };
+    };
+
+    const encodeRecord = (record) => {
+        if (record === null) return null;
+        record.pathname = percentEncode(record.pathname, record.opaque ? '' : PATH_ENCODE);
+        if (record.query !== null) record.query = percentEncode(record.query, queryEncodeSet(record.scheme));
+        if (record.fragment !== null) record.fragment = percentEncode(record.fragment, FRAGMENT_ENCODE);
+        return record;
+    };
+
+    const parseUrl = (input, base) => {
+        const text = StringCtor(input).replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[\t\n\r]/g, '');
+        const schemeMatch = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(text);
+        if (schemeMatch !== null) {
+            const scheme = schemeMatch[1].toLowerCase();
+            const special = isSpecial(scheme);
+            const rest = slashes(text.slice(schemeMatch[0].length), special);
+            if (special && scheme !== 'file') return encodeRecord(parseAuthority(scheme, rest.replace(/^\/*/, '')));
+            if (rest.startsWith('//')) return encodeRecord(parseAuthority(scheme, rest.slice(2)));
+            const tail = splitTail(rest);
+            const hierarchical = tail.path.startsWith('/');
+            return encodeRecord({
+                scheme, username: '', password: '', hostname: '', port: '',
+                hasAuthority: scheme === 'file', opaque: !hierarchical,
+                pathname: hierarchical ? normalizePath(tail.path) : tail.path,
+                query: tail.query, fragment: tail.fragment,
+            });
+        }
+        if (base === null) return null;
+        if (base.opaque && !text.startsWith('#')) return null;
+        const relative = slashes(text, isSpecial(base.scheme));
+        if (relative.startsWith('//')) return encodeRecord(parseAuthority(base.scheme, relative.slice(2)));
+        const tail = splitTail(relative);
+        const record = { ...base, query: tail.query, fragment: tail.fragment };
+        if (tail.path === '') {
+            if (tail.query === null) record.query = base.query;
+        } else if (tail.path.startsWith('/')) {
+            record.pathname = normalizePath(tail.path);
+        } else {
+            const directory = base.pathname.slice(0, base.pathname.lastIndexOf('/') + 1) || '/';
+            record.pathname = normalizePath(directory + tail.path);
+        }
+        return encodeRecord(record);
+    };
+
+    /**
+     * The URL class of the web platform for transforms. Parsing follows the URL standard for the
+     * usual cases (absolute and relative URLs, dot segments, default ports, percent-encoding);
+     * internationalized host names are not converted to punycode and IP addresses are not normalized.
+     */
+    class URL {
+        #record;
+        #searchParams;
+        constructor(url, base = undefined) {
+            const baseRecord = base === undefined ? null : parseUrl(base, null);
+            if (base !== undefined && baseRecord === null) throw new TypeError('Invalid base URL: ' + StringCtor(base));
+            const record = parseUrl(url, baseRecord);
+            if (record === null) throw new TypeError('Invalid URL: ' + StringCtor(url));
+            this.#record = record;
+            this.#searchParams = new URLSearchParams(record.query ?? '');
+            attachParams(this.#searchParams, this);
+        }
+        static canParse(url, base = undefined) {
+            try {
+                new URL(url, base);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+        static parse(url, base = undefined) {
+            try {
+                return new URL(url, base);
+            } catch {
+                return null;
+            }
+        }
+        #replace(href) {
+            const record = parseUrl(href, null);
+            if (record === null) return;
+            this.#record = record;
+            replaceParams(this.#searchParams, record.query);
+        }
+        #authority() {
+            const record = this.#record;
+            if (!record.hasAuthority) return '';
+            const credentials = record.username !== '' || record.password !== ''
+                ? record.username + (record.password !== '' ? ':' + record.password : '') + '@'
+                : '';
+            return '//' + credentials + record.hostname + (record.port !== '' ? ':' + record.port : '');
+        }
+        #withoutAuthority() {
+            return this.pathname + this.search + this.hash;
+        }
+        get href() {
+            const record = this.#record;
+            return record.scheme + ':' + this.#authority() + record.pathname
+                + (record.query !== null ? '?' + record.query : '')
+                + (record.fragment !== null ? '#' + record.fragment : '');
+        }
+        set href(value) {
+            const record = parseUrl(value, null);
+            if (record === null) throw new TypeError('Invalid URL: ' + StringCtor(value));
+            this.#record = record;
+            replaceParams(this.#searchParams, record.query);
+        }
+        get origin() {
+            const record = this.#record;
+            return isSpecial(record.scheme) && record.scheme !== 'file' ? record.scheme + '://' + this.host : 'null';
+        }
+        get protocol() { return this.#record.scheme + ':'; }
+        set protocol(value) {
+            const scheme = StringCtor(value).replace(/:.*$/, '').toLowerCase();
+            if (!/^[a-z][a-z0-9+.-]*$/.test(scheme) || isSpecial(scheme) !== isSpecial(this.#record.scheme)) return;
+            this.#replace(scheme + ':' + this.#authority() + this.#withoutAuthority());
+        }
+        get username() { return this.#record.username; }
+        set username(value) {
+            if (this.#record.hostname === '' || this.#record.scheme === 'file') return;
+            this.#record.username = percentEncode(value, USERINFO_ENCODE);
+        }
+        get password() { return this.#record.password; }
+        set password(value) {
+            if (this.#record.hostname === '' || this.#record.scheme === 'file') return;
+            this.#record.password = percentEncode(value, USERINFO_ENCODE);
+        }
+        get host() { return this.#record.hostname + (this.#record.port !== '' ? ':' + this.#record.port : ''); }
+        set host(value) {
+            if (this.#record.opaque) return;
+            const record = this.#record;
+            const credentials = record.username !== '' || record.password !== ''
+                ? record.username + (record.password !== '' ? ':' + record.password : '') + '@'
+                : '';
+            const host = StringCtor(value).split(/[/?#]/)[0];
+            this.#replace(record.scheme + '://' + credentials + host + this.#withoutAuthority());
+        }
+        get hostname() { return this.#record.hostname; }
+        set hostname(value) {
+            if (this.#record.opaque) return;
+            const port = this.#record.port;
+            this.host = StringCtor(value).split(/[:/?#]/)[0] + (port !== '' ? ':' + port : '');
+        }
+        get port() { return this.#record.port; }
+        set port(value) {
+            const record = this.#record;
+            if (record.hostname === '' || record.scheme === 'file') return;
+            const digits = StringCtor(value).match(/^\d*/)[0];
+            if (digits === '' && StringCtor(value) !== '') return;
+            if (digits !== '' && NumberCtor(digits) > 65535) return;
+            const port = digits === '' ? '' : StringCtor(NumberCtor(digits));
+            record.port = port === SPECIAL_PORTS[record.scheme] ? '' : port;
+        }
+        get pathname() { return this.#record.pathname; }
+        set pathname(value) {
+            const record = this.#record;
+            if (record.opaque) return;
+            let path = slashes(StringCtor(value), isSpecial(record.scheme));
+            if (!path.startsWith('/') && (path !== '' || isSpecial(record.scheme))) path = '/' + path;
+            record.pathname = percentEncode(path === '' ? '' : normalizePath(path), PATH_ENCODE);
+        }
+        get search() {
+            const query = this.#record.query;
+            return query === null || query === '' ? '' : '?' + query;
+        }
+        set search(value) {
+            const query = StringCtor(value).replace(/^\?/, '');
+            this.#record.query = query === '' ? null : percentEncode(query, queryEncodeSet(this.#record.scheme));
+            replaceParams(this.#searchParams, this.#record.query);
+        }
+        get searchParams() { return this.#searchParams; }
+        get hash() {
+            const fragment = this.#record.fragment;
+            return fragment === null || fragment === '' ? '' : '#' + fragment;
+        }
+        set hash(value) {
+            const fragment = StringCtor(value).replace(/^#/, '');
+            this.#record.fragment = fragment === '' ? null : percentEncode(fragment, FRAGMENT_ENCODE);
+        }
+        toString() { return this.href; }
+        toJSON() { return this.href; }
+        static {
+            syncQueryFromParams = (url, serialized) => { url.#record.query = serialized === '' ? null : serialized; };
+        }
+    }
+
     /* --- fetch(): requests are queued here and performed by the host (PHP), one batch at a time --- */
 
     class Headers {
@@ -716,6 +1145,8 @@ function sandboxBootstrap(options) {
     expose('AbortSignal', AbortSignal);
     expose('TextEncoder', TextEncoder);
     expose('TextDecoder', TextDecoder);
+    expose('URL', URL);
+    expose('URLSearchParams', URLSearchParams);
     expose('atob', atob);
     expose('btoa', btoa);
     expose('setTimeout', (callback, delay, ...args) => schedule(callback, delay, args, false));

@@ -196,6 +196,53 @@ test('scripts get the web APIs of the TRMNL Node runtime', function (): void {
     ]);
 });
 
+test('scripts can build URLs with URL and URLSearchParams', function (): void {
+    $result = runLocalTransform(<<<'JS'
+        function run() {
+            const parsed = new URLSearchParams('?a=1&a=2&b=x+y&c=%C3%BC');
+            const url = new URL('/v1/taxa/5/../6?locale=nl#x', 'https://API.inaturalist.org:443/foo');
+            url.searchParams.set('locale', 'en');
+            url.searchParams.append('q', 'a b');
+            let invalid = null;
+            try { new URL('not a url'); } catch (error) { invalid = error.name; }
+            return {
+                query: new URLSearchParams({ lat: 52.1, taxon_id: '1,2', q: 'a b&c', name: 'Grüße' }).toString(),
+                all: parsed.getAll('a'),
+                b: parsed.get('b'),
+                c: parsed.get('c'),
+                hasMissing: parsed.has('missing'),
+                size: parsed.size,
+                href: url.href,
+                host: url.host,
+                origin: url.origin,
+                pathname: url.pathname,
+                hash: url.hash,
+                relative: new URL('../b?x=1', 'http://example.com:8080/a/c/d').href,
+                invalid,
+                canParse: URL.canParse('not a url'),
+            };
+        }
+        JS);
+
+    expect($result->error)->toBeNull()
+        ->and($result->output)->toBe([
+            'query' => 'lat=52.1&taxon_id=1%2C2&q=a+b%26c&name=Gr%C3%BC%C3%9Fe',
+            'all' => ['1', '2'],
+            'b' => 'x y',
+            'c' => 'ü',
+            'hasMissing' => false,
+            'size' => 4,
+            'href' => 'https://api.inaturalist.org/v1/taxa/6?locale=en&q=a+b#x',
+            'host' => 'api.inaturalist.org',
+            'origin' => 'https://api.inaturalist.org',
+            'pathname' => '/v1/taxa/6',
+            'hash' => '#x',
+            'relative' => 'http://example.com:8080/a/b?x=1',
+            'invalid' => 'TypeError',
+            'canParse' => false,
+        ]);
+});
+
 test('fetch() requests are made by the server and their responses reach the script', function (): void {
     Http::preventStrayRequests();
     Http::fake(['https://api.example.test/items' => Http::response(['items' => ['a', 'b']], 201, ['X-Total' => '2'])]);
