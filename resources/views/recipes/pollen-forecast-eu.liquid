@@ -1,5 +1,5 @@
-<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts.js"></script>
-<script src="https://trmnl.com/js/chartkick/5.0.1/chartkick.min.js"></script>
+<script src="{{ trmnl.assets.highcharts_js_url | default: 'https://trmnl.com/js/highcharts/12.3.0/highcharts.js' | escape }}"></script>
+<script src="{{ trmnl.assets.chartkick_js_url | default: 'https://trmnl.com/js/chartkick/5.0.1/chartkick.min.js' | escape }}"></script>
 
 <div class="view view--{{ size }}">
     <div class="layout layout--col gap--space-between">
