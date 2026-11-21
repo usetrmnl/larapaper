@@ -1252,3 +1252,23 @@ test('plugin render uses the scale level set on the device', function (): void {
     expect($rendered)->toContain('screen--scale-large')
         ->not->toContain('screen--scale-xxlarge');
 });
+
+test('getMarkupForSize returns shared markup when no size markup is defined', function (string $size, ?string $fullMarkup): void {
+    $plugin = Plugin::factory()->make([
+        'render_markup' => $fullMarkup,
+        'render_markup_half_horizontal' => '',
+        'render_markup_shared' => '<div>shared</div>',
+    ]);
+
+    expect($plugin->getMarkupForSize($size))->toBe('<div>shared</div>');
+})->with(['full', 'half_horizontal', 'half_vertical', 'quadrant'])->with(['null' => null, 'empty' => '']);
+
+test('getMarkupForSize prepends shared markup and falls back from empty size markup to full', function (): void {
+    $plugin = Plugin::factory()->make([
+        'render_markup' => '<div>full</div>',
+        'render_markup_half_horizontal' => '',
+        'render_markup_shared' => '<div>shared</div>',
+    ]);
+
+    expect($plugin->getMarkupForSize('half_horizontal'))->toBe("<div>shared</div>\n<div>full</div>");
+});

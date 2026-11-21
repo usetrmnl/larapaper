@@ -1088,25 +1088,23 @@ class Plugin extends Model
     /**
      * Get the appropriate markup for a given size, including shared prepending logic
      *
+     * Empty size markup falls back to the full markup. When only shared markup exists, it is rendered on its own.
+     *
      * @param  string  $size  The layout size (full, half_horizontal, half_vertical, quadrant)
-     * @return string|null The markup code for the given size, with shared prepended if available
+     * @return string|null The shared and size markup joined, or null if neither exists
      */
     public function getMarkupForSize(string $size): ?string
     {
         $markup = match ($size) {
-            'full' => $this->render_markup,
-            'half_horizontal' => $this->render_markup_half_horizontal ?? $this->render_markup,
-            'half_vertical' => $this->render_markup_half_vertical ?? $this->render_markup,
-            'quadrant' => $this->render_markup_quadrant ?? $this->render_markup,
+            'half_horizontal' => $this->render_markup_half_horizontal ?: $this->render_markup,
+            'half_vertical' => $this->render_markup_half_vertical ?: $this->render_markup,
+            'quadrant' => $this->render_markup_quadrant ?: $this->render_markup,
             default => $this->render_markup,
         };
 
-        // Prepend shared markup if it exists
-        if ($markup && $this->render_markup_shared) {
-            return $this->render_markup_shared."\n".$markup;
-        }
+        $parts = array_filter([$this->render_markup_shared, $markup], fn (?string $part): bool => filled($part));
 
-        return $markup;
+        return $parts === [] ? null : implode("\n", $parts);
     }
 
     public function getPreviewMashupLayoutForSize(string $size): string

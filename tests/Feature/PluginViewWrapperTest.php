@@ -21,6 +21,19 @@ test('recipe markup is wrapped in a view for the rendered size', function (strin
         ->toBe('<div class="view view--'.$size.'"> <div class="layout">Hello</div> </div>');
 })->with(['liquid', 'blade'])->with(['full', 'half_horizontal', 'half_vertical', 'quadrant']);
 
+test('recipe with only shared markup is rendered', function (string $markupLanguage, ?string $fullMarkup): void {
+    $plugin = Plugin::factory()->create([
+        'plugin_type' => 'recipe',
+        'markup_language' => $markupLanguage,
+        'render_markup' => $fullMarkup,
+        'render_markup_shared' => '<div class="layout">Shared</div>',
+        'data_strategy' => 'static',
+    ]);
+
+    expect(preg_replace('/\s+/', ' ', $plugin->render('full', false)))
+        ->toBe('<div class="view view--full"> <div class="layout">Shared</div> </div>');
+})->with(['liquid', 'blade'])->with(['null full markup' => null, 'empty full markup' => '']);
+
 test('legacy view wrapper in recipe markup is neutralized', function (string $markupLanguage, string $markup): void {
     $plugin = makeRecipePlugin($markup, $markupLanguage);
 
