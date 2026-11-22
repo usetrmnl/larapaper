@@ -207,6 +207,21 @@ return [
     'puppeteer_disk_cache_dir' => env('PUPPETEER_DISK_CACHE_DIR', storage_path('framework/cache/browser')),
     'puppeteer_disk_cache_size_mb' => (int) env('PUPPETEER_DISK_CACHE_SIZE_MB', 100),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Browser Certificate Pinning
+    |--------------------------------------------------------------------------
+    |
+    | Chromium ignores the system CA bundle, so assets from hosts behind a
+    | private CA fail with ERR_CERT_AUTHORITY_INVALID. List base64 SHA-256
+    | SPKI hashes (leaf and/or CA) or point to a PEM bundle to derive them.
+    | Either one passes --ignore-certificate-errors-spki-list to renders.
+    |
+    */
+
+    'puppeteer_cert_spki_sha256' => env('PUPPETEER_CERT_SPKI_SHA256'),
+    'puppeteer_ca_file' => env('PUPPETEER_CA_FILE'),
+
     'notifications' => [
         'battery_low' => [
             'warn_at_percent' => env('NOTIFICATION_BATTERYLOW_WARNATPERCENT', 20),
