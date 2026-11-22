@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Services\ImageGenerationService;
 use Bnussbau\EpaperPipeline\EpaperPipeline;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     EpaperPipeline::fake();
@@ -327,4 +328,45 @@ it('browser_arguments leave out the disk cache for aws lambda renders', function
     ]);
 
     expect(ImageGenerationService::browserArguments())->toBeEmpty();
+});
+
+it('browser_arguments pin configured SPKI hashes', function (): void {
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_disk_cache' => false,
+        'app.puppeteer_cert_spki_sha256' => ' hashA= , hashB=,',
+        'app.puppeteer_ca_file' => null,
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBe([
+        '--ignore-certificate-errors-spki-list=hashA=,hashB=',
+    ]);
+});
+
+it('browser_arguments derive SPKI hashes from every certificate in the CA file', function (): void {
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_disk_cache' => false,
+        // Leaf hash is also in the bundle and must not be repeated.
+        'app.puppeteer_cert_spki_sha256' => 'PMdlrdVDi4ZZ7HiOrJinUqRlvPUPq0Ghh86ddZKDFvI=',
+        'app.puppeteer_ca_file' => base_path('tests/Fixtures/private-ca.pem'),
+    ]);
+
+    // Expected values computed with: openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+    expect(ImageGenerationService::browserArguments())->toBe([
+        '--ignore-certificate-errors-spki-list=PMdlrdVDi4ZZ7HiOrJinUqRlvPUPq0Ghh86ddZKDFvI=,biLXjkm+xGoV0mesIgcmt4YmQa7c7JYaEi3E1TPGWOU=',
+    ]);
+});
+
+it('browser_arguments skip pinning and warn when the CA file is unreadable', function (): void {
+    Log::spy();
+    config([
+        'app.puppeteer_docker' => false,
+        'app.puppeteer_disk_cache' => false,
+        'app.puppeteer_cert_spki_sha256' => null,
+        'app.puppeteer_ca_file' => '/nonexistent/ca.crt',
+    ]);
+
+    expect(ImageGenerationService::browserArguments())->toBeEmpty();
+    Log::shouldHaveReceived('warning')->once();
 });

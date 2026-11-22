@@ -201,7 +201,48 @@ class ImageGenerationService
             $arguments[] = '--disk-cache-size='.(config('app.puppeteer_disk_cache_size_mb') * 1024 * 1024);
         }
 
+        $spkiHashes = self::certificateSpkiHashes();
+        if ($spkiHashes !== []) {
+            $arguments[] = '--ignore-certificate-errors-spki-list='.implode(',', $spkiHashes);
+        }
+
         return $arguments;
+    }
+
+    /**
+     * SPKI hashes Chromium should trust: configured ones plus those derived
+     * from every certificate in the configured PEM bundle.
+     *
+     * @return list<string>
+     */
+    public static function certificateSpkiHashes(): array
+    {
+        $hashes = array_map(trim(...), explode(',', (string) config('app.puppeteer_cert_spki_sha256')));
+
+        $caFile = (string) config('app.puppeteer_ca_file');
+        if ($caFile !== '') {
+            $pem = is_readable($caFile) ? file_get_contents($caFile) : false;
+            preg_match_all('/-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----/s', (string) $pem, $certificates);
+
+            if ($certificates[0] === []) {
+                Log::warning("PUPPETEER_CA_FILE {$caFile}: no readable PEM certificates, private CA hosts will fail in renders");
+            }
+
+            foreach ($certificates[0] as $certificate) {
+                $publicKey = openssl_pkey_get_public($certificate);
+                $details = $publicKey === false ? false : openssl_pkey_get_details($publicKey);
+                if ($details === false) {
+                    Log::warning("PUPPETEER_CA_FILE {$caFile}: skipping a certificate with an unreadable public key");
+
+                    continue;
+                }
+                // The PEM public key body is the DER SubjectPublicKeyInfo Chromium hashes.
+                $spki = base64_decode(preg_replace('/-----[^-]+-----|\s/', '', $details['key']));
+                $hashes[] = base64_encode(hash('sha256', $spki, true));
+            }
+        }
+
+        return array_values(array_unique(array_filter($hashes, fn (string $hash): bool => $hash !== '')));
     }
 
     /**
