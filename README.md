@@ -142,6 +142,8 @@ php artisan db:seed --class=ExampleRecipesSeeder
 | `TRMNL_IMAGE_URL_TIMEOUT`     | How long TRMNL waits for a response on the display endpoint. (sec)                                                                          | 30                |
 | `HTTP_CLIENT_TIMEOUT`         | Outbound HTTP timeout when fetching recipe polling URLs. (sec)                                                                              | 10                |
 | `APP_TIMEZONE`                | Default timezone, which will be used by the PHP date functions. UTC is recommended.                                                         | UTC               |
+| `PUPPETEER_CA_FILE`           | PEM bundle inside the container; renders trust the SPKI of every certificate in it (private CA, see docs)                                  | null              |
+| `PUPPETEER_CERT_SPKI_SHA256`  | Comma-separated base64 SHA-256 SPKI hashes for renders to trust                                                                             | null              |
 
 #### Login
 
