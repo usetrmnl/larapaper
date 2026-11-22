@@ -41,6 +41,23 @@ Framework CSS and JavaScript for recipe screens can be loaded from a mirror or l
 
 Explicit stylesheet and JavaScript URLs take precedence over the base URL and per-recipe framework version.
 
+## Private certificate authorities
+
+Chromium does not use the container's CA bundle, so images and other assets from hosts with a private CA (self-hosted S3/MinIO, internal dashboards) fail in renders with `ERR_CERT_AUTHORITY_INVALID`. Pin their public keys instead; LaraPaper passes them to Chromium as `--ignore-certificate-errors-spki-list`.
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PUPPETEER_CA_FILE` | Path to a PEM bundle inside the container. The SPKI hash of every certificate in it is pinned | `null` |
+| `PUPPETEER_CERT_SPKI_SHA256` | Comma-separated base64 SHA-256 SPKI hashes to pin | `null` |
+
+Pinning the CA only works when the server sends the full chain (leaf plus CA); otherwise pin the leaf certificate. Compute a hash yourself with:
+
+```bash
+openssl x509 -in cert.crt -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+```
+
+Pinned keys are accepted even when the certificate is otherwise invalid (wrong host name, expired), so only list keys you control.
+
 ## OpenID Connect
 
 Optional sign-in through an OpenID Connect provider. See [Authentication](/getting-started/authentication).
