@@ -52,14 +52,6 @@ It allows you to manage TRMNL-compatible devices, generate screens using **nativ
 ### Support ❤️
 This repo is maintained voluntarily by [@bnussbau](https://github.com/bnussbau).
 
-Support the development of this package by purchasing a TRMNL device through the referral link: https://trmnl.com/?ref=laravel-trmnl. At checkout, use the code `laravel-trmnl` to receive a $15 discount on your purchase.
-
-or
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bnussbau)
-
-[GitHub Sponsors](https://github.com/sponsors/bnussbau/)
-
 ### Hosting
 
 Run everywhere, where Docker is supported: Raspberry Pi, VPS, NAS, Container Cloud Service (Cloud Run, ...).
