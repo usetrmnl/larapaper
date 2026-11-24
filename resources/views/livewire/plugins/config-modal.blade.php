@@ -46,13 +46,12 @@ new class extends Component
 
             $fieldKey = $field['keyname'] ?? null;
 
-            if (
-                is_string($fieldKey)
-                && CustomFieldConditions::isConditionParent($field)
-                && ! array_key_exists($fieldKey, $this->configuration)
-                && array_key_exists('default', $field)
-            ) {
-                $this->configuration[$fieldKey] = $field['default'];
+            if (is_string($fieldKey) && ! array_key_exists($fieldKey, $this->configuration)) {
+                if (($field['field_type'] ?? null) === 'boolean') {
+                    $this->configuration[$fieldKey] = Plugin::booleanFieldDefault($field);
+                } elseif (CustomFieldConditions::isConditionParent($field) && array_key_exists('default', $field)) {
+                    $this->configuration[$fieldKey] = $field['default'];
+                }
             }
 
             if (($field['field_type'] ?? null) === 'multi_string' && is_string($fieldKey)) {

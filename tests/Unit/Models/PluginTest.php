@@ -1280,8 +1280,18 @@ test('isCustomFieldRequired treats informational and optional fields as not requ
     'string marked optional' => [['field_type' => 'string', 'name' => 'Title', 'optional' => true], false],
     'string optional false' => [['field_type' => 'string', 'name' => 'Title', 'optional' => false], true],
     'author_bio' => [['field_type' => 'author_bio', 'name' => 'About'], false],
+    'boolean without optional' => [['field_type' => 'boolean', 'name' => 'Enabled'], false],
+    'boolean optional false' => [['field_type' => 'boolean', 'name' => 'Enabled', 'optional' => false], false],
     'copyable' => [['field_type' => 'copyable', 'name' => 'URL'], false],
     'copyable_webhook_url' => [['field_type' => 'copyable_webhook_url', 'name' => 'Webhook'], false],
+]);
+
+test('boolean fields default to false unless default is true', function (array $field, bool $expected): void {
+    expect(Plugin::booleanFieldDefault($field))->toBe($expected);
+})->with([
+    'unspecified' => [['field_type' => 'boolean', 'name' => 'Enabled'], false],
+    'default true' => [['field_type' => 'boolean', 'name' => 'Enabled', 'default' => true], true],
+    'default false' => [['field_type' => 'boolean', 'name' => 'Enabled', 'default' => false], false],
 ]);
 
 test('validateCustomFieldsList allows optional group attribute', function (): void {

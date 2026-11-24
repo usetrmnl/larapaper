@@ -548,6 +548,48 @@ test('config modal saves values for fields inside groups', function (): void {
         ->and($freshPlugin->configuration['tags'])->toBe('updated_tag');
 });
 
+test('config modal defaults unset boolean fields to false and does not mark them required', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $plugin = Plugin::create([
+        'uuid' => Str::uuid(),
+        'user_id' => $user->id,
+        'name' => 'Boolean Plugin',
+        'data_strategy' => 'static',
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'enabled',
+                    'field_type' => 'boolean',
+                    'name' => 'Enabled',
+                ],
+                [
+                    'keyname' => 'show_title',
+                    'field_type' => 'boolean',
+                    'name' => 'Show Title',
+                    'default' => true,
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    Livewire::test('plugins.config-modal', ['plugin' => $plugin])
+        ->assertSet('configuration.enabled', false)
+        ->assertSet('configuration.show_title', true)
+        ->assertSee('Enabled')
+        ->assertSee('Show Title')
+        ->assertDontSee('Required')
+        ->call('saveConfiguration')
+        ->assertHasNoErrors();
+
+    expect($plugin->fresh()->configuration)->toMatchArray([
+        'enabled' => false,
+        'show_title' => true,
+    ]);
+});
+
 test('config modal hides fields for the default strategy and reveals them when the strategy changes', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user);

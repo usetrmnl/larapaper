@@ -154,6 +154,10 @@ class CustomFieldConditions
             return $configuration[$key];
         }
 
+        if (($field['field_type'] ?? null) === 'boolean') {
+            return Plugin::booleanFieldDefault($field);
+        }
+
         return $field['default'] ?? '';
     }
 

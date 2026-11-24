@@ -144,7 +144,30 @@ test('matches a boolean controlling value to when true', function (): void {
     ];
 
     expect(CustomFieldConditions::isVisible($fields[1], $fields, ['enabled' => true]))->toBeTrue()
-        ->and(CustomFieldConditions::isVisible($fields[1], $fields, ['enabled' => false]))->toBeFalse();
+        ->and(CustomFieldConditions::isVisible($fields[1], $fields, ['enabled' => false]))->toBeFalse()
+        ->and(CustomFieldConditions::isVisible($fields[1], $fields, []))->toBeFalse();
+});
+
+test('uses a boolean field default of true when the value is unset', function (): void {
+    $fields = [
+        [
+            'keyname' => 'enabled',
+            'field_type' => 'boolean',
+            'name' => 'Enabled',
+            'default' => true,
+            'conditional_validation' => [
+                ['when' => true, 'visible' => ['details']],
+            ],
+        ],
+        [
+            'keyname' => 'details',
+            'field_type' => 'string',
+            'name' => 'Details',
+            'optional' => true,
+        ],
+    ];
+
+    expect(CustomFieldConditions::isVisible($fields[1], $fields, []))->toBeTrue();
 });
 
 /**

@@ -428,3 +428,23 @@ test('hasMissingRequiredConfigurationFields requires the field selected by the d
 
     expect($plugin->fresh()->hasMissingRequiredConfigurationFields())->toBeFalse();
 });
+
+test('hasMissingRequiredConfigurationFields ignores an unset boolean field', function (): void {
+    $user = User::factory()->create();
+
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'configuration_template' => [
+            'custom_fields' => [
+                [
+                    'keyname' => 'enabled',
+                    'field_type' => 'boolean',
+                    'name' => 'Enabled',
+                ],
+            ],
+        ],
+        'configuration' => [],
+    ]);
+
+    expect($plugin->hasMissingRequiredConfigurationFields())->toBeFalse();
+});

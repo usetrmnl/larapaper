@@ -264,17 +264,31 @@ class Plugin extends Model
     }
 
     /**
-     * Informational field types are never required. All other fields are required unless marked optional.
+     * Informational and boolean field types are never required. All other fields are required unless marked optional.
      *
      * @param  array<string, mixed>  $field
      */
     public static function isCustomFieldRequired(array $field): bool
     {
-        if (in_array($field['field_type'] ?? null, ['author_bio', 'copyable', 'copyable_webhook_url'], true)) {
+        if (in_array($field['field_type'] ?? null, ['author_bio', 'boolean', 'copyable', 'copyable_webhook_url'], true)) {
             return false;
         }
 
         return ! isset($field['optional']) || $field['optional'] !== true;
+    }
+
+    /**
+     * Boolean fields default to false unless default is set.
+     *
+     * @param  array<string, mixed>  $field
+     */
+    public static function booleanFieldDefault(array $field): bool
+    {
+        if (! array_key_exists('default', $field) || $field['default'] === null || $field['default'] === '') {
+            return false;
+        }
+
+        return filter_var($field['default'], FILTER_VALIDATE_BOOLEAN);
     }
 
     public function hasMissingRequiredConfigurationFields(): bool

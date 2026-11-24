@@ -1,6 +1,11 @@
 @php
     $fieldKey = $field['keyname'] ?? $field['key'] ?? $field['name'];
-    $rawValue = $configuration[$fieldKey] ?? ($field['default'] ?? '');
+    $storedConfiguration = is_array($configuration) ? $configuration : [];
+    $rawValue = $storedConfiguration[$fieldKey] ?? ($field['default'] ?? '');
+
+    if (($field['field_type'] ?? null) === 'boolean' && ! array_key_exists($fieldKey, $storedConfiguration)) {
+        $rawValue = \App\Models\Plugin::booleanFieldDefault($field);
+    }
     $customFields = $configuration_template['custom_fields'] ?? [];
     $labelBadge = \App\Support\CustomFieldConditions::isRequired($field, is_array($customFields) ? $customFields : [], is_array($configuration) ? $configuration : []) ? 'Required' : null;
     $updatesLive = \App\Support\CustomFieldConditions::isConditionParent($field);
