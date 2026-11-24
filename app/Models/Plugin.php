@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TextScaleLevel;
 use App\Liquid\Filters\StandardFilters;
+use App\Liquid\LiquidConfiguration;
 use App\Liquid\PluginLiquidEnvironment;
 use App\Plugins\PluginHandler;
 use App\Plugins\PluginRegistry;
@@ -796,8 +797,9 @@ class Plugin extends Model
      */
     public function resolveLiquidVariables(string $template): string
     {
-        // Get configuration variables - make them available at root level
-        $variables = $this->configuration ?? [];
+        // Get configuration variables - make them available at root level.
+        // Liquid templates compare boolean settings to the strings "true" and "false".
+        $variables = $this->configurationForLiquid();
 
         // Check if external renderer should be used
         $useExternalRenderer = $this->preferred_renderer === 'trmnl-liquid'
@@ -880,11 +882,33 @@ class Plugin extends Model
     }
 
     /**
-     * TRMNL template variables shared by Liquid, Blade, and view rendering.
+     * Copy configuration for Liquid, with boolean values as "true" and "false".
+     *
+     * Stored configuration stays boolean so Blade can compare with === true.
+     * TRMNL Liquid templates compare those same settings as strings.
      *
      * @return array<string, mixed>
      */
-    private function trmnlContext(?Device $device = null): array
+    private function configurationForLiquid(): array
+    {
+        $configuration = is_array($this->configuration) ? $this->configuration : [];
+
+        foreach ($configuration as $key => $value) {
+            if (is_bool($value)) {
+                $configuration[$key] = $value ? 'true' : 'false';
+            }
+        }
+
+        return $configuration;
+    }
+
+    /**
+     * TRMNL template variables shared by Liquid, Blade, and view rendering.
+     *
+     * @param  array<string, mixed>|LiquidConfiguration|null  $customFieldValues
+     * @return array<string, mixed>
+     */
+    private function trmnlContext(?Device $device = null, array|LiquidConfiguration|null $customFieldValues = null): array
     {
         $timezone = $this->user->timezone ?? config('app.timezone');
         $utcOffset = (string) Carbon::now($timezone)->getOffset();
@@ -920,9 +944,7 @@ class Plugin extends Model
                 'no_screen_padding' => $this->no_bleed ? 'yes' : 'no',
                 'polling_headers' => $this->polling_header,
                 'polling_url' => $this->polling_url,
-                'custom_fields_values' => [
-                    ...(is_array($this->configuration) ? $this->configuration : []),
-                ],
+                'custom_fields_values' => $customFieldValues ?? (is_array($this->configuration) ? $this->configuration : []),
                 'refresh_interval_minutes' => $this->data_stale_minutes === null ? null : (int) $this->data_stale_minutes,
                 'data_fetched_utc' => $this->data_payload_updated_at?->getTimestamp(),
             ],
@@ -948,12 +970,13 @@ class Plugin extends Model
             $renderedContent = '';
 
             if ($this->markup_language === 'liquid') {
+                $liquidConfiguration = new LiquidConfiguration($this->configurationForLiquid());
                 $context = [
                     'size' => $size,
                     'data' => $this->data_payload,
-                    'config' => $this->configuration ?? [],
+                    'config' => $liquidConfiguration,
                     ...(is_array($this->data_payload) ? $this->data_payload : []),
-                    'trmnl' => $this->trmnlContext($device),
+                    'trmnl' => $this->trmnlContext($device, $liquidConfiguration),
                 ];
 
                 // Check if external renderer should be used

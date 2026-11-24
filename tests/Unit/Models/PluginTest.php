@@ -680,6 +680,63 @@ LIQUID
     });
 });
 
+test('liquid render compares boolean configuration values as strings', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'liquid',
+        'render_markup' => <<<'LIQUID'
+{% assign custom_fields_values = trmnl.plugin_settings.custom_fields_values %}
+{% assign flag_key = "visited_jp_13" %}
+{% assign is_visited = custom_fields_values[flag_key] %}
+{% if is_visited == "true" %}filled{% endif %}
+{% if config.visited_jp_13 == "true" %}configged{% endif %}
+{% for field in custom_fields_values %}
+  {% assign key = field[0] %}
+  {% assign val = field[1] %}
+  {% unless key contains "_date" %}
+    {% if key contains "visited_jp_" and val == "true" %}marked{% endif %}
+    {% if key contains "visited_jp_" and val == "false" %}clear{% endif %}
+  {% endunless %}
+{% endfor %}
+LIQUID,
+        'configuration' => [
+            'visited_jp_13' => true,
+            'visited_jp_01' => false,
+            'visited_jp_13_date' => '2024-01-01',
+            'show_darker_as_more_recent' => 'true',
+            'title' => 'Tokyo',
+        ],
+    ]);
+
+    expect($plugin->render('full', false))
+        ->toContain('filled')
+        ->toContain('configged')
+        ->toContain('marked')
+        ->toContain('clear');
+
+    $plugin->refresh();
+
+    expect($plugin->configuration['visited_jp_13'])->toBeTrue()
+        ->and($plugin->configuration['visited_jp_01'])->toBeFalse()
+        ->and($plugin->configuration['show_darker_as_more_recent'])->toBe('true');
+});
+
+test('blade render keeps boolean configuration values as booleans', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'markup_language' => 'blade',
+        'render_markup' => '@if ($config["visited_jp_13"] === true) marked @endif @if ($trmnl["plugin_settings"]["custom_fields_values"]["visited_jp_01"] === false) clear @endif',
+        'configuration' => [
+            'visited_jp_13' => true,
+            'visited_jp_01' => false,
+        ],
+    ]);
+
+    expect($plugin->render('full', false))->toContain('marked')->toContain('clear');
+});
+
 test('plugin render uses user timezone when set', function (): void {
     $user = User::factory()->create([
         'timezone' => 'America/New_York',
