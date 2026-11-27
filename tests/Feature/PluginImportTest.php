@@ -132,6 +132,46 @@ it('imports plugin from valid zip file', function (): void {
         ->and($plugin->configuration['api_key'])->toBe('default-api-key');
 });
 
+it('splits trmnl polling headers into one header per line', function (): void {
+    $user = User::factory()->create();
+
+    $zipContent = createMockZipFile([
+        'src/settings.yml' => <<<'YAML'
+name: Header Plugin
+strategy: polling
+polling_url: https://api.example.com/data
+polling_headers: Authorization=Basic dXNlcjpwYXNz&Accept=application/json
+YAML,
+        'src/full.liquid' => getValidFullLiquid(),
+    ]);
+
+    $zipFile = UploadedFile::fake()->createWithContent('test-plugin.zip', $zipContent);
+    $plugin = (new PluginImportService())->importFromZip($zipFile, $user);
+
+    expect($plugin->polling_header)->toBe("Authorization: Basic dXNlcjpwYXNz\nAccept: application/json");
+});
+
+it('imports polling headers written one per line as name: value', function (): void {
+    $user = User::factory()->create();
+
+    $zipContent = createMockZipFile([
+        'src/settings.yml' => <<<'YAML'
+name: Header Plugin
+strategy: polling
+polling_url: https://api.example.com/data
+polling_headers: |-
+  Accept: */*
+  Referer: https://a.test/?x=1
+YAML,
+        'src/full.liquid' => getValidFullLiquid(),
+    ]);
+
+    $zipFile = UploadedFile::fake()->createWithContent('test-plugin.zip', $zipContent);
+    $plugin = (new PluginImportService())->importFromZip($zipFile, $user);
+
+    expect($plugin->polling_header)->toBe("Accept: */*\nReferer: https://a.test/?x=1");
+});
+
 it('imports plugin with shared.liquid file', function (): void {
     $user = User::factory()->create();
 

@@ -140,8 +140,13 @@ class PluginExportService
                 $settings['polling_url'] = $plugin->polling_url;
             }
             if ($plugin->polling_header) {
-                // Convert header format from "key: value" to "key=value"
-                $settings['polling_headers'] = str_replace(':', '=', $plugin->polling_header);
+                // TRMNL's format: one name=value per line
+                $lines = [];
+                foreach (explode("\n", $plugin->polling_header) as $line) {
+                    $parts = explode(':', $line, 2);
+                    $lines[] = count($parts) === 2 ? mb_trim($parts[0]).'='.mb_trim($parts[1]) : $line;
+                }
+                $settings['polling_headers'] = implode("\n", $lines);
             }
             if ($plugin->polling_body) {
                 $settings['polling_body'] = $plugin->polling_body;
