@@ -130,6 +130,13 @@ class ImageGenerationService
                 $browserStage->setBrowsershotOption('args', $browserArguments);
             }
 
+            // Over a pipe, Chromium exits on its own once the Node process that started it is
+            // gone. Over the default WebSocket it keeps running when Browsershot's timeout kills
+            // that process, because the process gets no time to close the browser.
+            if ($browsershotInstance === null) {
+                $browserStage->setBrowsershotOption('pipe', true);
+            }
+
             $colorPalette = match (true) {
                 $palette && $palette->colors => $palette->colors,
                 $deviceModel?->palette && $deviceModel->palette->colors => $deviceModel->palette->colors,
@@ -682,6 +689,13 @@ class ImageGenerationService
             $browserArguments = self::browserArguments();
             if ($browserArguments !== []) {
                 $browserStage->setBrowsershotOption('args', $browserArguments);
+            }
+
+            // Over a pipe, Chromium exits on its own once the Node process that started it is
+            // gone. Over the default WebSocket it keeps running when Browsershot's timeout kills
+            // that process, because the process gets no time to close the browser.
+            if ($browsershotInstance === null) {
+                $browserStage->setBrowsershotOption('pipe', true);
             }
 
             $palette = $device->palette ?? $device->deviceModel?->palette;
