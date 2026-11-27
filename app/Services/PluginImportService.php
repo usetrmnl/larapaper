@@ -163,7 +163,7 @@ class PluginImportService
                 'polling_url' => $settings['polling_url'] ?? null,
                 'polling_verb' => $settings['polling_verb'] ?? 'get',
                 'polling_header' => isset($settings['polling_headers'])
-                    ? str_replace('=', ':', $settings['polling_headers'])
+                    ? self::headersFromTrmnl($settings['polling_headers'])
                     : null,
                 'polling_body' => $settings['polling_body'] ?? null,
                 'markup_language' => $markupLanguage,
@@ -335,7 +335,7 @@ class PluginImportService
                 'polling_url' => $settings['polling_url'] ?? null,
                 'polling_verb' => $settings['polling_verb'] ?? 'get',
                 'polling_header' => isset($settings['polling_headers'])
-                    ? str_replace('=', ':', $settings['polling_headers'])
+                    ? self::headersFromTrmnl($settings['polling_headers'])
                     : null,
                 'polling_body' => $settings['polling_body'] ?? null,
                 'markup_language' => $markupLanguage,
@@ -750,5 +750,27 @@ class PluginImportService
         // We use 200KB as a conservative limit that works on both systems
         // Note: ARG_MAX includes environment variables, so we leave headroom
         return $argMax !== null ? min($argMax, 204800) : 204800;
+    }
+
+    /**
+     * TRMNL takes polling headers as name=value pairs joined by "&" or one per
+     * line, also as "name: value"; Larapaper keeps one "name: value" per line.
+     * Only the first separator splits, so values such as base64 padding keep
+     * their "=".
+     */
+    private static function headersFromTrmnl(string $headers): string
+    {
+        $lines = [];
+        foreach (preg_split('/[&\n]/', $headers) as $pair) {
+            $eq = mb_strpos($pair, '=');
+            $colon = mb_strpos($pair, ': ');
+            $separator = $colon !== false && ($eq === false || $colon < $eq) ? ': ' : '=';
+            $parts = explode($separator, $pair, 2);
+            if (count($parts) === 2 && mb_trim($parts[0]) !== '') {
+                $lines[] = mb_trim($parts[0]).': '.mb_trim($parts[1]);
+            }
+        }
+
+        return implode("\n", $lines);
     }
 }

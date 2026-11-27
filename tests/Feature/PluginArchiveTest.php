@@ -128,6 +128,26 @@ it('exports and imports plugin maintaining all data', function (): void {
         ->and($importedPlugin->dark_mode)->toBeTrue();
 });
 
+it('keeps polling headers through export and import', function (): void {
+    $user = User::factory()->create();
+    $plugin = Plugin::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Header Round Trip',
+        'trmnlp_id' => 'header-round-trip',
+        'data_strategy' => 'polling',
+        'polling_url' => 'https://api.example.com/data',
+        'polling_header' => "Authorization: Basic dXNlcjpwYXNzd29yZA==\nX-Api-Key: k=1",
+        'markup_language' => 'liquid',
+        'render_markup' => '<div>Hi</div>',
+    ]);
+
+    $exportedFilePath = app(PluginExportService::class)->exportToZip($plugin, $user)->getFile()->getPathname();
+    $uploadedFile = new UploadedFile($exportedFilePath, 'plugin_header-round-trip.zip', 'application/zip', null, true);
+    $importedPlugin = app(PluginImportService::class)->importFromZip($uploadedFile, $user);
+
+    expect($importedPlugin->polling_header)->toBe("Authorization: Basic dXNlcjpwYXNzd29yZA==\nX-Api-Key: k=1");
+});
+
 it('exports screen settings as trmnl yes values', function (): void {
     $user = User::factory()->create();
     $plugin = Plugin::factory()->create([
