@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Device;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,11 +32,18 @@ class DeviceResource extends JsonResource
             'wifi_strength' => $this->wifi_strength,
             'hardware_last_ping_at' => $lastPingAt,
             'sleep_mode_enabled' => $this->sleep_mode_enabled,
-            'sleep_start_time' => $this->sleepStartMinutes(),
-            'sleep_end_time' => $this->sleepEndMinutes(),
+            'sleep_start_time' => $this->sleepStartMinutes() ?? $this->minutes(Device::DEFAULT_SLEEP_MODE_FROM),
+            'sleep_end_time' => $this->sleepEndMinutes() ?? $this->minutes(Device::DEFAULT_SLEEP_MODE_TO),
             'sleep_until' => $this->pause_until?->toIso8601ZuluString(),
             'firmware_version' => $this->last_firmware_version,
             'refresh_interval' => $this->default_refresh_interval,
         ];
+    }
+
+    private function minutes(string $time): int
+    {
+        [$hours, $minutes] = explode(':', $time);
+
+        return (int) $hours * 60 + (int) $minutes;
     }
 }
